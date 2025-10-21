@@ -147,6 +147,7 @@
             @rollback="handleRollback"
             @restore="handleRestore"
             @save="handleSaveTemplate"
+            @copy-plan="handleCopyPlan"
             @update:json-content="(value: string) => sidebarStore.jsonContent = value"
           />
           
