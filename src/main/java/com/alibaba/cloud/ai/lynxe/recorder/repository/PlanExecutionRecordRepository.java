@@ -15,13 +15,15 @@
  */
 package com.alibaba.cloud.ai.lynxe.recorder.repository;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.alibaba.cloud.ai.lynxe.recorder.entity.po.PlanExecutionRecordEntity;
-
-import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface PlanExecutionRecordRepository extends JpaRepository<PlanExecutionRecordEntity, Long> {
@@ -40,6 +42,13 @@ public interface PlanExecutionRecordRepository extends JpaRepository<PlanExecuti
 	 * Find all plan execution records by root plan ID
 	 */
 	List<PlanExecutionRecordEntity> findByRootPlanId(String rootPlanId);
+
+	/**
+	 * Find all plan execution records by root plan ID with agent execution sequence
+	 * eagerly loaded using JOIN FETCH to avoid N+1 query problems
+	 */
+	@Query("SELECT p FROM PlanExecutionRecordEntity p LEFT JOIN FETCH p.agentExecutionSequence WHERE p.rootPlanId = :rootPlanId")
+	List<PlanExecutionRecordEntity> findByRootPlanIdWithAgentSequence(@Param("rootPlanId") String rootPlanId);
 
 	/**
 	 * Check if a plan execution record exists by current plan ID

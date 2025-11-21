@@ -17,6 +17,7 @@
 package com.alibaba.cloud.ai.lynxe.recorder.service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.alibaba.cloud.ai.lynxe.recorder.entity.po.ActToolInfoEntity;
 import com.alibaba.cloud.ai.lynxe.recorder.entity.po.AgentExecutionRecordEntity;
@@ -78,6 +80,7 @@ public class PlanHierarchyReaderService {
 	 * @param rootPlanId The root plan ID to search for
 	 * @return Root PlanExecutionRecord with hierarchy relationships, or null if not found
 	 */
+	@Transactional(readOnly = true)
 	public PlanExecutionRecord readPlanTreeByRootId(String rootPlanId) {
 		try {
 			if (rootPlanId == null || rootPlanId.trim().isEmpty()) {
@@ -98,14 +101,23 @@ public class PlanHierarchyReaderService {
 			// Step 2: Find all plans that have this rootPlanId (including the root plan
 			// itself)
 			// This includes the root plan and all its sub-plans
-			List<PlanExecutionRecordEntity> planEntities = planExecutionRecordRepository.findByRootPlanId(rootPlanId);
+			// Use JOIN FETCH to eagerly load agentExecutionSequence to avoid N+1 queries
+			// Use LinkedHashSet to deduplicate results from JOIN FETCH
+			List<PlanExecutionRecordEntity> planEntitiesRaw = planExecutionRecordRepository
+				.findByRootPlanIdWithAgentSequence(rootPlanId);
 
-			if (planEntities.isEmpty()) {
+			if (planEntitiesRaw.isEmpty()) {
 				logger.debug("No plans found for rootPlanId: {}", rootPlanId);
 				return null;
 			}
 
-			logger.debug("Found {} plans for rootPlanId: {}", planEntities.size(), rootPlanId);
+			// Deduplicate using LinkedHashSet to handle potential duplicates from JOIN FETCH
+			// while preserving insertion order
+			List<PlanExecutionRecordEntity> planEntities = new ArrayList<>(
+				new LinkedHashSet<>(planEntitiesRaw));
+
+			logger.debug("Found {} plans for rootPlanId: {} (after deduplication from {} raw results)",
+					planEntities.size(), rootPlanId, planEntitiesRaw.size());
 
 			// Step 3: Convert to VO objects and build hierarchy
 			List<PlanExecutionRecord> planRecords = new ArrayList<>();
@@ -148,6 +160,7 @@ public class PlanHierarchyReaderService {
 	 * @param currentPlanId The current plan ID to search for
 	 * @return PlanExecutionRecord VO object, or null if not found
 	 */
+	@Transactional(readOnly = true)
 	public PlanExecutionRecord readSinglePlanById(String currentPlanId) {
 		try {
 			if (currentPlanId == null || currentPlanId.trim().isEmpty()) {
