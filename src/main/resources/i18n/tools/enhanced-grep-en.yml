@@ -1,0 +1,73 @@
+description: |
+  Enhanced grep tool for advanced text search with regex support, similar to ripgrep.
+  
+  This tool provides powerful file and directory search capabilities, including:
+  - Regular expression pattern matching
+  - Multiple output modes (content, file list, count)
+  - File type filtering using glob patterns or predefined types
+  - Case-insensitive search option
+  - Context lines display (before/after/around matches)
+  - Multiline matching support
+  - Result limiting to prevent excessive output
+  
+  Supported file types: java, py, js, ts, rust, go, cpp, md, json, xml, yaml, sql, sh, css, html
+  
+  Output modes:
+  - content: Show matching lines with content (default)
+  - files_with_matches: Only show file paths containing matches
+  - count: Show match counts per file
+  
+  Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search
+
+parameters: |
+  {
+    "type": "object",
+    "properties": {
+      "pattern": {
+        "type": "string",
+        "description": "Regular expression pattern to search for (required)"
+      },
+      "path": {
+        "type": "string",
+        "description": "Path to search (file or directory). Defaults to workspace root if not specified"
+      },
+      "glob": {
+        "type": "string",
+        "description": "Glob pattern for file filtering (e.g., '*.js', '*.{ts,tsx}')"
+      },
+      "type": {
+        "type": "string",
+        "description": "File type filter. Supported types: java, py, js, ts, rust, go, cpp, md, json, xml, yaml, sql, sh, css, html"
+      },
+      "case_insensitive": {
+        "type": "boolean",
+        "description": "Perform case-insensitive search (default: false)"
+      },
+      "output_mode": {
+        "type": "string",
+        "enum": ["content", "files_with_matches", "count"],
+        "description": "Output mode: 'content' (default, show matching lines), 'files_with_matches' (only file paths), 'count' (match counts)"
+      },
+      "context_before": {
+        "type": "integer",
+        "description": "Number of context lines to show before each match"
+      },
+      "context_after": {
+        "type": "integer",
+        "description": "Number of context lines to show after each match"
+      },
+      "context": {
+        "type": "integer",
+        "description": "Number of context lines to show before and after each match (shorthand for context_before and context_after)"
+      },
+      "multiline": {
+        "type": "boolean",
+        "description": "Enable multiline matching where . matches newlines (default: false). Used for pattern searches spanning multiple lines"
+      },
+      "head_limit": {
+        "type": "integer",
+        "description": "Limit output to first N results (default: 1000). Used to prevent excessive output"
+      }
+    },
+    "required": ["pattern"]
+  }
