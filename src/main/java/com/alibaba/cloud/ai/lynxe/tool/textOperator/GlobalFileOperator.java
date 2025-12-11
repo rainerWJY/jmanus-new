@@ -680,6 +680,14 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 			}
 
 			String content = Files.readString(absolutePath);
+
+			// Check if sourceText exists in the file content
+			if (!content.contains(sourceText)) {
+				log.warn("Source text not found in file: {}", absolutePath);
+				return new ToolExecuteResult("Error: Text to be replaced was not found in file: " + filePath);
+			}
+
+			// Perform replacement
 			String newContent = content.replace(sourceText, targetText);
 			Files.writeString(absolutePath, newContent);
 
@@ -689,7 +697,7 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 			}
 
 			log.info("Text replaced in file: {}", absolutePath);
-			return new ToolExecuteResult("Text replaced successfully in file: " + filePath);
+			return new ToolExecuteResult("Replacement successful in file: " + filePath);
 		}
 		catch (IOException e) {
 			log.error("Error replacing text in file: {}", filePath, e);
