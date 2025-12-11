@@ -15,7 +15,6 @@ description: |
     - Best practice: Read full files unless extremely large (omit offset and limit)
 
   Additional operations:
-  - list_files: List files and directories, optional file_path parameter (defaults to root)
   - count_words: Count characters in file
   - grep: Search for text patterns in file, similar to Linux grep command
     Parameters: pattern (required), case_sensitive (optional, default false), whole_word (optional, default false), context_lines (optional, default 0, number of lines to show above and below each match)
@@ -58,21 +57,6 @@ parameters: |
                   {"required": ["path"]},
                   {"required": ["file_path"]}
               ],
-              "additionalProperties": false
-          },
-          {
-              "type": "object",
-              "properties": {
-                  "action": {
-                      "type": "string",
-                      "const": "list_files"
-                  },
-                  "file_path": {
-                      "type": "string",
-                      "description": "Relative directory path to list (optional, defaults to root, e.g., 'subdir' or empty for root)"
-                  }
-              },
-              "required": ["action"],
               "additionalProperties": false
           },
           {

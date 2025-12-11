@@ -218,8 +218,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			if (action == null) {
 				return new ToolExecuteResult("Error: action parameter is required");
 			}
-			// path/file_path is optional for list_files action
-			if (targetPath == null && !"list_files".equals(action)) {
+			if (targetPath == null) {
 				return new ToolExecuteResult("Error: path or file_path parameter is required");
 			}
 
@@ -230,7 +229,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit);
 				}
 				case "count_words" -> countWords(targetPath);
-				case "list_files" -> listFiles(targetPath != null ? targetPath : "");
 				case "grep" -> {
 					String pattern = (String) toolInputMap.get("pattern");
 					Boolean caseSensitive = (Boolean) toolInputMap.get("case_sensitive");
@@ -248,7 +246,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words, list_files, grep");
+						+ ". Supported operations: read, count_words, grep");
 			};
 		}
 		catch (Exception e) {
@@ -268,8 +266,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			if (action == null) {
 				return new ToolExecuteResult("Error: action parameter is required");
 			}
-			// path/file_path is optional for list_files action
-			if (targetPath == null && !"list_files".equals(action)) {
+			if (targetPath == null) {
 				return new ToolExecuteResult("Error: path or file_path parameter is required");
 			}
 
@@ -283,7 +280,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit);
 				}
 				case "count_words" -> countWords(targetPath);
-				case "list_files" -> listFiles(targetPath != null ? targetPath : "");
 				case "grep" -> {
 					String pattern = input.getPattern();
 					Boolean caseSensitive = input.getCaseSensitive();
@@ -301,7 +297,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words, list_files, grep");
+						+ ". Supported operations: read, count_words, grep");
 			};
 		}
 		catch (Exception e) {
@@ -461,103 +457,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		return filePath.substring(lastDotIndex);
 	}
 
-	/**
-	 * List files in the plan/subplan directory
-	 */
-	private ToolExecuteResult listFiles(String directoryPath) {
-		try {
-			if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-				return new ToolExecuteResult("Error: rootPlanId is required for global file operations");
-			}
-
-			// Normalize the directory path to remove plan ID prefixes
-			String normalizedPath = normalizeFilePath(directoryPath != null ? directoryPath : "");
-
-			// For list_files, always use root plan directory as the base
-			// This allows listing directories like "linked_external" that exist at root
-			// plan level
-			Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
-
-			// If a subdirectory path is provided, resolve it within root plan directory
-			Path targetDirectory = rootPlanDirectory;
-			if (normalizedPath != null && !normalizedPath.isEmpty() && !normalizedPath.equals(".")
-					&& !normalizedPath.equals("root")) {
-				targetDirectory = rootPlanDirectory.resolve(normalizedPath).normalize();
-
-				// Ensure the target directory stays within root plan directory
-				if (!targetDirectory.startsWith(rootPlanDirectory)) {
-					return new ToolExecuteResult("Error: Directory path is invalid");
-				}
-			}
-
-			// Ensure directory exists - create if needed for root plan directory
-			if (!Files.exists(targetDirectory)) {
-				if (normalizedPath == null || normalizedPath.isEmpty() || normalizedPath.equals(".")
-						|| normalizedPath.equals("root")) {
-					// Create root plan directory if it doesn't exist
-					Files.createDirectories(targetDirectory);
-				}
-				else {
-					return new ToolExecuteResult("Error: Directory does not exist: " + normalizedPath);
-				}
-			}
-
-			if (!Files.isDirectory(targetDirectory)) {
-				return new ToolExecuteResult("Error: Path is not a directory: " + normalizedPath);
-			}
-
-			StringBuilder result = new StringBuilder();
-			result.append("Files: \n");
-			if (normalizedPath != null && !normalizedPath.isEmpty() && !normalizedPath.equals(".")
-					&& !normalizedPath.equals("root")) {
-				result.append(normalizedPath).append("\n");
-			}
-
-			java.util.List<Path> files = Files.list(targetDirectory).sorted().toList();
-
-			if (files.isEmpty()) {
-				result.append("(empty directory)\n");
-			}
-			else {
-				for (Path path : files) {
-					try {
-						String fileName = path.getFileName().toString();
-						if (Files.isDirectory(path)) {
-							result.append(String.format("[DIR] %s/\n", fileName));
-						}
-						else {
-							long size = Files.size(path);
-							String sizeStr = formatFileSize(size);
-							result.append(String.format("[FILE] %s (%s)\n", fileName, sizeStr));
-						}
-					}
-					catch (IOException e) {
-						result.append(String.format("[ERROR] %s (error reading)\n", path.getFileName()));
-					}
-				}
-			}
-
-			return new ToolExecuteResult(result.toString());
-		}
-		catch (IOException e) {
-			String pathToLog = normalizeFilePath(directoryPath != null ? directoryPath : "");
-			log.error("Error listing files: {}", pathToLog, e);
-			return new ToolExecuteResult("Error listing files: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Format file size in human-readable format
-	 */
-	private String formatFileSize(long size) {
-		if (size < 1024)
-			return size + " B";
-		if (size < 1024 * 1024)
-			return String.format("%.1f KB", size / 1024.0);
-		if (size < 1024 * 1024 * 1024)
-			return String.format("%.1f MB", size / (1024.0 * 1024));
-		return String.format("%.1f GB", size / (1024.0 * 1024 * 1024));
-	}
 
 	/**
 	 * Read file contents with optional offset and limit
