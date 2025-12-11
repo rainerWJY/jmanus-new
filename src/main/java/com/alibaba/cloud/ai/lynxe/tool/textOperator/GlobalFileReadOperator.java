@@ -16,10 +16,8 @@
 package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +52,11 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 	private static final String TOOL_NAME = "read_file_operator";
 
 	/**
+	 * Maximum number of lines allowed for full file reads without offset/limit
+	 */
+	private static final int MAX_LINES_FOR_FULL_READ = 300;
+
+	/**
 	 * Set of supported text file extensions
 	 */
 	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
@@ -82,11 +85,14 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		@com.fasterxml.jackson.annotation.JsonProperty("file_path")
 		private String filePath;
 
-		@com.fasterxml.jackson.annotation.JsonProperty("start_line")
-		private Integer startLine;
+		@com.fasterxml.jackson.annotation.JsonProperty("path")
+		private String path;
 
-		@com.fasterxml.jackson.annotation.JsonProperty("end_line")
-		private Integer endLine;
+		@com.fasterxml.jackson.annotation.JsonProperty("offset")
+		private Integer offset;
+
+		@com.fasterxml.jackson.annotation.JsonProperty("limit")
+		private Integer limit;
 
 		@com.fasterxml.jackson.annotation.JsonProperty("pattern")
 		private String pattern;
@@ -117,20 +123,28 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			this.filePath = filePath;
 		}
 
-		public Integer getStartLine() {
-			return startLine;
+		public String getPath() {
+			return path != null ? path : filePath;
 		}
 
-		public void setStartLine(Integer startLine) {
-			this.startLine = startLine;
+		public void setPath(String path) {
+			this.path = path;
 		}
 
-		public Integer getEndLine() {
-			return endLine;
+		public Integer getOffset() {
+			return offset;
 		}
 
-		public void setEndLine(Integer endLine) {
-			this.endLine = endLine;
+		public void setOffset(Integer offset) {
+			this.offset = offset;
+		}
+
+		public Integer getLimit() {
+			return limit;
+		}
+
+		public void setLimit(Integer limit) {
+			this.limit = limit;
 		}
 
 		public String getPattern() {
@@ -195,31 +209,28 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 			String action = (String) toolInputMap.get("action");
 			String filePath = (String) toolInputMap.get("file_path");
+			String path = (String) toolInputMap.get("path");
+			
+			// Use path if provided, otherwise fall back to file_path
+			String targetPath = path != null ? path : filePath;
 
 			// Basic parameter validation
 			if (action == null) {
 				return new ToolExecuteResult("Error: action parameter is required");
 			}
-			// file_path is optional for list_files action
-			if (filePath == null && !"list_files".equals(action)) {
-				return new ToolExecuteResult("Error: file_path parameter is required");
+			// path/file_path is optional for list_files action
+			if (targetPath == null && !"list_files".equals(action)) {
+				return new ToolExecuteResult("Error: path or file_path parameter is required");
 			}
 
 			return switch (action) {
-				case "get_text" -> {
-					Integer startLine = (Integer) toolInputMap.get("start_line");
-					Integer endLine = (Integer) toolInputMap.get("end_line");
-
-					if (startLine == null || endLine == null) {
-						yield new ToolExecuteResult(
-								"Error: get_text operation requires start_line and end_line parameters");
-					}
-
-					yield getTextByLines(filePath, startLine, endLine);
+				case "read" -> {
+					Integer offset = (Integer) toolInputMap.get("offset");
+					Integer limit = (Integer) toolInputMap.get("limit");
+					yield readFile(targetPath, offset, limit);
 				}
-				case "get_all_text" -> getAllText(filePath);
-				case "count_words" -> countWords(filePath);
-				case "list_files" -> listFiles(filePath != null ? filePath : "");
+				case "count_words" -> countWords(targetPath);
+				case "list_files" -> listFiles(targetPath != null ? targetPath : "");
 				case "grep" -> {
 					String pattern = (String) toolInputMap.get("pattern");
 					Boolean caseSensitive = (Boolean) toolInputMap.get("case_sensitive");
@@ -233,11 +244,11 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					// Replace short URLs in pattern
 					pattern = replaceShortUrls(pattern);
 
-					yield grepText(filePath, pattern, caseSensitive != null ? caseSensitive : false,
+					yield grepText(targetPath, pattern, caseSensitive != null ? caseSensitive : false,
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: get_text, get_all_text, count_words, list_files, grep");
+						+ ". Supported operations: read, count_words, list_files, grep");
 			};
 		}
 		catch (Exception e) {
@@ -248,38 +259,31 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 	@Override
 	public ToolExecuteResult run(ReadFileInput input) {
-		log.info("GlobalFileReadOperator input: action={}, filePath={}", input.getAction(), input.getFilePath());
+		log.info("GlobalFileReadOperator input: action={}, path={}", input.getAction(), input.getPath());
 		try {
 			String action = input.getAction();
-			String filePath = input.getFilePath();
+			String targetPath = input.getPath();
 
 			// Basic parameter validation
 			if (action == null) {
 				return new ToolExecuteResult("Error: action parameter is required");
 			}
-			// file_path is optional for list_files action
-			if (filePath == null && !"list_files".equals(action)) {
-				return new ToolExecuteResult("Error: file_path parameter is required");
+			// path/file_path is optional for list_files action
+			if (targetPath == null && !"list_files".equals(action)) {
+				return new ToolExecuteResult("Error: path or file_path parameter is required");
 			}
 
-			// Replace short URLs in filePath
-			filePath = replaceShortUrls(filePath);
+			// Replace short URLs in path
+			targetPath = replaceShortUrls(targetPath);
 
 			return switch (action) {
-				case "get_text" -> {
-					Integer startLine = input.getStartLine();
-					Integer endLine = input.getEndLine();
-
-					if (startLine == null || endLine == null) {
-						yield new ToolExecuteResult(
-								"Error: get_text operation requires start_line and end_line parameters");
-					}
-
-					yield getTextByLines(filePath, startLine, endLine);
+				case "read" -> {
+					Integer offset = input.getOffset();
+					Integer limit = input.getLimit();
+					yield readFile(targetPath, offset, limit);
 				}
-				case "get_all_text" -> getAllText(filePath);
-				case "count_words" -> countWords(filePath);
-				case "list_files" -> listFiles(filePath != null ? filePath : "");
+				case "count_words" -> countWords(targetPath);
+				case "list_files" -> listFiles(targetPath != null ? targetPath : "");
 				case "grep" -> {
 					String pattern = input.getPattern();
 					Boolean caseSensitive = input.getCaseSensitive();
@@ -293,11 +297,11 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					// Replace short URLs in pattern
 					pattern = replaceShortUrls(pattern);
 
-					yield grepText(filePath, pattern, caseSensitive != null ? caseSensitive : false,
+					yield grepText(targetPath, pattern, caseSensitive != null ? caseSensitive : false,
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: get_text, get_all_text, count_words, list_files, grep");
+						+ ". Supported operations: read, count_words, list_files, grep");
 			};
 		}
 		catch (Exception e) {
@@ -556,106 +560,83 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 	}
 
 	/**
-	 * Get text by line range
+	 * Read file contents with optional offset and limit
+	 * Matches the Read tool definition: reads file contents from local filesystem
+	 * 
+	 * @param filePath The file path to read
+	 * @param offset Optional line number to start reading from (1-based)
+	 * @param limit Optional number of lines to read
+	 * @return ToolExecuteResult with file contents in format: LINE_NUMBER|LINE_CONTENT
 	 */
-	private ToolExecuteResult getTextByLines(String filePath, Integer startLine, Integer endLine) {
+	private ToolExecuteResult readFile(String filePath, Integer offset, Integer limit) {
 		try {
-			// Parameter validation
-			if (startLine < 1 || endLine < 1) {
-				return new ToolExecuteResult("Error: Line numbers must start from 1");
-			}
-			if (startLine > endLine) {
-				return new ToolExecuteResult("Error: Start line number cannot be greater than end line number");
-			}
-
-			// Check 500-line limit
-			int requestedLines = endLine - startLine + 1;
-			if (requestedLines > 500) {
-				return new ToolExecuteResult(
-						"Error: Maximum 500 lines per request. Please adjust line range or make multiple calls. Current requested lines: "
-								+ requestedLines);
-			}
-
 			Path absolutePath = validateGlobalPath(filePath);
 
-			// Create file if it doesn't exist
+			// Check if file exists
 			if (!Files.exists(absolutePath)) {
-				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
-				log.info("Created new file automatically: {}", absolutePath);
+				return new ToolExecuteResult("Error: File does not exist: " + filePath);
 			}
 
 			java.util.List<String> lines = Files.readAllLines(absolutePath);
 
+			// Handle empty file
 			if (lines.isEmpty()) {
-				return new ToolExecuteResult("File is empty");
+				return new ToolExecuteResult("File is empty.");
 			}
 
-			// Validate line number range
-			if (startLine > lines.size()) {
+			// Protection: If file is too large and no offset/limit provided, suggest using offset/limit or grep
+			boolean isFullRead = (offset == null && limit == null);
+			if (isFullRead && lines.size() > MAX_LINES_FOR_FULL_READ) {
 				return new ToolExecuteResult(
-						"Error: Start line number exceeds file range (file has " + lines.size() + " lines)");
+						String.format(
+								"File is too large (%d lines, exceeds limit of %d lines). "
+										+ "Please use one of the following approaches:\n"
+										+ "1. Use offset and limit parameters to read specific line ranges (e.g., offset=1, limit=100)\n"
+										+ "2. Use grep action to search for specific patterns in the file\n"
+										+ "3. Use search functionality to find relevant sections\n\n"
+										+ "Example: Read first 100 lines with offset=1, limit=100",
+								lines.size(), MAX_LINES_FOR_FULL_READ));
 			}
 
-			// Adjust end line number (not exceeding total file lines)
-			int actualEndLine = Math.min(endLine, lines.size());
+			// Determine read range
+			int startIndex = 0;
+			int endIndex = lines.size();
 
+			if (offset != null) {
+				// Validate offset (1-based, must be >= 1)
+				if (offset < 1) {
+					return new ToolExecuteResult("Error: offset must be >= 1 (line numbers start from 1)");
+				}
+				if (offset > lines.size()) {
+					return new ToolExecuteResult(
+							"Error: offset exceeds file range (file has " + lines.size() + " lines)");
+				}
+				startIndex = offset - 1; // Convert to 0-based index
+			}
+
+			if (limit != null) {
+				// Validate limit (must be > 0)
+				if (limit < 1) {
+					return new ToolExecuteResult("Error: limit must be >= 1");
+				}
+				endIndex = Math.min(startIndex + limit, lines.size());
+			}
+
+			// Build result with format: LINE_NUMBER|LINE_CONTENT
+			// Line numbers are right-aligned and padded to 6 characters
 			StringBuilder result = new StringBuilder();
-			result.append(String.format("File: %s (Lines %d-%d, Total %d lines)\n", filePath, startLine, actualEndLine,
-					lines.size()));
-			result.append("=".repeat(50)).append("\n");
-
-			for (int i = startLine - 1; i < actualEndLine; i++) {
-				result.append(String.format("%4d: %s\n", i + 1, lines.get(i)));
-			}
-
-			// If file has more content, prompt user
-			if (actualEndLine < lines.size()) {
-				result.append("\nNote: File has more content (lines ")
-					.append(actualEndLine + 1)
-					.append("-")
-					.append(lines.size())
-					.append("), you can continue calling get_text to retrieve.");
+			for (int i = startIndex; i < endIndex; i++) {
+				int lineNumber = i + 1; // 1-based line number
+				String line = lines.get(i);
+				// Format: right-aligned 6-character line number, then |, then content
+				result.append(String.format("%6d|%s\n", lineNumber, line));
 			}
 
 			return new ToolExecuteResult(result.toString());
 		}
 		catch (IOException e) {
-			log.error("Error retrieving text lines from file: {}", filePath, e);
-			return new ToolExecuteResult("Error retrieving text lines from file: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Get all text from file
-	 */
-	private ToolExecuteResult getAllText(String filePath) {
-		try {
-			Path absolutePath = validateGlobalPath(filePath);
-
-			// Create file if it doesn't exist
-			if (!Files.exists(absolutePath)) {
-				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
-				log.info("Created new file automatically: {}", absolutePath);
-			}
-
-			String content = Files.readString(absolutePath);
-
-			// Force flush to disk to ensure data consistency
-			try (FileChannel channel = FileChannel.open(absolutePath, StandardOpenOption.READ)) {
-				channel.force(true);
-			}
-
-			// Use InnerStorageService to intelligently process content
-			SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-				.processContent(this.rootPlanId, content, "get_all_text");
-
-			return new ToolExecuteResult(processedResult.getSummary());
-		}
-		catch (IOException e) {
-			log.error("Error retrieving all text from file: {}", filePath, e);
-			return new ToolExecuteResult("Error retrieving all text from file: " + e.getMessage());
+			log.error("Error reading file: {}", filePath, e);
+			return new ToolExecuteResult("Error reading file: " + e.getMessage());
 		}
 	}
 

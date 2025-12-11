@@ -1,0 +1,77 @@
+description: |
+  对文本文件执行写入操作。此操作符提供对可在同一执行上下文中的所有子计划中访问的文件的访问。
+
+  关键词：全局文件、根目录、根文件夹、根计划目录、全局文件写入操作、根文件访问、跨计划文件。
+
+  支持的操作：
+  - delete: 删除现有文件，需要 file_path 参数
+  - replace: 替换文件中的特定文本，需要 source_text 和 target_text 参数
+  - append: 将内容追加到文件，需要 content 参数
+
+  功能特性：
+  - 在此处创建的文件可在执行上下文中的所有子计划中访问
+
+parameters: |
+  {
+      "type": "object",
+      "oneOf": [
+          {
+              "type": "object",
+              "properties": {
+                  "action": {
+                      "type": "string",
+                      "const": "delete"
+                  },
+                  "file_path": {
+                      "type": "string",
+                      "description": "相对文件路径（文件名或相对路径，例如 'file.txt' 或 'subdir/file.txt'）"
+                  }
+              },
+              "required": ["action", "file_path"],
+              "additionalProperties": false
+          },
+          {
+              "type": "object",
+              "properties": {
+                  "action": {
+                      "type": "string",
+                      "const": "replace"
+                  },
+                  "file_path": {
+                      "type": "string",
+                      "description": "相对文件路径（文件名或相对路径，例如 'file.txt' 或 'subdir/file.txt'）"
+                  },
+                  "source_text": {
+                      "type": "string",
+                      "description": "要替换的文本"
+                  },
+                  "target_text": {
+                      "type": "string",
+                      "description": "替换文本"
+                  }
+              },
+              "required": ["action", "file_path", "source_text", "target_text"],
+              "additionalProperties": false
+          },
+          {
+              "type": "object",
+              "properties": {
+                  "action": {
+                      "type": "string",
+                      "const": "append"
+                  },
+                  "file_path": {
+                      "type": "string",
+                      "description": "相对文件路径（文件名或相对路径，例如 'file.txt' 或 'subdir/file.txt'）"
+                  },
+                  "content": {
+                      "type": "string",
+                      "description": "要追加到文件的内容"
+                  }
+              },
+              "required": ["action", "file_path", "content"],
+              "additionalProperties": false
+          }
+      ]
+  }
+
