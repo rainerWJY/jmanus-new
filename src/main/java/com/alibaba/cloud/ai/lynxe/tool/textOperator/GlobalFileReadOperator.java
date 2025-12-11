@@ -523,16 +523,16 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					try {
 						String fileName = path.getFileName().toString();
 						if (Files.isDirectory(path)) {
-							result.append(String.format("📁 %s/\n", fileName));
+							result.append(String.format("[DIR] %s/\n", fileName));
 						}
 						else {
 							long size = Files.size(path);
 							String sizeStr = formatFileSize(size);
-							result.append(String.format("📄 %s (%s)\n", fileName, sizeStr));
+							result.append(String.format("[FILE] %s (%s)\n", fileName, sizeStr));
 						}
 					}
 					catch (IOException e) {
-						result.append(String.format("❌ %s (error reading)\n", path.getFileName()));
+						result.append(String.format("[ERROR] %s (error reading)\n", path.getFileName()));
 					}
 				}
 			}
