@@ -38,20 +38,20 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Global file operator that performs operations on files. This operator provides access
+ * Global file read operator that performs read operations on files. This operator provides access
  * to files that can be accessed across all sub-plans within the same execution context.
  *
  * Keywords: global files, root directory, root folder, root plan directory, global file
- * operations, root file access, cross-plan files.
+ * read operations, root file access, cross-plan files.
  *
- * Use this tool for operations on global files, root directory files, or root folder
+ * Use this tool for read operations on global files, root directory files, or root folder
  * files.
  */
-public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.GlobalFileInput> {
+public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOperator.ReadFileInput> {
 
-	private static final Logger log = LoggerFactory.getLogger(GlobalFileOperator.class);
+	private static final Logger log = LoggerFactory.getLogger(GlobalFileReadOperator.class);
 
-	private static final String TOOL_NAME = "global_file_operator";
+	private static final String TOOL_NAME = "read_file_operator";
 
 	/**
 	 * Set of supported text file extensions
@@ -73,22 +73,14 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 	));
 
 	/**
-	 * Input class for global file operations
+	 * Input class for read file operations
 	 */
-	public static class GlobalFileInput {
+	public static class ReadFileInput {
 
 		private String action;
 
 		@com.fasterxml.jackson.annotation.JsonProperty("file_path")
 		private String filePath;
-
-		private String content;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("source_text")
-		private String sourceText;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("target_text")
-		private String targetText;
 
 		@com.fasterxml.jackson.annotation.JsonProperty("start_line")
 		private Integer startLine;
@@ -123,30 +115,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 
 		public void setFilePath(String filePath) {
 			this.filePath = filePath;
-		}
-
-		public String getContent() {
-			return content;
-		}
-
-		public void setContent(String content) {
-			this.content = content;
-		}
-
-		public String getSourceText() {
-			return sourceText;
-		}
-
-		public void setSourceText(String sourceText) {
-			this.sourceText = sourceText;
-		}
-
-		public String getTargetText() {
-			return targetText;
-		}
-
-		public void setTargetText(String targetText) {
-			this.targetText = targetText;
 		}
 
 		public Integer getStartLine() {
@@ -209,7 +177,7 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 
 	private final ToolI18nService toolI18nService;
 
-	public GlobalFileOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
+	public GlobalFileReadOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
 			ObjectMapper objectMapper, ShortUrlService shortUrlService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
 		this.innerStorageService = innerStorageService;
@@ -219,7 +187,7 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 	}
 
 	public ToolExecuteResult run(String toolInput) {
-		log.info("GlobalFileOperator toolInput: {}", toolInput);
+		log.info("GlobalFileReadOperator toolInput: {}", toolInput);
 		try {
 			Map<String, Object> toolInputMap = objectMapper.readValue(toolInput,
 					new TypeReference<Map<String, Object>>() {
@@ -238,21 +206,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 			}
 
 			return switch (action) {
-				case "replace" -> {
-					String sourceText = (String) toolInputMap.get("source_text");
-					String targetText = (String) toolInputMap.get("target_text");
-
-					if (sourceText == null || targetText == null) {
-						yield new ToolExecuteResult(
-								"Error: replace operation requires source_text and target_text parameters");
-					}
-
-					// Replace short URLs in sourceText and targetText
-					sourceText = replaceShortUrls(sourceText);
-					targetText = replaceShortUrls(targetText);
-
-					yield replaceText(filePath, sourceText, targetText);
-				}
 				case "get_text" -> {
 					Integer startLine = (Integer) toolInputMap.get("start_line");
 					Integer endLine = (Integer) toolInputMap.get("end_line");
@@ -265,19 +218,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 					yield getTextByLines(filePath, startLine, endLine);
 				}
 				case "get_all_text" -> getAllText(filePath);
-				case "append" -> {
-					String appendContent = (String) toolInputMap.get("content");
-
-					if (appendContent == null) {
-						yield new ToolExecuteResult("Error: append operation requires content parameter");
-					}
-
-					// Replace short URLs in appendContent
-					appendContent = replaceShortUrls(appendContent);
-
-					yield appendToFile(filePath, appendContent);
-				}
-				case "delete" -> deleteFile(filePath);
 				case "count_words" -> countWords(filePath);
 				case "list_files" -> listFiles(filePath != null ? filePath : "");
 				case "grep" -> {
@@ -297,18 +237,18 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, get_text, get_all_text, append, delete, count_words, list_files, grep");
+						+ ". Supported operations: get_text, get_all_text, count_words, list_files, grep");
 			};
 		}
 		catch (Exception e) {
-			log.error("GlobalFileOperator execution failed", e);
+			log.error("GlobalFileReadOperator execution failed", e);
 			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
 		}
 	}
 
 	@Override
-	public ToolExecuteResult run(GlobalFileInput input) {
-		log.info("GlobalFileOperator input: action={}, filePath={}", input.getAction(), input.getFilePath());
+	public ToolExecuteResult run(ReadFileInput input) {
+		log.info("GlobalFileReadOperator input: action={}, filePath={}", input.getAction(), input.getFilePath());
 		try {
 			String action = input.getAction();
 			String filePath = input.getFilePath();
@@ -326,21 +266,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 			filePath = replaceShortUrls(filePath);
 
 			return switch (action) {
-				case "replace" -> {
-					String sourceText = input.getSourceText();
-					String targetText = input.getTargetText();
-
-					if (sourceText == null || targetText == null) {
-						yield new ToolExecuteResult(
-								"Error: replace operation requires source_text and target_text parameters");
-					}
-
-					// Replace short URLs in sourceText and targetText
-					sourceText = replaceShortUrls(sourceText);
-					targetText = replaceShortUrls(targetText);
-
-					yield replaceText(filePath, sourceText, targetText);
-				}
 				case "get_text" -> {
 					Integer startLine = input.getStartLine();
 					Integer endLine = input.getEndLine();
@@ -353,19 +278,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 					yield getTextByLines(filePath, startLine, endLine);
 				}
 				case "get_all_text" -> getAllText(filePath);
-				case "append" -> {
-					String appendContent = input.getContent();
-
-					if (appendContent == null) {
-						yield new ToolExecuteResult("Error: append operation requires content parameter");
-					}
-
-					// Replace short URLs in appendContent
-					appendContent = replaceShortUrls(appendContent);
-
-					yield appendToFile(filePath, appendContent);
-				}
-				case "delete" -> deleteFile(filePath);
 				case "count_words" -> countWords(filePath);
 				case "list_files" -> listFiles(filePath != null ? filePath : "");
 				case "grep" -> {
@@ -385,11 +297,11 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
 				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, get_text, get_all_text, append, delete, count_words, list_files, grep");
+						+ ". Supported operations: get_text, get_all_text, count_words, list_files, grep");
 			};
 		}
 		catch (Exception e) {
-			log.error("GlobalFileOperator execution failed", e);
+			log.error("GlobalFileReadOperator execution failed", e);
 			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
 		}
 	}
@@ -480,7 +392,7 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 		// Get root plan directory
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 
-		// For GlobalFileOperator, check root plan directory first, then subplan directory
+		// For GlobalFileReadOperator, check root plan directory first, then subplan directory
 		// if applicable
 		// This allows accessing files in root plan directory even when in subplan context
 		Path rootPlanPath = rootPlanDirectory.resolve(normalizedPath).normalize();
@@ -512,8 +424,8 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 			}
 		}
 
-		// If file doesn't exist in either location, return root plan path for creation
-		// (new files are created in root plan directory)
+		// If file doesn't exist in either location, return root plan path for reading
+		// (will check existence before reading)
 		return rootPlanPath;
 	}
 
@@ -543,28 +455,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 		}
 
 		return filePath.substring(lastDotIndex);
-	}
-
-	/**
-	 * Delete a file
-	 */
-	private ToolExecuteResult deleteFile(String filePath) {
-		try {
-			Path absolutePath = validateGlobalPath(filePath);
-
-			if (!Files.exists(absolutePath)) {
-				return new ToolExecuteResult("Error: File does not exist: " + filePath);
-			}
-
-			Files.delete(absolutePath);
-
-			log.info("Deleted file: {}", absolutePath);
-			return new ToolExecuteResult("File deleted successfully: " + filePath);
-		}
-		catch (IOException e) {
-			log.error("Error deleting file: {}", filePath, e);
-			return new ToolExecuteResult("Error deleting file: " + e.getMessage());
-		}
 	}
 
 	/**
@@ -663,46 +553,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 		if (size < 1024 * 1024 * 1024)
 			return String.format("%.1f MB", size / (1024.0 * 1024));
 		return String.format("%.1f GB", size / (1024.0 * 1024 * 1024));
-	}
-
-	/**
-	 * Replace text in file
-	 */
-	private ToolExecuteResult replaceText(String filePath, String sourceText, String targetText) {
-		try {
-			Path absolutePath = validateGlobalPath(filePath);
-
-			// Create file if it doesn't exist
-			if (!Files.exists(absolutePath)) {
-				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
-				log.info("Created new file automatically: {}", absolutePath);
-			}
-
-			String content = Files.readString(absolutePath);
-
-			// Check if sourceText exists in the file content
-			if (!content.contains(sourceText)) {
-				log.warn("Source text not found in file: {}", absolutePath);
-				return new ToolExecuteResult("Error: Text to be replaced was not found in file: " + filePath);
-			}
-
-			// Perform replacement
-			String newContent = content.replace(sourceText, targetText);
-			Files.writeString(absolutePath, newContent);
-
-			// Force flush to disk
-			try (FileChannel channel = FileChannel.open(absolutePath, StandardOpenOption.WRITE)) {
-				channel.force(true);
-			}
-
-			log.info("Text replaced in file: {}", absolutePath);
-			return new ToolExecuteResult("Replacement successful in file: " + filePath);
-		}
-		catch (IOException e) {
-			log.error("Error replacing text in file: {}", filePath, e);
-			return new ToolExecuteResult("Error replacing text in file: " + e.getMessage());
-		}
 	}
 
 	/**
@@ -806,39 +656,6 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 		catch (IOException e) {
 			log.error("Error retrieving all text from file: {}", filePath, e);
 			return new ToolExecuteResult("Error retrieving all text from file: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Append content to file
-	 */
-	private ToolExecuteResult appendToFile(String filePath, String content) {
-		try {
-			if (content == null || content.isEmpty()) {
-				return new ToolExecuteResult("Error: No content to append");
-			}
-
-			Path absolutePath = validateGlobalPath(filePath);
-
-			// Create file if it doesn't exist
-			if (!Files.exists(absolutePath)) {
-				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
-			}
-
-			Files.writeString(absolutePath, "\n" + content, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-
-			// Force flush to disk
-			try (FileChannel channel = FileChannel.open(absolutePath, StandardOpenOption.WRITE)) {
-				channel.force(true);
-			}
-
-			log.info("Content appended to file: {}", absolutePath);
-			return new ToolExecuteResult("Content appended successfully to file: " + filePath);
-		}
-		catch (IOException e) {
-			log.error("Error appending to file: {}", filePath, e);
-			return new ToolExecuteResult("Error appending to file: " + e.getMessage());
 		}
 	}
 
@@ -997,17 +814,17 @@ public class GlobalFileOperator extends AbstractBaseTool<GlobalFileOperator.Glob
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("global-file-operator");
+		return toolI18nService.getDescription("read-file-operator");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("global-file-operator");
+		return toolI18nService.getParameters("read-file-operator");
 	}
 
 	@Override
-	public Class<GlobalFileInput> getInputType() {
-		return GlobalFileInput.class;
+	public Class<ReadFileInput> getInputType() {
+		return ReadFileInput.class;
 	}
 
 	@Override
