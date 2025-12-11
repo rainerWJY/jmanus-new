@@ -1,23 +1,33 @@
 description: |
-  增强型 grep 工具，支持高级文本搜索和正则表达式，类似于 ripgrep。
+  Grep - 基于 ripgrep (rg) 构建的强大搜索工具，用于精确的文本/正则表达式匹配。
   
-  此工具提供强大的文件和目录搜索功能，包括：
-  - 正则表达式模式匹配
-  - 多种输出模式（内容、文件列表、计数）
-  - 使用 glob 模式或预定义类型进行文件类型过滤
-  - 大小写不敏感搜索选项
-  - 上下文行显示（匹配行的前/后/周围）
-  - 多行匹配支持
-  - 结果限制以防止输出过多
+  ## 核心功能：
+  - 完整的正则表达式语法支持（例如 "log.*Error"、"function\\s+\\w+"）
+  - 文件过滤：glob 模式（例如 "*.js"、"*.{ts,tsx}"）或 type 参数（更高效）
+  - 多种输出模式："content"（显示行）、"files_with_matches"（仅文件路径）、"count"（匹配计数）
+  - 大小写不敏感搜索：使用 -i 参数（默认：false）
+  - 上下文显示：-A（之后）、-B（之前）、-C（周围）用于显示匹配行周围的行
+  - 多行模式：启用 multiline=true（. 匹配换行符，模式可以跨行）
+  - 结果限制：使用 head_limit 限制输出（默认：1000 个结果）
   
-  支持的文件类型：java, py, js, ts, rust, go, cpp, md, json, xml, yaml, sql, sh, css, html
+  ## 使用场景：
+  ✅ 使用 Grep：精确文本搜索、正则表达式匹配、已知符号/变量名查找、快速字符串定位
+  ❌ 不要使用 Grep：语义理解搜索（→ SemanticSearch）、文件名搜索（→ Glob）、读取已知文件（→ Read）
   
-  输出模式：
-  - content: 显示匹配行及其内容（默认）
-  - files_with_matches: 仅显示包含匹配的文件路径
-  - count: 显示每个文件的匹配计数
+  ## 支持的文件类型：
+  java, py, js, ts, rust, go, cpp, md, json, xml, yaml, sql, sh, css, html
   
-  关键词：grep、搜索、查找文本、正则表达式、ripgrep、rg、模式匹配、文本搜索
+  ## 输出格式示例：
+  - content 模式："223:    public void method() {"（匹配行用冒号）、"224-        // code"（上下文用横线）
+  - files_with_matches 模式："/path/to/file1.java\n/path/to/file2.java"
+  - count 模式："/path/to/file.java: 5 matches"
+  
+  ## 模式注意事项：
+  - Ripgrep 语法（非 grep）：字面量花括号需要转义（使用 interface\\{\\} 来查找 interface{}）
+  - 模式默认在单行内匹配；使用 multiline=true 进行跨行模式匹配
+  - 结果限制在数千行以提高性能；使用 head_limit 控制
+  
+  关键词：grep、搜索、查找文本、正则表达式、ripgrep、rg、模式匹配、文本搜索、精确匹配
 
 parameters: |
   {
@@ -25,48 +35,48 @@ parameters: |
     "properties": {
       "pattern": {
         "type": "string",
-        "description": "要搜索的正则表达式模式（必需）"
+        "description": "要在文件内容中搜索的正则表达式模式（必需）。支持完整的正则表达式语法：'log.*Error'、'function\\s+\\w+'。字面量花括号需要转义：使用 'interface\\{\\}' 来查找 'interface{}'"
       },
       "path": {
         "type": "string",
-        "description": "要搜索的路径（文件或目录）。如果未指定，则默认为工作区根目录"
+        "description": "要搜索的文件或目录（rg pattern -- PATH）。如果未提供，默认为 Cursor 工作区根目录。可以是绝对路径或相对路径"
       },
       "glob": {
         "type": "string",
-        "description": "用于文件过滤的 glob 模式（例如 '*.js'、'*.{ts,tsx}'）"
+        "description": "用于过滤文件的 glob 模式（rg --glob）。示例：'*.js'（仅 .js 文件）、'*.{ts,tsx}'（多个扩展名）。对于标准文件类型，'type' 参数更高效"
       },
       "type": {
         "type": "string",
-        "description": "文件类型过滤器。支持的类型：java, py, js, ts, rust, go, cpp, md, json, xml, yaml, sql, sh, css, html"
+        "description": "要搜索的文件类型（rg --type）。对于标准类型比 glob 更高效。支持：js, py, rust, go, java, cpp, md, json, xml, yaml, sql, sh, css, html, ts"
       },
-      "case_insensitive": {
+      "-i": {
         "type": "boolean",
-        "description": "执行大小写不敏感的搜索（默认：false）"
+        "description": "大小写不敏感搜索（rg -i）。设置为 true 以在匹配时忽略大小写。默认：false"
       },
       "output_mode": {
         "type": "string",
         "enum": ["content", "files_with_matches", "count"],
-        "description": "输出模式：'content'（默认，显示匹配行）、'files_with_matches'（仅显示文件路径）、'count'（匹配计数）"
+        "description": "输出模式（默认：'content'）。'content'：显示匹配行（支持 -A/-B/-C、行号、head_limit）。'files_with_matches'：仅显示文件路径（支持 head_limit）。'count'：显示每个文件的匹配计数（支持 head_limit）"
       },
-      "context_before": {
+      "-B": {
         "type": "integer",
-        "description": "在每个匹配项之前显示的上下文行数"
+        "description": "在每个匹配项之前显示的行数（rg -B）。仅在 output_mode='content' 时有效，否则忽略。示例：-B=3 显示匹配前 3 行"
       },
-      "context_after": {
+      "-A": {
         "type": "integer",
-        "description": "在每个匹配项之后显示的上下文行数"
+        "description": "在每个匹配项之后显示的行数（rg -A）。仅在 output_mode='content' 时有效，否则忽略。示例：-A=3 显示匹配后 3 行"
       },
-      "context": {
+      "-C": {
         "type": "integer",
-        "description": "在每个匹配项前后显示的上下文行数（context_before 和 context_after 的简写）"
+        "description": "在每个匹配项前后显示的行数（rg -C）。同时设置 -A 和 -B 的简写。仅在 output_mode='content' 时有效，否则忽略。示例：-C=2 显示前后各 2 行"
       },
       "multiline": {
         "type": "boolean",
-        "description": "启用多行匹配，其中 . 匹配换行符（默认：false）。用于跨多行的模式搜索"
+        "description": "启用多行模式，其中 . 匹配换行符且模式可以跨行（rg -U --multiline-dotall）。默认：false。用于需要跨行边界匹配的模式，如 'struct \\{[\\s\\S]*?field'"
       },
       "head_limit": {
         "type": "integer",
-        "description": "将输出限制为前 N 个结果（默认：1000）。用于防止输出过多"
+        "description": "将输出限制为前 N 行/条目，相当于 '| head -N'。适用于所有输出模式：content（限制输出行）、files_with_matches（限制文件路径）、count（限制计数条目）。默认：1000。未指定时，显示 ripgrep 的所有结果"
       }
     },
     "required": ["pattern"]

@@ -41,18 +41,30 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Enhanced Grep Tool - Advanced text search with regex and ripgrep-like features
+ * Grep Tool - Powerful text search tool based on ripgrep (rg) for precise text/regex matching
  *
- * This tool provides powerful search capabilities similar to ripgrep (rg), supporting:
- * - Regular expression pattern matching
- * - Multiple output modes: content, files_with_matches, count
- * - File type filtering (glob patterns and predefined types)
- * - Case-insensitive search
- * - Context lines (before/after/around matches)
- * - Multiline search support
- * - Result limiting
+ * This tool provides powerful search capabilities similar to ripgrep, supporting:
+ * - Full regular expression syntax (e.g., "log.*Error", "function\\s+\\w+")
+ * - Multiple output modes: content (default), files_with_matches, count
+ * - File filtering with glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter
+ * - Case-insensitive search option (-i flag)
+ * - Context lines display (-A: after, -B: before, -C: around matches)
+ * - Multiline matching support (. matches newlines)
+ * - Result limiting (head_limit parameter)
  *
- * Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search
+ * Usage Scenarios:
+ * - Use Grep for: Precise text search, regex matching, known symbol/variable lookup
+ * - Don't use Grep for: Semantic search (use SemanticSearch), file name search (use Glob), 
+ *   reading known files (use Read)
+ *
+ * Output Formats:
+ * - content mode: Shows matching lines with ':' separator, context lines with '-' separator
+ * - files_with_matches mode: Only shows file paths containing matches
+ * - count mode: Shows match counts per file (e.g., "file.java: 5 matches")
+ *
+ * Note: Literal braces need escaping in patterns (use interface\\{\\} to find interface{} in code)
+ *
+ * Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
  */
 public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
@@ -113,19 +125,19 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		@JsonProperty("type")
 		private String type;
 
-		@JsonProperty("case_insensitive")
+		@JsonProperty("-i")
 		private Boolean caseInsensitive;
 
 		@JsonProperty("output_mode")
 		private String outputMode;
 
-		@JsonProperty("context_before")
+		@JsonProperty("-B")
 		private Integer contextBefore;
 
-		@JsonProperty("context_after")
+		@JsonProperty("-A")
 		private Integer contextAfter;
 
-		@JsonProperty("context")
+		@JsonProperty("-C")
 		private Integer context;
 
 		@JsonProperty("multiline")
@@ -275,11 +287,11 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			String path = (String) toolInputMap.get("path");
 			String glob = (String) toolInputMap.get("glob");
 			String type = (String) toolInputMap.get("type");
-			Boolean caseInsensitive = (Boolean) toolInputMap.get("case_insensitive");
+			Boolean caseInsensitive = (Boolean) toolInputMap.get("-i");
 			String outputMode = (String) toolInputMap.get("output_mode");
-			Integer contextBefore = (Integer) toolInputMap.get("context_before");
-			Integer contextAfter = (Integer) toolInputMap.get("context_after");
-			Integer context = (Integer) toolInputMap.get("context");
+			Integer contextBefore = (Integer) toolInputMap.get("-B");
+			Integer contextAfter = (Integer) toolInputMap.get("-A");
+			Integer context = (Integer) toolInputMap.get("-C");
 			Boolean multiline = (Boolean) toolInputMap.get("multiline");
 			Integer headLimit = (Integer) toolInputMap.get("head_limit");
 
