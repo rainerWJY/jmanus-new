@@ -82,14 +82,14 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 		@com.fasterxml.jackson.annotation.JsonProperty("file_path")
 		private String filePath;
 
-		private String content;
+		@com.fasterxml.jackson.annotation.JsonProperty("contents")
+		private String contents;
 
-		@com.fasterxml.jackson.annotation.JsonProperty("source_text")
-		private String sourceText;
+		@com.fasterxml.jackson.annotation.JsonProperty("old_string")
+		private String oldString;
 
-		@com.fasterxml.jackson.annotation.JsonProperty("target_text")
-		private String targetText;
-
+		@com.fasterxml.jackson.annotation.JsonProperty("new_string")
+		private String newString;
 
 		// Getters and setters
 		public String getAction() {
@@ -108,28 +108,28 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 			this.filePath = filePath;
 		}
 
-		public String getContent() {
-			return content;
+		public String getContents() {
+			return contents;
 		}
 
-		public void setContent(String content) {
-			this.content = content;
+		public void setContents(String contents) {
+			this.contents = contents;
 		}
 
-		public String getSourceText() {
-			return sourceText;
+		public String getOldString() {
+			return oldString;
 		}
 
-		public void setSourceText(String sourceText) {
-			this.sourceText = sourceText;
+		public void setOldString(String oldString) {
+			this.oldString = oldString;
 		}
 
-		public String getTargetText() {
-			return targetText;
+		public String getNewString() {
+			return newString;
 		}
 
-		public void setTargetText(String targetText) {
-			this.targetText = targetText;
+		public void setNewString(String newString) {
+			this.newString = newString;
 		}
 
 	}
@@ -161,47 +161,58 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 					});
 
 			String action = (String) toolInputMap.get("action");
-			String filePath = (String) toolInputMap.get("file_path");
 
 			// Basic parameter validation
 			if (action == null) {
 				return new ToolExecuteResult("Error: action parameter is required");
 			}
-			if (filePath == null) {
-				return new ToolExecuteResult("Error: file_path parameter is required");
-			}
 
 			return switch (action) {
 				case "replace" -> {
-					String sourceText = (String) toolInputMap.get("source_text");
-					String targetText = (String) toolInputMap.get("target_text");
+					String filePath = (String) toolInputMap.get("file_path");
+					if (filePath == null) {
+						yield new ToolExecuteResult("Error: replace operation requires file_path parameter");
+					}
 
-					if (sourceText == null || targetText == null) {
+					String oldString = (String) toolInputMap.get("old_string");
+					String newString = (String) toolInputMap.get("new_string");
+
+					if (oldString == null || newString == null) {
 						yield new ToolExecuteResult(
-								"Error: replace operation requires source_text and target_text parameters");
+								"Error: replace operation requires old_string and new_string parameters");
 					}
 
-					// Replace short URLs in sourceText and targetText
-					sourceText = replaceShortUrls(sourceText);
-					targetText = replaceShortUrls(targetText);
+					// Replace short URLs in oldString and newString
+					oldString = replaceShortUrls(oldString);
+					newString = replaceShortUrls(newString);
 
-					yield replaceText(filePath, sourceText, targetText);
+					yield replaceText(filePath, oldString, newString);
 				}
-				case "append" -> {
-					String appendContent = (String) toolInputMap.get("content");
-
-					if (appendContent == null) {
-						yield new ToolExecuteResult("Error: append operation requires content parameter");
+				case "write" -> {
+					String filePath = (String) toolInputMap.get("file_path");
+					if (filePath == null) {
+						yield new ToolExecuteResult("Error: write operation requires file_path parameter");
 					}
 
-					// Replace short URLs in appendContent
-					appendContent = replaceShortUrls(appendContent);
+					String contents = (String) toolInputMap.get("contents");
+					if (contents == null) {
+						yield new ToolExecuteResult("Error: write operation requires contents parameter");
+					}
 
-					yield appendToFile(filePath, appendContent);
+					// Replace short URLs in contents
+					contents = replaceShortUrls(contents);
+
+					yield writeFile(filePath, contents);
 				}
-				case "delete" -> deleteFile(filePath);
+				case "delete" -> {
+					String filePath = (String) toolInputMap.get("file_path");
+					if (filePath == null) {
+						yield new ToolExecuteResult("Error: delete operation requires file_path parameter");
+					}
+					yield deleteFile(filePath);
+				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, append, delete");
+						+ ". Supported operations: replace, write, delete");
 			};
 		}
 		catch (Exception e) {
@@ -230,35 +241,35 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 
 			return switch (action) {
 				case "replace" -> {
-					String sourceText = input.getSourceText();
-					String targetText = input.getTargetText();
+					String oldString = input.getOldString();
+					String newString = input.getNewString();
 
-					if (sourceText == null || targetText == null) {
+					if (oldString == null || newString == null) {
 						yield new ToolExecuteResult(
-								"Error: replace operation requires source_text and target_text parameters");
+								"Error: replace operation requires old_string and new_string parameters");
 					}
 
-					// Replace short URLs in sourceText and targetText
-					sourceText = replaceShortUrls(sourceText);
-					targetText = replaceShortUrls(targetText);
+					// Replace short URLs in oldString and newString
+					oldString = replaceShortUrls(oldString);
+					newString = replaceShortUrls(newString);
 
-					yield replaceText(filePath, sourceText, targetText);
+					yield replaceText(filePath, oldString, newString);
 				}
-				case "append" -> {
-					String appendContent = input.getContent();
+				case "write" -> {
+					String contents = input.getContents();
 
-					if (appendContent == null) {
-						yield new ToolExecuteResult("Error: append operation requires content parameter");
+					if (contents == null) {
+						yield new ToolExecuteResult("Error: write operation requires contents parameter");
 					}
 
-					// Replace short URLs in appendContent
-					appendContent = replaceShortUrls(appendContent);
+					// Replace short URLs in contents
+					contents = replaceShortUrls(contents);
 
-					yield appendToFile(filePath, appendContent);
+					yield writeFile(filePath, contents);
 				}
 				case "delete" -> deleteFile(filePath);
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, append, delete");
+						+ ". Supported operations: replace, write, delete");
 			};
 		}
 		catch (Exception e) {
@@ -442,9 +453,10 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 
 
 	/**
-	 * Replace text in file
+	 * Replace text in file (StrReplace tool implementation)
+	 * Performs exact string replacement with uniqueness validation
 	 */
-	private ToolExecuteResult replaceText(String filePath, String sourceText, String targetText) {
+	private ToolExecuteResult replaceText(String filePath, String oldString, String newString) {
 		try {
 			Path absolutePath = validateGlobalPath(filePath);
 
@@ -455,16 +467,33 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 				log.info("Created new file automatically: {}", absolutePath);
 			}
 
-			String content = Files.readString(absolutePath);
-
-			// Check if sourceText exists in the file content
-			if (!content.contains(sourceText)) {
-				log.warn("Source text not found in file: {}", absolutePath);
-				return new ToolExecuteResult("Error: Text to be replaced was not found in file: " + filePath);
+			// Validate that old_string and new_string are different
+			if (oldString.equals(newString)) {
+				return new ToolExecuteResult(
+						"Error: new_string must be different from old_string. No changes would be made.");
 			}
 
-			// Perform replacement
-			String newContent = content.replace(sourceText, targetText);
+			String content = Files.readString(absolutePath);
+
+			// Check if old_string exists in the file content
+			if (!content.contains(oldString)) {
+				log.warn("old_string not found in file: {}", absolutePath);
+				return new ToolExecuteResult("Error: old_string was not found in file: " + filePath);
+			}
+
+			// Count occurrences to validate uniqueness
+			int occurrenceCount = countOccurrences(content, oldString);
+			if (occurrenceCount > 1) {
+				return new ToolExecuteResult(
+						String.format(
+								"Error: old_string is not unique (found %d occurrences). "
+										+ "Please provide a larger string with more surrounding context to make it unique, "
+										+ "or use a more specific match.",
+								occurrenceCount));
+			}
+
+			// Perform replacement (only first occurrence since we validated uniqueness)
+			String newContent = content.replaceFirst(Pattern.quote(oldString), Matcher.quoteReplacement(newString));
 			Files.writeString(absolutePath, newContent);
 
 			// Force flush to disk
@@ -481,39 +510,63 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 		}
 	}
 
+	/**
+	 * Count occurrences of a string in content (exact matching)
+	 */
+	private int countOccurrences(String content, String searchString) {
+		int count = 0;
+		int index = 0;
+		while ((index = content.indexOf(searchString, index)) != -1) {
+			count++;
+			index += searchString.length();
+		}
+		return count;
+	}
 
 	/**
-	 * Append content to file
+	 * Write file (Write tool implementation)
+	 * Creates new files or overwrites existing files completely
 	 */
-	private ToolExecuteResult appendToFile(String filePath, String content) {
+	private ToolExecuteResult writeFile(String filePath, String contents) {
 		try {
-			if (content == null || content.isEmpty()) {
-				return new ToolExecuteResult("Error: No content to append");
+			if (contents == null) {
+				return new ToolExecuteResult("Error: contents parameter is required");
 			}
 
 			Path absolutePath = validateGlobalPath(filePath);
 
-			// Create file if it doesn't exist
-			if (!Files.exists(absolutePath)) {
+			// Check if file exists before writing
+			boolean fileExisted = Files.exists(absolutePath);
+
+			// Create parent directories if they don't exist
+			if (absolutePath.getParent() != null) {
 				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
 			}
 
-			Files.writeString(absolutePath, "\n" + content, StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+			// Write contents to file (overwrites if exists, creates if doesn't exist)
+			Files.writeString(absolutePath, contents);
 
 			// Force flush to disk
 			try (FileChannel channel = FileChannel.open(absolutePath, StandardOpenOption.WRITE)) {
 				channel.force(true);
 			}
 
-			log.info("Content appended to file: {}", absolutePath);
-			return new ToolExecuteResult("Content appended successfully to file: " + filePath);
+			if (fileExisted) {
+				log.info("File written (overwritten): {}", absolutePath);
+				return new ToolExecuteResult("File written successfully (overwritten): " + filePath);
+			}
+			else {
+				log.info("File written (created): {}", absolutePath);
+				return new ToolExecuteResult("File written successfully (created): " + filePath);
+			}
 		}
 		catch (IOException e) {
-			log.error("Error appending to file: {}", filePath, e);
-			return new ToolExecuteResult("Error appending to file: " + e.getMessage());
+			log.error("Error writing file: {}", filePath, e);
+			return new ToolExecuteResult("Error writing file: " + e.getMessage());
 		}
 	}
+
+
 
 
 	@Override

@@ -5,14 +5,27 @@ description: |
   Keywords: global files, root directory, root folder, root plan directory,
   global file write operations, root file access, cross-plan files.
 
-
   Supported operations:
   - delete: Delete an existing file, requires file_path parameter
-  - replace: Replace specific text in file, requires source_text and target_text parameters
-  - append: Append content to file, requires content parameter
+  - replace: Perform exact string replacement in existing files (StrReplace tool)
+    * Performs precise, targeted edits without rewriting entire files
+    * CRITICAL: old_string must be unique in the file (will fail if multiple occurrences found)
+    * Matches are case-sensitive and whitespace-sensitive (must match exactly including indentation)
+    * new_string must be different from old_string
+    * File will be auto-created if it doesn't exist
+    * Only replaces the first (and only) occurrence
+  - write: Create new files or overwrite existing files completely (Write tool)
+    * Creates new files if they don't exist
+    * Completely overwrites existing files (all previous content is lost)
+    * Automatically creates parent directories if they don't exist
+    * MUST read file first before overwriting to prevent accidental data loss
+    * Prefer StrReplace for editing existing files when possible
+    * Only use Write for creating new files or complete file rewrites
 
   Features:
   - Files created here are accessible by all sub-plans within the execution context
+  - Exact matching ensures precise replacements
+  - Uniqueness validation prevents accidental multiple replacements
 
 parameters: |
   {
@@ -42,18 +55,18 @@ parameters: |
                   },
                   "file_path": {
                       "type": "string",
-                      "description": "Relative file path (filename or relative path, e.g., 'file.txt' or 'subdir/file.txt')"
+                      "description": "Relative file path (filename or relative path, e.g., 'file.txt' or 'subdir/file.txt'). File will be auto-created if it doesn't exist."
                   },
-                  "source_text": {
+                  "old_string": {
                       "type": "string",
-                      "description": "Text to be replaced"
+                      "description": "The exact text to find and replace. Must match file content exactly (including all whitespace, indentation, line breaks). Must be unique in the file - if multiple occurrences exist, provide more context to make it unique."
                   },
-                  "target_text": {
+                  "new_string": {
                       "type": "string",
-                      "description": "Replacement text"
+                      "description": "The text to replace it with. Must be different from old_string. Can be an empty string to delete content."
                   }
               },
-              "required": ["action", "file_path", "source_text", "target_text"],
+              "required": ["action", "file_path", "old_string", "new_string"],
               "additionalProperties": false
           },
           {
@@ -61,20 +74,19 @@ parameters: |
               "properties": {
                   "action": {
                       "type": "string",
-                      "const": "append"
+                      "const": "write"
                   },
                   "file_path": {
                       "type": "string",
-                      "description": "Relative file path (filename or relative path, e.g., 'file.txt' or 'subdir/file.txt')"
+                      "description": "Relative file path (filename or relative path, e.g., 'file.txt' or 'subdir/file.txt'). Parent directories will be created automatically if they don't exist."
                   },
-                  "content": {
+                  "contents": {
                       "type": "string",
-                      "description": "Content to append to the file"
+                      "description": "The complete content to write to the file. This will be the entire file content after the operation. If file exists, all previous content will be overwritten."
                   }
               },
-              "required": ["action", "file_path", "content"],
+              "required": ["action", "file_path", "contents"],
               "additionalProperties": false
           }
       ]
   }
-
