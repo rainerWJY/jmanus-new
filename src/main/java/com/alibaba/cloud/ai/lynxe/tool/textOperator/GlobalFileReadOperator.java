@@ -106,6 +106,9 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		@com.fasterxml.jackson.annotation.JsonProperty("context_lines")
 		private Integer contextLines;
 
+		@com.fasterxml.jackson.annotation.JsonProperty("bypass_limit")
+		private Boolean bypassLimit;
+
 		// Getters and setters
 		public String getAction() {
 			return action;
@@ -179,6 +182,14 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			this.contextLines = contextLines;
 		}
 
+		public Boolean getBypassLimit() {
+			return bypassLimit;
+		}
+
+		public void setBypassLimit(Boolean bypassLimit) {
+			this.bypassLimit = bypassLimit;
+		}
+
 	}
 
 	private final TextFileService textFileService;
@@ -226,7 +237,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 				case "read" -> {
 					Integer offset = (Integer) toolInputMap.get("offset");
 					Integer limit = (Integer) toolInputMap.get("limit");
-					yield readFile(targetPath, offset, limit);
+					Boolean bypassLimit = (Boolean) toolInputMap.get("bypass_limit");
+					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
 				case "grep" -> {
@@ -277,7 +289,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 				case "read" -> {
 					Integer offset = input.getOffset();
 					Integer limit = input.getLimit();
-					yield readFile(targetPath, offset, limit);
+					Boolean bypassLimit = input.getBypassLimit();
+					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
 				case "grep" -> {
@@ -465,9 +478,10 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 	 * @param filePath The file path to read
 	 * @param offset Optional line number to start reading from (1-based)
 	 * @param limit Optional number of lines to read
+	 * @param bypassLimit If true, bypasses the 300-line limit for full file reads
 	 * @return ToolExecuteResult with file contents in format: LINE_NUMBER|LINE_CONTENT
 	 */
-	private ToolExecuteResult readFile(String filePath, Integer offset, Integer limit) {
+	private ToolExecuteResult readFile(String filePath, Integer offset, Integer limit, Boolean bypassLimit) {
 		try {
 			Path absolutePath = validateGlobalPath(filePath);
 
@@ -484,15 +498,18 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			}
 
 			// Protection: If file is too large and no offset/limit provided, suggest using offset/limit or grep
+			// Unless bypassLimit flag is set to true
 			boolean isFullRead = (offset == null && limit == null);
-			if (isFullRead && lines.size() > MAX_LINES_FOR_FULL_READ) {
+			boolean shouldBypassLimit = (bypassLimit != null && bypassLimit);
+			if (isFullRead && !shouldBypassLimit && lines.size() > MAX_LINES_FOR_FULL_READ) {
 				return new ToolExecuteResult(
 						String.format(
 								"File is too large (%d lines, exceeds limit of %d lines). "
 										+ "Please use one of the following approaches:\n"
 										+ "1. Use offset and limit parameters to read specific line ranges (e.g., offset=1, limit=100)\n"
 										+ "2. Use grep action to search for specific patterns in the file\n"
-										+ "3. Use search functionality to find relevant sections\n\n"
+										+ "3. Use search functionality to find relevant sections\n"
+										+ "4. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
 										+ "Example: Read first 100 lines with offset=1, limit=100",
 								lines.size(), MAX_LINES_FOR_FULL_READ));
 			}

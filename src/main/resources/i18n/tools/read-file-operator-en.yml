@@ -10,9 +10,10 @@ description: |
     - path (required): The file path to read
     - offset (optional): Line number to start reading from (1-based). Only use for very large files
     - limit (optional): Number of lines to read. Only use for very large files
+    - bypass_limit (optional): If true, bypasses the 300-line limit for full file reads. Use with caution for very large files
     - Output format: LINE_NUMBER|LINE_CONTENT (line numbers are right-aligned, padded to 6 characters)
     - Returns "File is empty." if file exists but is empty
-    - Best practice: Read full files unless extremely large (omit offset and limit)
+    - Best practice: Read full files unless extremely large (omit offset and limit). For files exceeding 300 lines, use bypass_limit=true or specify offset/limit
 
   Additional operations:
   - count_words: Count characters in file
@@ -50,6 +51,10 @@ parameters: |
                   "limit": {
                       "type": "integer",
                       "description": "Optional: Number of lines to read. Only use for very large files. Works with offset for partial file reading"
+                  },
+                  "bypass_limit": {
+                      "type": "boolean",
+                      "description": "Optional: If true, bypasses the 300-line limit for full file reads. Use with caution for very large files. Default: false"
                   }
               },
               "required": ["action"],
