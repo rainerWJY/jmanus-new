@@ -17,6 +17,8 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.FileSystemLoopException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -448,8 +450,14 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		Pattern finalGlobPattern = globPattern;
 
 		// Walk directory tree, following symbolic links to traverse linked_external
+		// Handle FileSystemLoopException that can occur with circular symlinks
 		try (Stream<Path> paths = Files.walk(root, FileVisitOption.FOLLOW_LINKS)) {
-			paths.filter(Files::isRegularFile).filter(p -> {
+			paths.filter(p -> {
+				// Skip if not a regular file
+				if (!Files.isRegularFile(p)) {
+					return false;
+				}
+				
 				// Skip hidden files and directories
 				if (isHidden(p)) {
 					return false;
@@ -469,6 +477,19 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				// Default: include text files only
 				return isTextFile(p);
 			}).forEach(files::add);
+		}
+		catch (UncheckedIOException e) {
+			// Handle unchecked IO errors during stream operations
+			// FileSystemLoopException is wrapped in UncheckedIOException
+			Throwable cause = e.getCause();
+			if (cause instanceof FileSystemLoopException) {
+				log.warn("Circular symlink detected: {}. Returning empty results.", root);
+			}
+			else {
+				log.warn("Error walking directory tree: {}", root, cause != null ? cause : e);
+			}
+			// Return empty list on error
+			return new ArrayList<>();
 		}
 
 		return files;
