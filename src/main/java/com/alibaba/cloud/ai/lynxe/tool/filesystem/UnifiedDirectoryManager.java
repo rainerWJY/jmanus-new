@@ -121,7 +121,8 @@ public class UnifiedDirectoryManager {
 			ensureExternalFolderLink(rootPlanDir);
 		}
 		catch (IOException e) {
-			log.warn("Failed to ensure root plan directory or external folder link: {}", e.getMessage());
+			log.warn("Failed to ensure root plan directory or external folder link for rootPlanId={}, path={}: {}", 
+					rootPlanId, rootPlanDir, e.getMessage(), e);
 		}
 		return rootPlanDir;
 	}

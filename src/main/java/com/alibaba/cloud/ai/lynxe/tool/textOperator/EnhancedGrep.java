@@ -50,6 +50,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * This tool provides powerful search capabilities similar to ripgrep, supporting:
  * - Full regular expression syntax (e.g., "log.*Error", "function\\s+\\w+")
+ * - Multiple pattern search: Use | (OR operator) to search for multiple words/patterns in one query
+ *   (e.g., "Repository|Service|Controller" matches any of these words)
  * - Multiple output modes: count (default), content
  * - File filtering with glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter
  * - Case-insensitive search option (-i flag)
@@ -58,7 +60,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * - Result limiting (head_limit parameter)
  *
  * Usage Scenarios:
- * - Use Grep for: Precise text search, regex matching, known symbol/variable lookup
+ * - Use Grep for: Precise text search, regex matching, known symbol/variable lookup,
+ *   searching for multiple patterns simultaneously using | operator
  * - Don't use Grep for: Semantic search (use SemanticSearch), file name search (use Glob), 
  *   reading known files (use Read)
  *
@@ -583,36 +586,61 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
+	 * Maximum number of files to return in searchContent (sorted by match count)
+	 */
+	private static final int MAX_FILES_TO_RETURN = 15;
+
+	/**
+	 * Helper class to store file match information for sorting
+	 * Can be used by both searchContent and searchCount methods
+	 */
+	private static class FileMatchInfo {
+		Path file;
+		List<MatchResult> matches; // Used by searchContent, can be null for searchCount
+		int matchCount;
+
+		/**
+		 * Constructor for searchContent: uses matches list to calculate match count
+		 */
+		FileMatchInfo(Path file, List<MatchResult> matches) {
+			this.file = file;
+			this.matches = matches;
+			// Count only match lines (not context lines)
+			this.matchCount = (int) matches.stream().filter(m -> m.isMatchLine).count();
+		}
+
+		/**
+		 * Constructor for searchCount: directly uses match count
+		 */
+		FileMatchInfo(Path file, int matchCount) {
+			this.file = file;
+			this.matches = null;
+			this.matchCount = matchCount;
+		}
+	}
+
+	/**
 	 * Search and return content with matches
+	 * Files are sorted by match count (descending) and only top 15 files are returned
 	 */
 	private ToolExecuteResult searchContent(List<Path> files, Pattern pattern, int beforeLines, int afterLines,
 			int maxResults, boolean multiline) {
 		StringBuilder result = new StringBuilder();
 		int totalMatches = 0;
-		int filesWithMatches = 0;
 
+		// Get root plan directory for path conversion
+		Path rootPlanDirectory = null;
+		if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
+			rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
+		}
+
+		// First pass: collect all file matches with their match counts
+		List<FileMatchInfo> fileMatches = new ArrayList<>();
 		for (Path file : files) {
-			if (totalMatches >= maxResults) {
-				result.append(String.format("\n... (output limited to %d results)\n", maxResults));
-				break;
-			}
-
 			try {
 				List<MatchResult> matches = searchFile(file, pattern, beforeLines, afterLines, multiline);
 				if (!matches.isEmpty()) {
-					filesWithMatches++;
-					result.append(file.toString()).append("\n");
-
-					for (MatchResult match : matches) {
-						if (totalMatches >= maxResults)
-							break;
-
-						String marker = match.isMatchLine ? ":" : "-";
-						String truncatedContent = truncateLongLine(match.lineContent, pattern, match.isMatchLine);
-						result.append(String.format("%d%s%s\n", match.lineNumber, marker, truncatedContent));
-						totalMatches++;
-					}
-					result.append("\n");
+					fileMatches.add(new FileMatchInfo(file, matches));
 				}
 			}
 			catch (IOException e) {
@@ -620,11 +648,55 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			}
 		}
 
-		if (totalMatches == 0) {
+		if (fileMatches.isEmpty()) {
 			return new ToolExecuteResult("No matches found");
 		}
 
-		result.append(String.format("Found %d matches in %d files\n", totalMatches, filesWithMatches));
+		// Sort files by match count (descending) - files with more matches first
+		fileMatches.sort((a, b) -> Integer.compare(b.matchCount, a.matchCount));
+
+		// Get total number of files with matches
+		int totalFilesWithMatches = fileMatches.size();
+
+		// Limit to top 15 files
+		int filesToProcess = Math.min(fileMatches.size(), MAX_FILES_TO_RETURN);
+		boolean hasMoreFiles = fileMatches.size() > MAX_FILES_TO_RETURN;
+
+		// Second pass: output results for top files
+		for (int i = 0; i < filesToProcess; i++) {
+			FileMatchInfo fileInfo = fileMatches.get(i);
+			if (totalMatches >= maxResults) {
+				result.append(String.format("\n... (output limited to %d results)\n", maxResults));
+				break;
+			}
+
+			// Convert absolute path to relative path
+			String relativePath = getRelativePath(fileInfo.file, rootPlanDirectory);
+			result.append(relativePath).append("\n");
+
+			for (MatchResult match : fileInfo.matches) {
+				if (totalMatches >= maxResults)
+					break;
+
+				String marker = match.isMatchLine ? ":" : "-";
+				String truncatedContent = truncateLongLine(match.lineContent, pattern, match.isMatchLine);
+				result.append(String.format("%d%s%s\n", match.lineNumber, marker, truncatedContent));
+				totalMatches++;
+			}
+			result.append("\n");
+		}
+
+		// Add summary with file limit information
+		if (hasMoreFiles) {
+			int remainingFiles = totalFilesWithMatches - MAX_FILES_TO_RETURN;
+			result.append(String.format(
+					"Found %d matches in %d files (showing top %d files sorted by match count, %d more files with matches - too many files matched)\n",
+					totalMatches, totalFilesWithMatches, MAX_FILES_TO_RETURN, remainingFiles));
+		}
+		else {
+			result.append(String.format("Found %d matches in %d files\n", totalMatches, totalFilesWithMatches));
+		}
+
 		return new ToolExecuteResult(result.toString());
 	}
 
@@ -777,37 +849,89 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	/**
 	 * Search and return match counts
+	 * Files are sorted by match count (descending) and only top 15 files are returned
 	 */
 	private ToolExecuteResult searchCount(List<Path> files, Pattern pattern, int maxResults, boolean multiline) {
 		StringBuilder result = new StringBuilder();
 		int totalMatches = 0;
-		int filesProcessed = 0;
 
+		// Get root plan directory for path conversion
+		Path rootPlanDirectory = null;
+		if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
+			rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
+		}
+
+		// First pass: collect all file matches with their match counts
+		List<FileMatchInfo> fileMatches = new ArrayList<>();
 		for (Path file : files) {
-			if (filesProcessed >= maxResults) {
-				result.append(String.format("... (output limited to %d files)\n", maxResults));
-				break;
-			}
-
 			try {
 				int count = countMatches(file, pattern, multiline);
 				if (count > 0) {
-					result.append(String.format("%s: %d\n", file.toString(), count));
+					fileMatches.add(new FileMatchInfo(file, count));
 					totalMatches += count;
 				}
-				filesProcessed++;
 			}
 			catch (IOException e) {
 				log.warn("Error reading file: {}", file, e);
 			}
 		}
 
-		if (totalMatches == 0) {
+		if (fileMatches.isEmpty()) {
 			return new ToolExecuteResult("No matches found");
 		}
 
-		result.append(String.format("\nTotal: %d matches\n", totalMatches));
+		// Sort files by match count (descending) - files with more matches first
+		fileMatches.sort((a, b) -> Integer.compare(b.matchCount, a.matchCount));
+
+		// Get total number of files with matches
+		int totalFilesWithMatches = fileMatches.size();
+
+		// Limit to top 15 files
+		int filesToProcess = Math.min(fileMatches.size(), MAX_FILES_TO_RETURN);
+		boolean hasMoreFiles = fileMatches.size() > MAX_FILES_TO_RETURN;
+
+		// Second pass: output results for top files
+		for (int i = 0; i < filesToProcess; i++) {
+			FileMatchInfo fileInfo = fileMatches.get(i);
+			// Convert absolute path to relative path
+			String relativePath = getRelativePath(fileInfo.file, rootPlanDirectory);
+			result.append(String.format("%s: %d\n", relativePath, fileInfo.matchCount));
+		}
+
+		// Add summary with file limit information
+		if (hasMoreFiles) {
+			int remainingFiles = totalFilesWithMatches - MAX_FILES_TO_RETURN;
+			result.append(String.format(
+					"\nTotal: %d matches in %d files (showing top %d files sorted by match count, %d more files with matches - too many files matched)\n",
+					totalMatches, totalFilesWithMatches, MAX_FILES_TO_RETURN, remainingFiles));
+		}
+		else {
+			result.append(String.format("\nTotal: %d matches in %d files\n", totalMatches, totalFilesWithMatches));
+		}
+
 		return new ToolExecuteResult(result.toString());
+	}
+
+	/**
+	 * Convert absolute path to relative path relative to root plan directory
+	 * @param filePath The absolute file path
+	 * @param rootPlanDirectory The root plan directory (can be null)
+	 * @return Relative path string
+	 */
+	private String getRelativePath(Path filePath, Path rootPlanDirectory) {
+		if (rootPlanDirectory != null && filePath.startsWith(rootPlanDirectory)) {
+			try {
+				Path relativePath = rootPlanDirectory.relativize(filePath);
+				// Convert path separators to forward slashes for consistency
+				return relativePath.toString().replace('\\', '/');
+			}
+			catch (IllegalArgumentException e) {
+				// If relativization fails, return the file name
+				return filePath.getFileName().toString();
+			}
+		}
+		// If no root plan directory or path doesn't start with it, return file name
+		return filePath.getFileName().toString();
 	}
 
 	/**

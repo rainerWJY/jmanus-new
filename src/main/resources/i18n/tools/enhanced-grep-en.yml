@@ -3,6 +3,7 @@ description: |
   
   ## Key Features:
   - Full regex syntax support (e.g., "log.*Error", "function\\s+\\w+")
+  - Multiple pattern search: Use | (OR operator) to search for multiple words/patterns in one query (e.g., "Repository|Service|Controller")
   - File filtering: glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter (more efficient)
   - Multiple output modes: "count" (match counts, default), "content" (shows lines)
   - Case-insensitive search: Use -i parameter (default: false)
@@ -34,7 +35,7 @@ parameters: |
     "properties": {
       "pattern": {
         "type": "string",
-        "description": "The regular expression pattern to search for in file contents (required). Supports full regex syntax: 'log.*Error', 'function\\s+\\w+'. Literal braces need escaping: use 'interface\\{\\}' to find 'interface{}'"
+        "description": "The regular expression pattern to search for in file contents (required). Supports full regex syntax: 'log.*Error', 'function\\s+\\w+'. Use | (OR operator) to search multiple patterns: 'Repository|Service|Controller' matches any of these words. For whole words only, use '\\b(word1|word2)\\b'. Literal braces need escaping: use 'interface\\{\\}' to find 'interface{}'"
       },
       "path": {
         "type": "string",

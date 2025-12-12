@@ -3,6 +3,7 @@ description: |
   
   ## 核心功能：
   - 完整的正则表达式语法支持（例如 "log.*Error"、"function\\s+\\w+"）
+  - 多词并行搜索：使用 |（OR 操作符）在一个查询中搜索多个词/模式（例如 "Repository|Service|Controller"）
   - 文件过滤：glob 模式（例如 "*.js"、"*.{ts,tsx}"）或 type 参数（更高效）
   - 多种输出模式："count"（匹配计数，默认）、"content"（显示行）
   - 大小写不敏感搜索：使用 -i 参数（默认：false）
@@ -34,7 +35,7 @@ parameters: |
     "properties": {
       "pattern": {
         "type": "string",
-        "description": "要在文件内容中搜索的正则表达式模式（必需）。支持完整的正则表达式语法：'log.*Error'、'function\\s+\\w+'。字面量花括号需要转义：使用 'interface\\{\\}' 来查找 'interface{}'"
+        "description": "要在文件内容中搜索的正则表达式模式（必需）。支持完整的正则表达式语法：'log.*Error'、'function\\s+\\w+'。使用 |（OR 操作符）搜索多个模式：'Repository|Service|Controller' 可匹配这些词中的任意一个。仅匹配完整单词时，使用 '\\b(word1|word2)\\b'。字面量花括号需要转义：使用 'interface\\{\\}' 来查找 'interface{}'"
       },
       "path": {
         "type": "string",
