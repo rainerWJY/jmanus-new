@@ -17,6 +17,7 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -380,17 +381,23 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			return Paths.get(".");
 		}
 		
+		// Normalize path: remove trailing slashes for consistent handling
+		String normalizedPath = path;
+		while (normalizedPath.endsWith("/") && normalizedPath.length() > 1) {
+			normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
+		}
+		
 		// If rootPlanId is available, resolve path relative to root plan directory
 		if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 			Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 			UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 			
 			// Use the centralized method from UnifiedDirectoryManager
-			return directoryManager.resolveAndValidatePath(rootPlanDirectory, path);
+			return directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 		}
 		
 		// If no rootPlanId, treat path as absolute
-		return Paths.get(path);
+		return Paths.get(normalizedPath);
 	}
 
 	/**
@@ -440,8 +447,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 		Pattern finalGlobPattern = globPattern;
 
-		// Walk directory tree
-		try (Stream<Path> paths = Files.walk(root)) {
+		// Walk directory tree, following symbolic links to traverse linked_external
+		try (Stream<Path> paths = Files.walk(root, FileVisitOption.FOLLOW_LINKS)) {
 			paths.filter(Files::isRegularFile).filter(p -> {
 				// Skip hidden files and directories
 				if (isHidden(p)) {
