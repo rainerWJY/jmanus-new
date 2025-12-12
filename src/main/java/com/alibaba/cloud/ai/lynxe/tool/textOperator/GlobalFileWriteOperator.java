@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
@@ -51,7 +52,7 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalFileWriteOperator.class);
 
-	private static final String TOOL_NAME = "write_file_operator";
+	private static final String TOOL_NAME = "global_file_write_file_operator";
 
 	/**
 	 * Set of supported text file extensions
@@ -363,16 +364,14 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 
 		// Get root plan directory
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
+		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
 		// For WriteOperator, check root plan directory first, then subplan directory
 		// if applicable
 		// This allows accessing files in root plan directory even when in subplan context
-		Path rootPlanPath = rootPlanDirectory.resolve(normalizedPath).normalize();
+		// Use the centralized method from UnifiedDirectoryManager
+		Path rootPlanPath = directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 
-		// Ensure root plan path stays within root plan directory
-		if (!rootPlanPath.startsWith(rootPlanDirectory)) {
-			throw new IOException("Access denied: Invalid file path");
-		}
 
 		// If file exists in root plan directory, use it
 		if (Files.exists(rootPlanPath)) {
@@ -604,7 +603,7 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "file-operations";
 	}
 
 	@Override

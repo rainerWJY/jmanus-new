@@ -4,7 +4,7 @@ description: |
   ## Key Features:
   - Full regex syntax support (e.g., "log.*Error", "function\\s+\\w+")
   - File filtering: glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter (more efficient)
-  - Multiple output modes: "content" (shows lines), "files_with_matches" (file paths only), "count" (match counts)
+  - Multiple output modes: "count" (match counts, default), "content" (shows lines)
   - Case-insensitive search: Use -i parameter (default: false)
   - Context display: -A (after), -B (before), -C (around) for showing surrounding lines
   - Multiline mode: Enable with multiline=true (. matches newlines, patterns can span lines)
@@ -19,7 +19,6 @@ description: |
   
   ## Output Format Examples:
   - content mode: "223:    public void method() {" (match with colon), "224-        // code" (context with dash)
-  - files_with_matches: "/path/to/file1.java\n/path/to/file2.java"
   - count mode: "/path/to/file.java: 5 matches"
   
   ## Pattern Notes:
@@ -55,8 +54,8 @@ parameters: |
       },
       "output_mode": {
         "type": "string",
-        "enum": ["content", "files_with_matches", "count"],
-        "description": "Output mode (default: 'content'). 'content': shows matching lines (supports -A/-B/-C, line numbers, head_limit). 'files_with_matches': shows only file paths (supports head_limit). 'count': shows match counts per file (supports head_limit)"
+        "enum": ["content", "count"],
+        "description": "Output mode (default: 'count'). 'content': shows matching lines (supports -A/-B/-C, line numbers, head_limit). 'count': shows match counts per file (supports head_limit)"
       },
       "-B": {
         "type": "integer",
@@ -76,7 +75,7 @@ parameters: |
       },
       "head_limit": {
         "type": "integer",
-        "description": "Limit output to first N lines/entries, equivalent to '| head -N'. Works across all output modes: content (limits output lines), files_with_matches (limits file paths), count (limits count entries). Default: 1000. When unspecified, shows all results from ripgrep"
+        "description": "Limit output to first N lines/entries, equivalent to '| head -N'. Works across all output modes: content (limits output lines), count (limits count entries). Default: 1000. When unspecified, shows all results from ripgrep"
       }
     },
     "required": ["pattern"]

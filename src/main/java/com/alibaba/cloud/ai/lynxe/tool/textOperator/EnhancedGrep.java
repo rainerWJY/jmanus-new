@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -45,7 +46,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * This tool provides powerful search capabilities similar to ripgrep, supporting:
  * - Full regular expression syntax (e.g., "log.*Error", "function\\s+\\w+")
- * - Multiple output modes: content (default), files_with_matches, count
+ * - Multiple output modes: count (default), content
  * - File filtering with glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter
  * - Case-insensitive search option (-i flag)
  * - Context lines display (-A: after, -B: before, -C: around matches)
@@ -59,7 +60,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  * Output Formats:
  * - content mode: Shows matching lines with ':' separator, context lines with '-' separator
- * - files_with_matches mode: Only shows file paths containing matches
  * - count mode: Shows match counts per file (e.g., "file.java: 5 matches")
  *
  * Note: Literal braces need escaping in patterns (use interface\\{\\} to find interface{} in code)
@@ -70,7 +70,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	private static final Logger log = LoggerFactory.getLogger(EnhancedGrep.class);
 
-	private static final String TOOL_NAME = "enhanced_grep";
+	private static final String TOOL_NAME = "global_file_enhanced_grep";
 
 	/**
 	 * Maximum number of results to return (to prevent overwhelming output)
@@ -104,7 +104,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	 */
 	public enum OutputMode {
 		CONTENT, // Show matching lines with content
-		FILES_WITH_MATCHES, // Only show file paths that contain matches
 		COUNT // Show match counts per file
 	}
 
@@ -296,7 +295,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			Integer headLimit = (Integer) toolInputMap.get("head_limit");
 
 			return executeGrep(pattern, path, glob, type, caseInsensitive != null && caseInsensitive,
-					outputMode != null ? outputMode : "content", contextBefore, contextAfter, context,
+					outputMode != null ? outputMode : "count", contextBefore, contextAfter, context,
 					multiline != null && multiline, headLimit);
 		}
 		catch (Exception e) {
@@ -315,7 +314,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 			return executeGrep(input.getPattern(), input.getPath(), input.getGlob(), input.getType(),
 					input.getCaseInsensitive() != null && input.getCaseInsensitive(),
-					input.getOutputMode() != null ? input.getOutputMode() : "content", input.getContextBefore(),
+					input.getOutputMode() != null ? input.getOutputMode() : "count", input.getContextBefore(),
 					input.getContextAfter(), input.getContext(), input.getMultiline() != null && input.getMultiline(),
 					input.getHeadLimit());
 		}
@@ -359,7 +358,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			return switch (mode) {
 				case CONTENT -> searchContent(filesToSearch, regexPattern, beforeLines, afterLines, maxResults,
 						multiline);
-				case FILES_WITH_MATCHES -> searchFilesOnly(filesToSearch, regexPattern, maxResults, multiline);
 				case COUNT -> searchCount(filesToSearch, regexPattern, maxResults, multiline);
 			};
 		}
@@ -381,6 +379,17 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			// Fallback to current directory
 			return Paths.get(".");
 		}
+		
+		// If rootPlanId is available, resolve path relative to root plan directory
+		if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
+			Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
+			UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
+			
+			// Use the centralized method from UnifiedDirectoryManager
+			return directoryManager.resolveAndValidatePath(rootPlanDirectory, path);
+		}
+		
+		// If no rootPlanId, treat path as absolute
 		return Paths.get(path);
 	}
 
@@ -403,12 +412,11 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	 */
 	private OutputMode parseOutputMode(String mode) {
 		if (mode == null) {
-			return OutputMode.CONTENT;
+			return OutputMode.COUNT;
 		}
 		return switch (mode.toLowerCase()) {
-			case "files_with_matches" -> OutputMode.FILES_WITH_MATCHES;
-			case "count" -> OutputMode.COUNT;
-			default -> OutputMode.CONTENT;
+			case "content" -> OutputMode.CONTENT;
+			default -> OutputMode.COUNT;
 		};
 	}
 
@@ -612,59 +620,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
-	 * Search and return only file paths with matches
-	 */
-	private ToolExecuteResult searchFilesOnly(List<Path> files, Pattern pattern, int maxResults, boolean multiline) {
-		StringBuilder result = new StringBuilder();
-		int count = 0;
-
-		for (Path file : files) {
-			if (count >= maxResults) {
-				result.append(String.format("... (output limited to %d files)\n", maxResults));
-				break;
-			}
-
-			try {
-				if (fileHasMatch(file, pattern, multiline)) {
-					result.append(file.toString()).append("\n");
-					count++;
-				}
-			}
-			catch (IOException e) {
-				log.warn("Error reading file: {}", file, e);
-			}
-		}
-
-		if (count == 0) {
-			return new ToolExecuteResult("No files with matches found");
-		}
-
-		result.append(String.format("\nTotal: %d files\n", count));
-		return new ToolExecuteResult(result.toString());
-	}
-
-	/**
-	 * Check if file has any matches
-	 */
-	private boolean fileHasMatch(Path file, Pattern pattern, boolean multiline) throws IOException {
-		if (multiline) {
-			String content = Files.readString(file);
-			return pattern.matcher(content).find();
-		}
-		else {
-			try (BufferedReader reader = Files.newBufferedReader(file)) {
-				String line;
-				while ((line = reader.readLine()) != null) {
-					if (pattern.matcher(line).find()) {
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
-
-	/**
 	 * Search and return match counts
 	 */
 	private ToolExecuteResult searchCount(List<Path> files, Pattern pattern, int maxResults, boolean multiline) {
@@ -761,7 +716,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "file-operations";
 	}
 
 	@Override

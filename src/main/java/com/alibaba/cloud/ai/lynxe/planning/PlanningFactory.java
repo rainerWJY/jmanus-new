@@ -89,6 +89,7 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileImportOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileReadOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileWriteOperator;
@@ -269,6 +270,7 @@ public class PlanningFactory {
 					shortUrlService, toolI18nService));
 			toolDefinitions.add(new GlobalFileWriteOperator(textFileService, innerStorageService, objectMapper,
 					shortUrlService, toolI18nService));
+			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService));
 			toolDefinitions.add(new FileImportOperator(textFileService, null, toolI18nService));
 			toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper, toolI18nService));
 			toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService));

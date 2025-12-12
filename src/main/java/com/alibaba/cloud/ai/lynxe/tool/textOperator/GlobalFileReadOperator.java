@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
@@ -49,7 +50,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalFileReadOperator.class);
 
-	private static final String TOOL_NAME = "read_file_operator";
+	private static final String TOOL_NAME = "global_file_read_file_operator";
 
 	/**
 	 * Maximum number of lines allowed for full file reads without offset/limit
@@ -94,18 +95,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		@com.fasterxml.jackson.annotation.JsonProperty("limit")
 		private Integer limit;
 
-		@com.fasterxml.jackson.annotation.JsonProperty("pattern")
-		private String pattern;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("case_sensitive")
-		private Boolean caseSensitive;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("whole_word")
-		private Boolean wholeWord;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("context_lines")
-		private Integer contextLines;
-
 		@com.fasterxml.jackson.annotation.JsonProperty("bypass_limit")
 		private Boolean bypassLimit;
 
@@ -148,38 +137,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 		public void setLimit(Integer limit) {
 			this.limit = limit;
-		}
-
-		public String getPattern() {
-			return pattern;
-		}
-
-		public void setPattern(String pattern) {
-			this.pattern = pattern;
-		}
-
-		public Boolean getCaseSensitive() {
-			return caseSensitive;
-		}
-
-		public void setCaseSensitive(Boolean caseSensitive) {
-			this.caseSensitive = caseSensitive;
-		}
-
-		public Boolean getWholeWord() {
-			return wholeWord;
-		}
-
-		public void setWholeWord(Boolean wholeWord) {
-			this.wholeWord = wholeWord;
-		}
-
-		public Integer getContextLines() {
-			return contextLines;
-		}
-
-		public void setContextLines(Integer contextLines) {
-			this.contextLines = contextLines;
 		}
 
 		public Boolean getBypassLimit() {
@@ -241,24 +198,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
-				case "grep" -> {
-					String pattern = (String) toolInputMap.get("pattern");
-					Boolean caseSensitive = (Boolean) toolInputMap.get("case_sensitive");
-					Boolean wholeWord = (Boolean) toolInputMap.get("whole_word");
-					Integer contextLines = (Integer) toolInputMap.get("context_lines");
-
-					if (pattern == null) {
-						yield new ToolExecuteResult("Error: grep operation requires pattern parameter");
-					}
-
-					// Replace short URLs in pattern
-					pattern = replaceShortUrls(pattern);
-
-					yield grepText(targetPath, pattern, caseSensitive != null ? caseSensitive : false,
-							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
-				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words, grep");
+						+ ". Supported operations: read, count_words");
 			};
 		}
 		catch (Exception e) {
@@ -293,24 +234,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
-				case "grep" -> {
-					String pattern = input.getPattern();
-					Boolean caseSensitive = input.getCaseSensitive();
-					Boolean wholeWord = input.getWholeWord();
-					Integer contextLines = input.getContextLines();
-
-					if (pattern == null) {
-						yield new ToolExecuteResult("Error: grep operation requires pattern parameter");
-					}
-
-					// Replace short URLs in pattern
-					pattern = replaceShortUrls(pattern);
-
-					yield grepText(targetPath, pattern, caseSensitive != null ? caseSensitive : false,
-							wholeWord != null ? wholeWord : false, contextLines != null ? contextLines : 0);
-				}
 				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words, grep");
+						+ ". Supported operations: read, count_words");
 			};
 		}
 		catch (Exception e) {
@@ -404,16 +329,14 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 		// Get root plan directory
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
+		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
 		// For GlobalFileReadOperator, check root plan directory first, then subplan directory
 		// if applicable
 		// This allows accessing files in root plan directory even when in subplan context
-		Path rootPlanPath = rootPlanDirectory.resolve(normalizedPath).normalize();
+		// Use the centralized method from UnifiedDirectoryManager
+		Path rootPlanPath = directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 
-		// Ensure root plan path stays within root plan directory
-		if (!rootPlanPath.startsWith(rootPlanDirectory)) {
-			throw new IOException("Access denied: Invalid file path");
-		}
 
 		// If file exists in root plan directory, use it
 		if (Files.exists(rootPlanPath)) {
@@ -497,7 +420,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 				return new ToolExecuteResult("File is empty.");
 			}
 
-			// Protection: If file is too large and no offset/limit provided, suggest using offset/limit or grep
+			// Protection: If file is too large and no offset/limit provided, suggest using offset/limit
 			// Unless bypassLimit flag is set to true
 			boolean isFullRead = (offset == null && limit == null);
 			boolean shouldBypassLimit = (bypassLimit != null && bypassLimit);
@@ -507,9 +430,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 								"File is too large (%d lines, exceeds limit of %d lines). "
 										+ "Please use one of the following approaches:\n"
 										+ "1. Use offset and limit parameters to read specific line ranges (e.g., offset=1, limit=100)\n"
-										+ "2. Use grep action to search for specific patterns in the file\n"
-										+ "3. Use search functionality to find relevant sections\n"
-										+ "4. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
+										+ "2. Use search functionality to find relevant sections\n"
+										+ "3. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
 										+ "Example: Read first 100 lines with offset=1, limit=100",
 								lines.size(), MAX_LINES_FOR_FULL_READ));
 			}
@@ -581,124 +503,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		}
 	}
 
-	/**
-	 * Search for text patterns in file (grep functionality)
-	 * @param contextLines Number of context lines to show above and below each match (0 =
-	 * no context)
-	 */
-	private ToolExecuteResult grepText(String filePath, String pattern, boolean caseSensitive, boolean wholeWord,
-			int contextLines) {
-		try {
-			Path absolutePath = validateGlobalPath(filePath);
-
-			// Create file if it doesn't exist
-			if (!Files.exists(absolutePath)) {
-				Files.createDirectories(absolutePath.getParent());
-				Files.createFile(absolutePath);
-				log.info("Created new file automatically: {}", absolutePath);
-			}
-
-			java.util.List<String> lines = Files.readAllLines(absolutePath);
-
-			if (lines.isEmpty()) {
-				return new ToolExecuteResult("File is empty");
-			}
-
-			// Prepare pattern for matching
-			String searchPattern = pattern;
-			if (!caseSensitive) {
-				searchPattern = pattern.toLowerCase();
-			}
-			if (wholeWord) {
-				searchPattern = "\\b" + java.util.regex.Pattern.quote(searchPattern) + "\\b";
-			}
-
-			java.util.regex.Pattern regexPattern;
-			if (wholeWord) {
-				regexPattern = caseSensitive ? java.util.regex.Pattern.compile(searchPattern)
-						: java.util.regex.Pattern.compile(searchPattern, java.util.regex.Pattern.CASE_INSENSITIVE);
-			}
-			else {
-				regexPattern = caseSensitive
-						? java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(searchPattern))
-						: java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(searchPattern),
-								java.util.regex.Pattern.CASE_INSENSITIVE);
-			}
-
-			StringBuilder result = new StringBuilder();
-			result.append(String.format("Grep results for pattern '%s' in file: %s\n", pattern, filePath));
-			if (contextLines > 0) {
-				result.append(String.format("Showing %d line(s) of context around each match\n", contextLines));
-			}
-			result.append("=".repeat(60)).append("\n");
-
-			// Track which lines have been printed to avoid duplicates when showing
-			// context
-			java.util.Set<Integer> printedLines = new java.util.HashSet<>();
-			int matchCount = 0;
-
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i);
-				String searchLine = caseSensitive ? line : line.toLowerCase();
-				boolean isMatch = false;
-
-				if (wholeWord) {
-					isMatch = regexPattern.matcher(line).find();
-				}
-				else {
-					isMatch = searchLine.contains(searchPattern);
-				}
-
-				if (isMatch) {
-					matchCount++;
-
-					// Show context lines before the match
-					if (contextLines > 0) {
-						for (int j = Math.max(0, i - contextLines); j < i; j++) {
-							if (!printedLines.contains(j)) {
-								result.append(String.format("%4d- %s\n", j + 1, lines.get(j)));
-								printedLines.add(j);
-							}
-						}
-					}
-
-					// Show the matching line
-					if (!printedLines.contains(i)) {
-						result.append(String.format("%4d: %s\n", i + 1, line));
-						printedLines.add(i);
-					}
-
-					// Show context lines after the match
-					if (contextLines > 0) {
-						for (int j = i + 1; j <= Math.min(lines.size() - 1, i + contextLines); j++) {
-							if (!printedLines.contains(j)) {
-								result.append(String.format("%4d+ %s\n", j + 1, lines.get(j)));
-								printedLines.add(j);
-							}
-						}
-						// Add separator between matches if context is shown
-						if (i < lines.size() - 1) {
-							result.append("--\n");
-						}
-					}
-				}
-			}
-
-			if (matchCount == 0) {
-				result.append("No matches found.\n");
-			}
-			else {
-				result.append(String.format("\nTotal matches found: %d\n", matchCount));
-			}
-
-			return new ToolExecuteResult(result.toString());
-		}
-		catch (IOException e) {
-			log.error("Error performing grep search in file: {}", filePath, e);
-			return new ToolExecuteResult("Error performing grep search in file: " + e.getMessage());
-		}
-	}
-
 	@Override
 	public String getCurrentToolStateString() {
 		return "";
@@ -734,7 +538,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "file-operations";
 	}
 
 	@Override

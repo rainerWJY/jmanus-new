@@ -184,6 +184,58 @@ public class UnifiedDirectoryManager {
 	}
 
 	/**
+	 * Check if a relative path is accessing the linked_external directory
+	 * @param relativePath The relative path to check
+	 * @return true if the path is linked_external or starts with linked_external/
+	 */
+	public boolean isLinkedExternalPath(String relativePath) {
+		if (relativePath == null || relativePath.isEmpty()) {
+			return false;
+		}
+		return relativePath.equals(LINKED_EXTERNAL_DIR) || relativePath.startsWith(LINKED_EXTERNAL_DIR + "/");
+	}
+
+	/**
+	 * Resolve a relative path within a root plan directory with proper handling of
+	 * symbolic links. This method provides safe path resolution that:
+	 * - Handles linked_external symbolic links without resolving them
+	 * - Normalizes other paths to prevent path traversal attacks
+	 * - Validates that the resolved path stays within the root plan directory
+	 * 
+	 * @param rootPlanDirectory The root plan directory to resolve paths within
+	 * @param relativePath The relative path to resolve
+	 * @return The resolved Path object
+	 * @throws IOException if the path is invalid or outside the root plan directory
+	 */
+	public Path resolveAndValidatePath(Path rootPlanDirectory, String relativePath) throws IOException {
+		if (relativePath == null || relativePath.isEmpty()) {
+			return rootPlanDirectory;
+		}
+
+		// Check if this is accessing linked_external directory (symbolic link to external folder)
+		boolean isLinkedExternal = isLinkedExternalPath(relativePath);
+
+		Path resolvedPath;
+		if (isLinkedExternal) {
+			// For linked_external, don't use normalize() as it would resolve the symlink
+			// and break the startsWith check. Use the symlink path directly.
+			resolvedPath = rootPlanDirectory.resolve(relativePath);
+		}
+		else {
+			// For normal paths, use normalize() to resolve any relative path elements
+			resolvedPath = rootPlanDirectory.resolve(relativePath).normalize();
+		}
+
+		// Ensure the resolved path stays within root plan directory
+		// For linked_external, this checks the symlink path, not the resolved target
+		if (!resolvedPath.startsWith(rootPlanDirectory)) {
+			throw new IOException("Access denied: Path is outside root plan directory: " + relativePath);
+		}
+
+		return resolvedPath;
+	}
+
+	/**
 	 * Validate if a path is within the allowed working directory scope. This method
 	 * enforces security by ensuring all file operations stay within the designated
 	 * working directory. External access is not allowed through this method. Only

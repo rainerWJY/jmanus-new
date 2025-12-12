@@ -220,12 +220,9 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 			Path targetDirectory = rootPlanDirectory;
 			if (normalizedPath != null && !normalizedPath.isEmpty() && !normalizedPath.equals(".")
 					&& !normalizedPath.equals("root")) {
-				targetDirectory = rootPlanDirectory.resolve(normalizedPath).normalize();
-
-				// Ensure the target directory stays within root plan directory
-				if (!targetDirectory.startsWith(rootPlanDirectory)) {
-					return new ToolExecuteResult("Error: Directory path is invalid");
-				}
+				
+				// Use the centralized method from UnifiedDirectoryManager
+				targetDirectory = unifiedDirectoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 			}
 
 			// Ensure directory exists - create if needed for root plan directory
@@ -321,12 +318,9 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 				// Normalize target directory path
 				String normalizedTargetDir = normalizeFilePath(targetDirectory);
 				Path rootPlanDirectory = unifiedDirectoryManager.getRootPlanDirectory(this.rootPlanId);
-				searchRoot = rootPlanDirectory.resolve(normalizedTargetDir).normalize();
-
-				// Ensure target directory stays within root plan directory
-				if (!searchRoot.startsWith(rootPlanDirectory)) {
-					return new ToolExecuteResult("Error: Target directory path is invalid");
-				}
+				
+				// Use the centralized method from UnifiedDirectoryManager
+				searchRoot = unifiedDirectoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedTargetDir);
 
 				// Check if target directory exists
 				if (!Files.exists(searchRoot)) {
@@ -466,7 +460,7 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "file-operations";
 	}
 
 	@Override

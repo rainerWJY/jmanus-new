@@ -4,7 +4,7 @@ description: |
   ## 核心功能：
   - 完整的正则表达式语法支持（例如 "log.*Error"、"function\\s+\\w+"）
   - 文件过滤：glob 模式（例如 "*.js"、"*.{ts,tsx}"）或 type 参数（更高效）
-  - 多种输出模式："content"（显示行）、"files_with_matches"（仅文件路径）、"count"（匹配计数）
+  - 多种输出模式："count"（匹配计数，默认）、"content"（显示行）
   - 大小写不敏感搜索：使用 -i 参数（默认：false）
   - 上下文显示：-A（之后）、-B（之前）、-C（周围）用于显示匹配行周围的行
   - 多行模式：启用 multiline=true（. 匹配换行符，模式可以跨行）
@@ -19,7 +19,6 @@ description: |
   
   ## 输出格式示例：
   - content 模式："223:    public void method() {"（匹配行用冒号）、"224-        // code"（上下文用横线）
-  - files_with_matches 模式："/path/to/file1.java\n/path/to/file2.java"
   - count 模式："/path/to/file.java: 5 matches"
   
   ## 模式注意事项：
@@ -55,8 +54,8 @@ parameters: |
       },
       "output_mode": {
         "type": "string",
-        "enum": ["content", "files_with_matches", "count"],
-        "description": "输出模式（默认：'content'）。'content'：显示匹配行（支持 -A/-B/-C、行号、head_limit）。'files_with_matches'：仅显示文件路径（支持 head_limit）。'count'：显示每个文件的匹配计数（支持 head_limit）"
+        "enum": ["content", "count"],
+        "description": "输出模式（默认：'count'）。'content'：显示匹配行（支持 -A/-B/-C、行号、head_limit）。'count'：显示每个文件的匹配计数（支持 head_limit）"
       },
       "-B": {
         "type": "integer",
@@ -76,7 +75,7 @@ parameters: |
       },
       "head_limit": {
         "type": "integer",
-        "description": "将输出限制为前 N 行/条目，相当于 '| head -N'。适用于所有输出模式：content（限制输出行）、files_with_matches（限制文件路径）、count（限制计数条目）。默认：1000。未指定时，显示 ripgrep 的所有结果"
+        "description": "将输出限制为前 N 行/条目，相当于 '| head -N'。适用于所有输出模式：content（限制输出行）、count（限制计数条目）。默认：1000。未指定时，显示 ripgrep 的所有结果"
       }
     },
     "required": ["pattern"]
