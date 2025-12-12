@@ -17,12 +17,15 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.FileSystemLoopException;
 import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,7 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +43,6 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -274,39 +275,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		this.toolI18nService = toolI18nService;
 	}
 
-	public ToolExecuteResult run(String toolInput) {
-		log.info("EnhancedGrep toolInput: {}", toolInput);
-		try {
-			Map<String, Object> toolInputMap = objectMapper.readValue(toolInput,
-					new TypeReference<Map<String, Object>>() {
-					});
-
-			// Extract parameters
-			String pattern = (String) toolInputMap.get("pattern");
-			if (pattern == null || pattern.isEmpty()) {
-				return new ToolExecuteResult("Error: pattern parameter is required");
-			}
-
-			String path = (String) toolInputMap.get("path");
-			String glob = (String) toolInputMap.get("glob");
-			String type = (String) toolInputMap.get("type");
-			Boolean caseInsensitive = (Boolean) toolInputMap.get("-i");
-			String outputMode = (String) toolInputMap.get("output_mode");
-			Integer contextBefore = (Integer) toolInputMap.get("-B");
-			Integer contextAfter = (Integer) toolInputMap.get("-A");
-			Integer context = (Integer) toolInputMap.get("-C");
-			Boolean multiline = (Boolean) toolInputMap.get("multiline");
-			Integer headLimit = (Integer) toolInputMap.get("head_limit");
-
-			return executeGrep(pattern, path, glob, type, caseInsensitive != null && caseInsensitive,
-					outputMode != null ? outputMode : "count", contextBefore, contextAfter, context,
-					multiline != null && multiline, headLimit);
-		}
-		catch (Exception e) {
-			log.error("EnhancedGrep execution failed", e);
-			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
-		}
-	}
 
 	@Override
 	public ToolExecuteResult run(GrepInput input) {
@@ -431,6 +399,16 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
+	 * Maximum depth for directory traversal to prevent excessive recursion
+	 */
+	private static final int MAX_DEPTH = 100;
+
+	/**
+	 * Maximum path length to prevent path explosion issues
+	 */
+	private static final int MAX_PATH_LENGTH = 1000;
+
+	/**
 	 * Find files to search based on glob pattern or file type
 	 */
 	private List<Path> findFilesToSearch(Path root, String glob, String type) throws IOException {
@@ -449,49 +427,101 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		}
 
 		Pattern finalGlobPattern = globPattern;
+		Set<String> finalExtensions = extensions;
+		Path rootPath = root;
 
 		// Walk directory tree, following symbolic links to traverse linked_external
-		// Handle FileSystemLoopException that can occur with circular symlinks
-		try (Stream<Path> paths = Files.walk(root, FileVisitOption.FOLLOW_LINKS)) {
-			paths.filter(p -> {
-				// Skip if not a regular file
-				if (!Files.isRegularFile(p)) {
-					return false;
+		// Use walkFileTree to handle circular symlinks gracefully by skipping problematic directories
+		FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+			@Override
+			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+				// Check path depth relative to root
+				int depth = rootPath.relativize(dir).getNameCount();
+				if (depth > MAX_DEPTH) {
+					log.warn("Path depth {} exceeds maximum ({}). Skipping directory: {}", depth, MAX_DEPTH, dir);
+					return FileVisitResult.SKIP_SUBTREE;
 				}
-				
-				// Skip hidden files and directories
-				if (isHidden(p)) {
-					return false;
+
+				// Check path length to prevent path explosion
+				String pathString = dir.toString();
+				if (pathString.length() > MAX_PATH_LENGTH) {
+					log.warn("Path length {} exceeds maximum ({}). Skipping directory: {}", pathString.length(),
+							MAX_PATH_LENGTH, dir);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				// Check path length for files as well
+				String pathString = file.toString();
+				if (pathString.length() > MAX_PATH_LENGTH) {
+					log.warn("File path length {} exceeds maximum ({}). Skipping file: {}", pathString.length(),
+							MAX_PATH_LENGTH, file);
+					return FileVisitResult.CONTINUE;
+				}
+
+				// Skip if not a regular file
+				if (!Files.isRegularFile(file)) {
+					return FileVisitResult.CONTINUE;
+				}
+
+				// Skip hidden files
+				if (isHidden(file)) {
+					return FileVisitResult.CONTINUE;
 				}
 
 				// Apply type filter
-				if (!extensions.isEmpty()) {
-					String fileName = p.getFileName().toString();
-					return extensions.stream().anyMatch(fileName::endsWith);
+				if (!finalExtensions.isEmpty()) {
+					String fileName = file.getFileName().toString();
+					if (finalExtensions.stream().noneMatch(fileName::endsWith)) {
+						return FileVisitResult.CONTINUE;
+					}
 				}
 
 				// Apply glob filter
 				if (finalGlobPattern != null) {
-					return finalGlobPattern.matcher(p.getFileName().toString()).matches();
+					String fileName = file.getFileName().toString();
+					if (!finalGlobPattern.matcher(fileName).matches()) {
+						return FileVisitResult.CONTINUE;
+					}
 				}
 
 				// Default: include text files only
-				return isTextFile(p);
-			}).forEach(files::add);
-		}
-		catch (UncheckedIOException e) {
-			// Handle unchecked IO errors during stream operations
-			// FileSystemLoopException is wrapped in UncheckedIOException
-			Throwable cause = e.getCause();
-			if (cause instanceof FileSystemLoopException) {
-				log.warn("Circular symlink detected: {}. Returning empty results.", root);
+				if (finalExtensions.isEmpty() && finalGlobPattern == null && !isTextFile(file)) {
+					return FileVisitResult.CONTINUE;
+				}
+
+				// File matches all filters, add it
+				files.add(file);
+				return FileVisitResult.CONTINUE;
 			}
-			else {
-				log.warn("Error walking directory tree: {}", root, cause != null ? cause : e);
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+				// Handle circular symlinks by skipping the problematic directory
+				if (exc instanceof FileSystemLoopException) {
+					log.warn("Circular symlink detected: {}. Skipping this directory and continuing.", file);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+
+				// Check if path is too long (might cause issues)
+				String pathString = file.toString();
+				if (pathString.length() > MAX_PATH_LENGTH) {
+					log.warn("Path too long ({} chars): {}. Skipping and continuing.", pathString.length(), file);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+
+				// For other IO errors, log and continue
+				log.warn("Error accessing file/directory: {}. Skipping and continuing.", file, exc);
+				return FileVisitResult.SKIP_SUBTREE;
 			}
-			// Return empty list on error
-			return new ArrayList<>();
-		}
+		};
+
+		// Walk the directory tree with depth limit - all exceptions are handled by visitFileFailed
+		Files.walkFileTree(root, java.util.EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
 
 		return files;
 	}
