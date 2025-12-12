@@ -100,6 +100,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			if (executor == null) {
 				logger.error("No executor found for step type: {}", step.getStepInStr());
 				step.setResult("No executor found for step type: " + step.getStepInStr());
+				step.setStatus(AgentState.FAILED);
+				step.setErrorMessage("No executor found for step type: " + step.getStepInStr());
 				return null;
 			}
 
@@ -113,6 +115,15 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			}
 
 			BaseAgent.AgentExecResult agentResult = executor.run();
+			if (agentResult == null) {
+				logger.error("Agent {} returned null result", executor.getName());
+				step.setResult("Agent execution returned null result");
+				step.setStatus(AgentState.FAILED);
+				step.setErrorMessage("Agent execution returned null result");
+				context.setSuccess(false);
+				return executor;
+			}
+			
 			step.setResult(agentResult.getResult());
 			step.setStatus(agentResult.getState());
 
