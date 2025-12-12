@@ -65,7 +65,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 																												// and
 																												// Markdown
 			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", // Web-related
+			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", ".vue", // Web-related
 			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
 			".sql", ".sh", ".bat", ".cmd", // Scripts and database
 			".log", ".conf", ".ini", // Logs and configuration
