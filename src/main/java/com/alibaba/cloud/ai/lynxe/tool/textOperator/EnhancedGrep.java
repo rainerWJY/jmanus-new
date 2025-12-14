@@ -528,7 +528,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 		return files;
 	}
-
+	
 	/**
 	 * Check if path is hidden
 	 */

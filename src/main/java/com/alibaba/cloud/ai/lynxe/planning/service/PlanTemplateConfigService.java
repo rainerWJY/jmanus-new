@@ -368,6 +368,35 @@ public class PlanTemplateConfigService {
 				log.info("Set default serviceGroup 'ungrouped' on PlanTemplate with ID: {}", planTemplateId);
 			}
 
+			// Auto-refresh inputSchema from saved plan JSON to ensure parameters are up-to-date
+			// This ensures that when users add new parameters (e.g., <<offset>>) and save,
+			// the inputSchema is automatically updated to reflect the new parameters
+			try {
+				String inputSchemaJson = generateInputSchemaFromPlanTemplate(planTemplateId);
+				savedTemplate.setInputSchema(inputSchemaJson);
+				funcAgentToolRepository.save(savedTemplate);
+				
+				// Count parameters for logging
+				int parameterCount = 0;
+				try {
+					com.fasterxml.jackson.databind.JsonNode inputSchemaNode = objectMapper.readTree(inputSchemaJson);
+					if (inputSchemaNode.isArray()) {
+						parameterCount = inputSchemaNode.size();
+					}
+				}
+				catch (Exception e) {
+					// Log parsing errors for debugging
+					log.warn("Failed to parse inputSchema JSON for parameter count logging: {}", e.getMessage(), e);
+				}
+				
+				log.info("Auto-refreshed inputSchema for plan template {} with {} parameters", planTemplateId,
+						parameterCount);
+			}
+			catch (Exception e) {
+				log.warn("Failed to auto-refresh inputSchema for plan template {}: {}", planTemplateId, e.getMessage());
+				// Don't fail the entire save operation if inputSchema refresh fails
+			}
+
 			// Convert entity to VO
 			PlanTemplateConfigVO resultVO = new PlanTemplateConfigVO();
 			resultVO.setPlanTemplateId(savedTemplate.getPlanTemplateId());
