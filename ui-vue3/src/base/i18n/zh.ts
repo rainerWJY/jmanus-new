@@ -801,7 +801,7 @@ const words: I18nType = {
     clearParams: '清空参数',
     parameterRequirements: '参数要求',
     parameterRequirementsHelp:
-      '在模版编辑器的 "任务要求" 栏目中，你可以通过<<参数名>>的方式定义可变参数（可以是多个），用于告知模型你的函数需要什么格式的输入。默认描述为参数名称。',
+      '在模版编辑器的任务要求栏目中，你可以通过双尖括号加参数名再加双尖括号的方式定义可变参数（例如：参数名）。可以是多个参数。用于告知模型你的函数需要什么格式的输入。默认描述为参数名称。',
     clearAllParams: '清空所有参数',
     historyUp: '上一个值',
     historyDown: '下一个值',
@@ -959,6 +959,9 @@ const words: I18nType = {
     // 模型和工具键
     modelName: '模型名称',
     modelNameDescription: '指定模型名字用于处理特定任务（如图片识别等），如不指定则使用默认的模型',
+    maxSteps: '最大步数',
+    maxStepsPlaceholder: '输入最大步数（可选）',
+    maxStepsDescription: '覆盖此计划模板的默认最大步数',
     noModelSelected: '空',
     noModelsFound: '未找到模型',
     noTools:

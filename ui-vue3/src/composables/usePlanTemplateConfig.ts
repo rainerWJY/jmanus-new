@@ -84,6 +84,14 @@ export function usePlanTemplateConfig() {
     config.serviceGroup = serviceGroup
   }
 
+  const setMaxSteps = (maxSteps: number | undefined) => {
+    if (maxSteps === undefined || maxSteps === null) {
+      delete config.maxSteps
+    } else {
+      config.maxSteps = maxSteps
+    }
+  }
+
   const setToolConfig = (toolConfig: ToolConfigVO | undefined) => {
     if (toolConfig === undefined) {
       delete config.toolConfig
@@ -201,6 +209,7 @@ export function usePlanTemplateConfig() {
     const accessLevel = config.accessLevel || (config.readOnly ? 'readOnly' : 'editable')
     const jsonConfig: PlanTemplateConfigVO = {
       title: config.title || '',
+      maxSteps: config.maxSteps,
       steps: (config.steps || []).map(step => ({
         ...step,
         // Ensure selectedToolKeys is always an array, not null
@@ -637,6 +646,7 @@ export function usePlanTemplateConfig() {
     setPlanType,
     setPlanTemplateId,
     setServiceGroup,
+    setMaxSteps,
     setToolConfig,
     setToolDescription,
     setEnableInternalToolcall,

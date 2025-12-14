@@ -854,7 +854,7 @@ const words: I18nType = {
     historyUp: 'Previous value',
     historyDown: 'Next value',
     parameterRequirementsHelp:
-      'In the template editor\'s "Task Requirements" section, you can define variable parameters using <<parameter_name>> format (multiple parameters are allowed) to inform the model what format of input your function requires. The default description is the parameter name.',
+      'In the template editor Task Requirements section, you can define variable parameters using the format: double angle brackets followed by parameter_name and closing brackets (e.g., parameter_name). Multiple parameters are allowed. This informs the model what format of input your function requires. The default description is the parameter name.',
     clearAllParams: 'Clear All Parameters',
     noParametersRequired: 'This plan template does not require any parameters',
     fillAllRequiredParameters: 'Please fill in all required parameters',
@@ -1017,6 +1017,9 @@ const words: I18nType = {
     modelName: 'Model Name',
     modelNameDescription:
       'Specify model name for handling specific tasks (such as image recognition, etc.). If not specified, the default model will be used.',
+    maxSteps: 'Max Steps',
+    maxStepsPlaceholder: 'Enter max steps (optional)',
+    maxStepsDescription: 'Override default max steps for this plan template',
     noModelSelected: 'Empty',
     noModelsFound: 'No models found',
     noTools:
