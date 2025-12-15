@@ -45,8 +45,7 @@ public class SmartContentSavingService implements ISmartContentSavingService {
 
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
-	public SmartContentSavingService(LynxeProperties lynxeProperties,
-			UnifiedDirectoryManager unifiedDirectoryManager) {
+	public SmartContentSavingService(LynxeProperties lynxeProperties, UnifiedDirectoryManager unifiedDirectoryManager) {
 		this.lynxeProperties = lynxeProperties;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 	}
@@ -123,7 +122,8 @@ public class SmartContentSavingService implements ISmartContentSavingService {
 				Files.writeString(filePath, content);
 				log.info("Saved long content ({} chars) to file: {}", content.length(), filePath);
 
-				// Generate truncated summary: first 250 chars + "...[truncated]..." + last 200 chars
+				// Generate truncated summary: first 250 chars + "...[truncated]..." +
+				// last 200 chars
 				String truncatedSummary = generateTruncatedSummary(content);
 
 				return new SmartProcessResult(fileName, truncatedSummary);

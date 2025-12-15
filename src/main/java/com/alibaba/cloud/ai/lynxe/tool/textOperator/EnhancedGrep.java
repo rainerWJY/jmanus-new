@@ -691,7 +691,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				String displayContent = match.lineContent;
 				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
-							.processContent(this.rootPlanId, match.lineContent, "grep_match");
+						.processContent(this.rootPlanId, match.lineContent, "grep_match");
 					displayContent = processed.getSummary();
 				}
 				result.append(String.format("%d%s%s\n", match.lineNumber, marker, displayContent));
@@ -725,12 +725,12 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			// Read entire file for multiline matching
 			String content = Files.readString(file);
 			Matcher matcher = pattern.matcher(content);
-			
+
 			// Find all matches and extract their content
 			while (matcher.find()) {
 				String matchedContent = matcher.group();
 				int startPos = matcher.start();
-				
+
 				// Calculate line number from position
 				int lineNumber = 1;
 				for (int i = 0; i < startPos && i < content.length(); i++) {
@@ -738,24 +738,24 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 						lineNumber++;
 					}
 				}
-				
+
 				// Replace newlines with \n for display
 				String displayContent = matchedContent.replace("\n", "\\n").replace("\r", "");
-				
+
 				// Use SmartContentSavingService for truncation if rootPlanId is available
 				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
-							.processContent(this.rootPlanId, displayContent, "grep_multiline_match");
+						.processContent(this.rootPlanId, displayContent, "grep_multiline_match");
 					displayContent = processed.getSummary();
 				}
 				else {
 					// Fallback truncation if no rootPlanId
 					if (displayContent.length() > 500) {
-						displayContent = displayContent.substring(0, 250) + "...[truncated]..." 
-							+ displayContent.substring(displayContent.length() - 200);
+						displayContent = displayContent.substring(0, 250) + "...[truncated]..."
+								+ displayContent.substring(displayContent.length() - 200);
 					}
 				}
-				
+
 				results.add(new MatchResult(file.toString(), lineNumber, displayContent, true));
 			}
 		}
@@ -794,7 +794,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 		return results;
 	}
-
 
 	/**
 	 * Search and return match counts Files are sorted by match count (descending) and
