@@ -718,9 +718,31 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			// Read entire file for multiline matching
 			String content = Files.readString(file);
 			Matcher matcher = pattern.matcher(content);
-			if (matcher.find()) {
-				// For multiline, return a simple indicator
-				results.add(new MatchResult(file.toString(), 1, "(multiline match found)", true));
+			
+			// Find all matches and extract their content
+			while (matcher.find()) {
+				String matchedContent = matcher.group();
+				int startPos = matcher.start();
+				
+				// Calculate line number from position
+				int lineNumber = 1;
+				for (int i = 0; i < startPos && i < content.length(); i++) {
+					if (content.charAt(i) == '\n') {
+						lineNumber++;
+					}
+				}
+				
+				// Replace newlines with \n for display (or keep them for multiline display)
+				// Option 1: Replace newlines with visible marker
+				String displayContent = matchedContent.replace("\n", "\\n").replace("\r", "");
+				
+				// Option 2: Keep newlines but truncate if too long
+				if (displayContent.length() > 500) {
+					displayContent = displayContent.substring(0, 250) + "...[truncated]..." 
+						+ displayContent.substring(displayContent.length() - 200);
+				}
+				
+				results.add(new MatchResult(file.toString(), lineNumber, displayContent, true));
 			}
 		}
 		else {
