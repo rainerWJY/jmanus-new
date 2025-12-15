@@ -615,12 +615,15 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 					logger.debug("Parameter replacement completed successfully");
 				}
 				catch (ParameterValidationException e) {
-					// Parameter validation errors should be thrown externally for proper error handling
-					// This allows the frontend to receive detailed validation error messages
+					// Parameter validation errors should be thrown externally for proper
+					// error handling
+					// This allows the frontend to receive detailed validation error
+					// messages
 					String errorMsg = "Failed to replace parameters in plan template: " + e.getMessage();
 					logger.error(errorMsg, e);
 					CompletableFuture<PlanExecutionResult> failedFuture = new CompletableFuture<>();
-					// Keep ParameterValidationException type for proper error handling upstream
+					// Keep ParameterValidationException type for proper error handling
+					// upstream
 					failedFuture.completeExceptionally(e);
 					return new PlanExecutionWrapper(failedFuture, null);
 				}

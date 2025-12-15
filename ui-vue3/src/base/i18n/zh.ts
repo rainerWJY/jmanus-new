@@ -1316,6 +1316,7 @@ const words: I18nType = {
     enableInConversation: '在对话中启用',
     enableInConversationDescription:
       '勾选后，此工具将在对话模式中可用，允许AI在聊天交互过程中调用此功能。',
+    singleParameterRequiredForConversation: '只有单参数方法才能在对话模式中启用。',
     publishing: '发布中...',
     delete: '删除',
     deleting: '删除中...',

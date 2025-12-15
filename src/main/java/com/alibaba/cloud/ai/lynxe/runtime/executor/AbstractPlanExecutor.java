@@ -123,7 +123,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				context.setSuccess(false);
 				return executor;
 			}
-			
+
 			step.setResult(agentResult.getResult());
 			step.setStatus(agentResult.getState());
 

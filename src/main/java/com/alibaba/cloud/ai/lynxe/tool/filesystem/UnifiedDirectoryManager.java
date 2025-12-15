@@ -121,7 +121,7 @@ public class UnifiedDirectoryManager {
 			ensureExternalFolderLink(rootPlanDir);
 		}
 		catch (IOException e) {
-			log.warn("Failed to ensure root plan directory or external folder link for rootPlanId={}, path={}: {}", 
+			log.warn("Failed to ensure root plan directory or external folder link for rootPlanId={}, path={}: {}",
 					rootPlanId, rootPlanDir, e.getMessage(), e);
 		}
 		return rootPlanDir;
@@ -198,11 +198,10 @@ public class UnifiedDirectoryManager {
 
 	/**
 	 * Resolve a relative path within a root plan directory with proper handling of
-	 * symbolic links. This method provides safe path resolution that:
-	 * - Handles linked_external symbolic links without resolving them
-	 * - Normalizes other paths to prevent path traversal attacks
-	 * - Validates that the resolved path stays within the root plan directory
-	 * 
+	 * symbolic links. This method provides safe path resolution that: - Handles
+	 * linked_external symbolic links without resolving them - Normalizes other paths to
+	 * prevent path traversal attacks - Validates that the resolved path stays within the
+	 * root plan directory
 	 * @param rootPlanDirectory The root plan directory to resolve paths within
 	 * @param relativePath The relative path to resolve
 	 * @return The resolved Path object
@@ -213,7 +212,8 @@ public class UnifiedDirectoryManager {
 			return rootPlanDirectory;
 		}
 
-		// Check if this is accessing linked_external directory (symbolic link to external folder)
+		// Check if this is accessing linked_external directory (symbolic link to external
+		// folder)
 		boolean isLinkedExternal = isLinkedExternalPath(relativePath);
 
 		Path resolvedPath;

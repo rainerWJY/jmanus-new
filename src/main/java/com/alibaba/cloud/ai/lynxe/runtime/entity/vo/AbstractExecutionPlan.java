@@ -49,9 +49,9 @@ public abstract class AbstractExecutionPlan implements PlanInterface {
 	protected String executionParams;
 
 	/**
-	 * Maximum execution steps for this plan.
-	 * If set, this will override the default maxSteps from lynxeProperties.
-	 * If null, the default value from lynxeProperties will be used.
+	 * Maximum execution steps for this plan. If set, this will override the default
+	 * maxSteps from lynxeProperties. If null, the default value from lynxeProperties will
+	 * be used.
 	 */
 	protected Integer maxSteps;
 

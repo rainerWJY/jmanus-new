@@ -46,32 +46,32 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Grep Tool - Powerful text search tool based on ripgrep (rg) for precise text/regex matching
+ * Grep Tool - Powerful text search tool based on ripgrep (rg) for precise text/regex
+ * matching
  *
- * This tool provides powerful search capabilities similar to ripgrep, supporting:
- * - Full regular expression syntax (e.g., "log.*Error", "function\\s+\\w+")
- * - Multiple pattern search: Use | (OR operator) to search for multiple words/patterns in one query
- *   (e.g., "Repository|Service|Controller" matches any of these words)
- * - Multiple output modes: count (default), content
- * - File filtering with glob patterns (e.g., "*.js", "*.{ts,tsx}") or type parameter
- * - Case-insensitive search option (-i flag)
- * - Context lines display (-A: after, -B: before, -C: around matches)
- * - Multiline matching support (. matches newlines)
- * - Result limiting (head_limit parameter)
+ * This tool provides powerful search capabilities similar to ripgrep, supporting: - Full
+ * regular expression syntax (e.g., "log.*Error", "function\\s+\\w+") - Multiple pattern
+ * search: Use | (OR operator) to search for multiple words/patterns in one query (e.g.,
+ * "Repository|Service|Controller" matches any of these words) - Multiple output modes:
+ * count (default), content - File filtering with glob patterns (e.g., "*.js",
+ * "*.{ts,tsx}") or type parameter - Case-insensitive search option (-i flag) - Context
+ * lines display (-A: after, -B: before, -C: around matches) - Multiline matching support
+ * (. matches newlines) - Result limiting (head_limit parameter)
  *
- * Usage Scenarios:
- * - Use Grep for: Precise text search, regex matching, known symbol/variable lookup,
- *   searching for multiple patterns simultaneously using | operator
- * - Don't use Grep for: Semantic search (use SemanticSearch), file name search (use Glob), 
- *   reading known files (use Read)
+ * Usage Scenarios: - Use Grep for: Precise text search, regex matching, known
+ * symbol/variable lookup, searching for multiple patterns simultaneously using | operator
+ * - Don't use Grep for: Semantic search (use SemanticSearch), file name search (use
+ * Glob), reading known files (use Read)
  *
- * Output Formats:
- * - content mode: Shows matching lines with ':' separator, context lines with '-' separator
- * - count mode: Shows match counts per file (e.g., "file.java: 5 matches")
+ * Output Formats: - content mode: Shows matching lines with ':' separator, context lines
+ * with '-' separator - count mode: Shows match counts per file (e.g., "file.java: 5
+ * matches")
  *
- * Note: Literal braces need escaping in patterns (use interface\\{\\} to find interface{} in code)
+ * Note: Literal braces need escaping in patterns (use interface\\{\\} to find interface{}
+ * in code)
  *
- * Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
+ * Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search,
+ * exact match
  */
 public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
@@ -111,8 +111,10 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	 * Output mode enumeration
 	 */
 	public enum OutputMode {
+
 		CONTENT, // Show matching lines with content
 		COUNT // Show match counts per file
+
 	}
 
 	/**
@@ -278,7 +280,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		this.toolI18nService = toolI18nService;
 	}
 
-
 	@Override
 	public ToolExecuteResult run(GrepInput input) {
 		log.info("EnhancedGrep input: pattern={}, path={}", input.getPattern(), input.getPath());
@@ -331,8 +332,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 			// Execute search based on mode
 			return switch (mode) {
-				case CONTENT -> searchContent(filesToSearch, regexPattern, beforeLines, afterLines, maxResults,
-						multiline);
+				case CONTENT ->
+					searchContent(filesToSearch, regexPattern, beforeLines, afterLines, maxResults, multiline);
 				case COUNT -> searchCount(filesToSearch, regexPattern, maxResults, multiline);
 			};
 		}
@@ -354,22 +355,22 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			// Fallback to current directory
 			return Paths.get(".");
 		}
-		
+
 		// Normalize path: remove trailing slashes for consistent handling
 		String normalizedPath = path;
 		while (normalizedPath.endsWith("/") && normalizedPath.length() > 1) {
 			normalizedPath = normalizedPath.substring(0, normalizedPath.length() - 1);
 		}
-		
+
 		// If rootPlanId is available, resolve path relative to root plan directory
 		if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 			Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 			UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
-			
+
 			// Use the centralized method from UnifiedDirectoryManager
 			return directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 		}
-		
+
 		// If no rootPlanId, treat path as absolute
 		return Paths.get(normalizedPath);
 	}
@@ -434,7 +435,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		Path rootPath = root;
 
 		// Walk directory tree, following symbolic links to traverse linked_external
-		// Use walkFileTree to handle circular symlinks gracefully by skipping problematic directories
+		// Use walkFileTree to handle circular symlinks gracefully by skipping problematic
+		// directories
 		FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
@@ -523,12 +525,13 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			}
 		};
 
-		// Walk the directory tree with depth limit - all exceptions are handled by visitFileFailed
+		// Walk the directory tree with depth limit - all exceptions are handled by
+		// visitFileFailed
 		Files.walkFileTree(root, java.util.EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
 
 		return files;
 	}
-	
+
 	/**
 	 * Check if path is hidden
 	 */
@@ -591,12 +594,15 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	private static final int MAX_FILES_TO_RETURN = 15;
 
 	/**
-	 * Helper class to store file match information for sorting
-	 * Can be used by both searchContent and searchCount methods
+	 * Helper class to store file match information for sorting Can be used by both
+	 * searchContent and searchCount methods
 	 */
 	private static class FileMatchInfo {
+
 		Path file;
+
 		List<MatchResult> matches; // Used by searchContent, can be null for searchCount
+
 		int matchCount;
 
 		/**
@@ -617,11 +623,12 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			this.matches = null;
 			this.matchCount = matchCount;
 		}
+
 	}
 
 	/**
-	 * Search and return content with matches
-	 * Files are sorted by match count (descending) and only top 15 files are returned
+	 * Search and return content with matches Files are sorted by match count (descending)
+	 * and only top 15 files are returned
 	 */
 	private ToolExecuteResult searchContent(List<Path> files, Pattern pattern, int beforeLines, int afterLines,
 			int maxResults, boolean multiline) {
@@ -703,8 +710,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	/**
 	 * Search single file and return matches with context
 	 */
-	private List<MatchResult> searchFile(Path file, Pattern pattern, int beforeLines, int afterLines,
-			boolean multiline) throws IOException {
+	private List<MatchResult> searchFile(Path file, Pattern pattern, int beforeLines, int afterLines, boolean multiline)
+			throws IOException {
 		List<MatchResult> results = new ArrayList<>();
 
 		if (multiline) {
@@ -753,10 +760,11 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
-	 * Truncate long lines with smart highlighting for matches.
-	 * For match lines longer than 400 characters, keeps the match in the center
-	 * with 200 characters before and 200 characters after (similar to search engine highlighting).
-	 * For context lines (non-match lines) longer than 500 characters, truncates to first 200 and last 200 characters.
+	 * Truncate long lines with smart highlighting for matches. For match lines longer
+	 * than 400 characters, keeps the match in the center with 200 characters before and
+	 * 200 characters after (similar to search engine highlighting). For context lines
+	 * (non-match lines) longer than 500 characters, truncates to first 200 and last 200
+	 * characters.
 	 * @param line The line content to truncate
 	 * @param pattern The regex pattern used for matching
 	 * @param isMatchLine Whether this is a match line (true) or context line (false)
@@ -767,12 +775,14 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			return "";
 		}
 
-		// For match lines longer than 400 characters, use smart truncation with match in center
+		// For match lines longer than 400 characters, use smart truncation with match in
+		// center
 		if (isMatchLine && line.length() > 400) {
 			return truncateWithMatchInCenter(line, pattern);
 		}
 
-		// For context lines longer than 500 characters, truncate to first 200 and last 200 characters
+		// For context lines longer than 500 characters, truncate to first 200 and last
+		// 200 characters
 		if (!isMatchLine && line.length() > 500) {
 			return truncateContextLine(line);
 		}
@@ -788,8 +798,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
-	 * Truncate context line to first 200 and last 200 characters.
-	 * Used for context lines (non-match lines) that are longer than 500 characters.
+	 * Truncate context line to first 200 and last 200 characters. Used for context lines
+	 * (non-match lines) that are longer than 500 characters.
 	 * @param line The line content to truncate
 	 * @return Truncated line with first 200 and last 200 characters
 	 */
@@ -805,8 +815,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	/**
 	 * Truncate long line keeping the match in the center with 200 chars before and after.
-	 * Similar to search engine highlighting approach.
-	 * Shows 200 characters before match start, the match itself, and 200 characters after match end.
+	 * Similar to search engine highlighting approach. Shows 200 characters before match
+	 * start, the match itself, and 200 characters after match end.
 	 * @param line The line content
 	 * @param pattern The regex pattern to find match position
 	 * @return Truncated line with match in center
@@ -848,8 +858,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
-	 * Search and return match counts
-	 * Files are sorted by match count (descending) and only top 15 files are returned
+	 * Search and return match counts Files are sorted by match count (descending) and
+	 * only top 15 files are returned
 	 */
 	private ToolExecuteResult searchCount(List<Path> files, Pattern pattern, int maxResults, boolean multiline) {
 		StringBuilder result = new StringBuilder();
@@ -1005,4 +1015,3 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 }
-

@@ -39,14 +39,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Global file write operator that performs write operations on files. This operator provides access
- * to files that can be accessed across all sub-plans within the same execution context.
+ * Global file write operator that performs write operations on files. This operator
+ * provides access to files that can be accessed across all sub-plans within the same
+ * execution context.
  *
  * Keywords: global files, root directory, root folder, root plan directory, global file
  * write operations, root file access, cross-plan files.
  *
- * Use this tool for write operations on global files, root directory files, or root folder
- * files.
+ * Use this tool for write operations on global files, root directory files, or root
+ * folder files.
  */
 public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOperator.WriteFileInput> {
 
@@ -212,8 +213,8 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 					}
 					yield deleteFile(filePath);
 				}
-				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, write, delete");
+				default -> new ToolExecuteResult(
+						"Unknown operation: " + action + ". Supported operations: replace, write, delete");
 			};
 		}
 		catch (Exception e) {
@@ -269,8 +270,8 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 					yield writeFile(filePath, contents);
 				}
 				case "delete" -> deleteFile(filePath);
-				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: replace, write, delete");
+				default -> new ToolExecuteResult(
+						"Unknown operation: " + action + ". Supported operations: replace, write, delete");
 			};
 		}
 		catch (Exception e) {
@@ -372,7 +373,6 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 		// Use the centralized method from UnifiedDirectoryManager
 		Path rootPlanPath = directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 
-
 		// If file exists in root plan directory, use it
 		if (Files.exists(rootPlanPath)) {
 			return rootPlanPath;
@@ -450,10 +450,9 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 		}
 	}
 
-
 	/**
-	 * Replace text in file (StrReplace tool implementation)
-	 * Performs exact string replacement with uniqueness validation
+	 * Replace text in file (StrReplace tool implementation) Performs exact string
+	 * replacement with uniqueness validation
 	 */
 	private ToolExecuteResult replaceText(String filePath, String oldString, String newString) {
 		try {
@@ -483,12 +482,9 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 			// Count occurrences to validate uniqueness
 			int occurrenceCount = countOccurrences(content, oldString);
 			if (occurrenceCount > 1) {
-				return new ToolExecuteResult(
-						String.format(
-								"Error: old_string is not unique (found %d occurrences). "
-										+ "Please provide a larger string with more surrounding context to make it unique, "
-										+ "or use a more specific match.",
-								occurrenceCount));
+				return new ToolExecuteResult(String.format("Error: old_string is not unique (found %d occurrences). "
+						+ "Please provide a larger string with more surrounding context to make it unique, "
+						+ "or use a more specific match.", occurrenceCount));
 			}
 
 			// Perform replacement (only first occurrence since we validated uniqueness)
@@ -523,8 +519,8 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 	}
 
 	/**
-	 * Write file (Write tool implementation)
-	 * Creates new files or overwrites existing files completely
+	 * Write file (Write tool implementation) Creates new files or overwrites existing
+	 * files completely
 	 */
 	private ToolExecuteResult writeFile(String filePath, String contents) {
 		try {
@@ -564,9 +560,6 @@ public class GlobalFileWriteOperator extends AbstractBaseTool<GlobalFileWriteOpe
 			return new ToolExecuteResult("Error writing file: " + e.getMessage());
 		}
 	}
-
-
-
 
 	@Override
 	public String getCurrentToolStateString() {

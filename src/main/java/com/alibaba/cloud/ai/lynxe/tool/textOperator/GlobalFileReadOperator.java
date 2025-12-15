@@ -37,8 +37,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Global file read operator that performs read operations on files. This operator provides access
- * to files that can be accessed across all sub-plans within the same execution context.
+ * Global file read operator that performs read operations on files. This operator
+ * provides access to files that can be accessed across all sub-plans within the same
+ * execution context.
  *
  * Keywords: global files, root directory, root folder, root plan directory, global file
  * read operations, root file access, cross-plan files.
@@ -178,7 +179,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 			String action = (String) toolInputMap.get("action");
 			String filePath = (String) toolInputMap.get("file_path");
 			String path = (String) toolInputMap.get("path");
-			
+
 			// Use path if provided, otherwise fall back to file_path
 			String targetPath = path != null ? path : filePath;
 
@@ -198,8 +199,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
-				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words");
+				default ->
+					new ToolExecuteResult("Unknown operation: " + action + ". Supported operations: read, count_words");
 			};
 		}
 		catch (Exception e) {
@@ -234,8 +235,8 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 					yield readFile(targetPath, offset, limit, bypassLimit);
 				}
 				case "count_words" -> countWords(targetPath);
-				default -> new ToolExecuteResult("Unknown operation: " + action
-						+ ". Supported operations: read, count_words");
+				default ->
+					new ToolExecuteResult("Unknown operation: " + action + ". Supported operations: read, count_words");
 			};
 		}
 		catch (Exception e) {
@@ -331,12 +332,12 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
-		// For GlobalFileReadOperator, check root plan directory first, then subplan directory
+		// For GlobalFileReadOperator, check root plan directory first, then subplan
+		// directory
 		// if applicable
 		// This allows accessing files in root plan directory even when in subplan context
 		// Use the centralized method from UnifiedDirectoryManager
 		Path rootPlanPath = directoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
-
 
 		// If file exists in root plan directory, use it
 		if (Files.exists(rootPlanPath)) {
@@ -393,11 +394,9 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		return filePath.substring(lastDotIndex);
 	}
 
-
 	/**
-	 * Read file contents with optional offset and limit
-	 * Matches the Read tool definition: reads file contents from local filesystem
-	 * 
+	 * Read file contents with optional offset and limit Matches the Read tool definition:
+	 * reads file contents from local filesystem
 	 * @param filePath The file path to read
 	 * @param offset Optional line number to start reading from (1-based)
 	 * @param limit Optional number of lines to read
@@ -420,20 +419,19 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 				return new ToolExecuteResult("File is empty.");
 			}
 
-			// Protection: If file is too large and no offset/limit provided, suggest using offset/limit
+			// Protection: If file is too large and no offset/limit provided, suggest
+			// using offset/limit
 			// Unless bypassLimit flag is set to true
 			boolean isFullRead = (offset == null && limit == null);
 			boolean shouldBypassLimit = (bypassLimit != null && bypassLimit);
 			if (isFullRead && !shouldBypassLimit && lines.size() > MAX_LINES_FOR_FULL_READ) {
-				return new ToolExecuteResult(
-						String.format(
-								"File is too large (%d lines, exceeds limit of %d lines). "
-										+ "Please use one of the following approaches:\n"
-										+ "1. Use offset and limit parameters to read specific line ranges (e.g., offset=1, limit=100)\n"
-										+ "2. Use search functionality to find relevant sections\n"
-										+ "3. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
-										+ "Example: Read first 100 lines with offset=1, limit=100",
-								lines.size(), MAX_LINES_FOR_FULL_READ));
+				return new ToolExecuteResult(String.format("File is too large (%d lines, exceeds limit of %d lines). "
+						+ "Please use one of the following approaches:\n"
+						+ "1. Use offset and limit parameters to read specific line ranges (e.g., offset=1, limit=100)\n"
+						+ "2. Use search functionality to find relevant sections\n"
+						+ "3. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
+						+ "Example: Read first 100 lines with offset=1, limit=100", lines.size(),
+						MAX_LINES_FOR_FULL_READ));
 			}
 
 			// Determine read range

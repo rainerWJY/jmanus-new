@@ -79,6 +79,7 @@ import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.UuidGenerateTool;
 import com.alibaba.cloud.ai.lynxe.tool.dirOperator.DirectoryOperator;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
@@ -189,6 +190,9 @@ public class PlanningFactory {
 	@Autowired
 	private ToolI18nService toolI18nService;
 
+	@Autowired
+	private SymbolicLinkDetector symlinkDetector;
+
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
 			SmartContentSavingService innerStorageService, UnifiedDirectoryManager unifiedDirectoryManager,
@@ -273,7 +277,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService));
 			toolDefinitions.add(new FileImportOperator(textFileService, null, toolI18nService));
 			toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper, toolI18nService));
-			toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService));
+			toolDefinitions
+				.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService, symlinkDetector));
 			// toolDefinitions.add(new UploadedFileLoaderTool(unifiedDirectoryManager,
 			// applicationContext));
 			// toolDefinitions.add(new TableProcessorTool(tableProcessingService));

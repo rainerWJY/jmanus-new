@@ -98,8 +98,8 @@ public abstract class BaseAgent {
 	private int currentStep = 0;
 
 	/**
-	 * Set the maximum execution steps for this agent.
-	 * This allows overriding the default value from lynxeProperties.
+	 * Set the maximum execution steps for this agent. This allows overriding the default
+	 * value from lynxeProperties.
 	 * @param maxSteps The maximum execution steps
 	 */
 	public void setMaxSteps(int maxSteps) {

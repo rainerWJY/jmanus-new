@@ -155,10 +155,10 @@ public class ParallelExecutionTool extends AbstractBaseTool<RegisterBatchInput>
 	}
 
 	/**
-	 * Custom deserializer for functions field that handles both JSON array and JSON string
-	 * formats. This allows the frontend to send functions as either:
-	 * - A JSON array: [{"pattern": "test", "type": "java"}]
-	 * - A JSON string: "[{\"pattern\": \"test\", \"type\": \"java\"}]"
+	 * Custom deserializer for functions field that handles both JSON array and JSON
+	 * string formats. This allows the frontend to send functions as either: - A JSON
+	 * array: [{"pattern": "test", "type": "java"}] - A JSON string: "[{\"pattern\":
+	 * \"test\", \"type\": \"java\"}]"
 	 */
 	static class FunctionsListDeserializer extends JsonDeserializer<List<Map<String, Object>>> {
 

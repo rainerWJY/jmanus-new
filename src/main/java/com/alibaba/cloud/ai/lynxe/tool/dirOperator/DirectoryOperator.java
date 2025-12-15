@@ -25,13 +25,13 @@ import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -45,7 +45,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * Keywords: directory listing, list files, list directories, root directory, root folder,
  * root plan directory, directory operations.
  *
- * Use this tool for listing files and directories in the root directory or subdirectories.
+ * Use this tool for listing files and directories in the root directory or
+ * subdirectories.
  */
 public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFilesInput> {
 
@@ -122,11 +123,14 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 
 	private final ToolI18nService toolI18nService;
 
+	private final SymbolicLinkDetector symlinkDetector;
+
 	public DirectoryOperator(UnifiedDirectoryManager unifiedDirectoryManager, ObjectMapper objectMapper,
-			ToolI18nService toolI18nService) {
+			ToolI18nService toolI18nService, SymbolicLinkDetector symlinkDetector) {
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		this.objectMapper = objectMapper;
 		this.toolI18nService = toolI18nService;
+		this.symlinkDetector = symlinkDetector;
 	}
 
 	@Override
@@ -162,8 +166,8 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 					}
 					yield globFiles(globPattern, targetDirectory);
 				}
-				default -> new ToolExecuteResult(
-						"Unknown operation: " + action + ". Supported operations: list_files, glob");
+				default ->
+					new ToolExecuteResult("Unknown operation: " + action + ". Supported operations: list_files, glob");
 			};
 		}
 		catch (Exception e) {
@@ -220,7 +224,7 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 			Path targetDirectory = rootPlanDirectory;
 			if (normalizedPath != null && !normalizedPath.isEmpty() && !normalizedPath.equals(".")
 					&& !normalizedPath.equals("root")) {
-				
+
 				// Use the centralized method from UnifiedDirectoryManager
 				targetDirectory = unifiedDirectoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 			}
@@ -299,8 +303,8 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 	 * specified glob pattern, with results sorted by modification time (most recently
 	 * modified first).
 	 * @param globPattern The glob pattern to match files against (required)
-	 * @param targetDirectory Optional target directory to search in (defaults to root plan
-	 * directory)
+	 * @param targetDirectory Optional target directory to search in (defaults to root
+	 * plan directory)
 	 * @return ToolExecuteResult with matching file paths sorted by modification time
 	 */
 	private ToolExecuteResult globFiles(String globPattern, String targetDirectory) {
@@ -318,7 +322,7 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 				// Normalize target directory path
 				String normalizedTargetDir = normalizeFilePath(targetDirectory);
 				Path rootPlanDirectory = unifiedDirectoryManager.getRootPlanDirectory(this.rootPlanId);
-				
+
 				// Use the centralized method from UnifiedDirectoryManager
 				searchRoot = unifiedDirectoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedTargetDir);
 
@@ -340,15 +344,16 @@ public class DirectoryOperator extends AbstractBaseTool<DirectoryOperator.ListFi
 			FileSystem fileSystem = FileSystems.getDefault();
 			PathMatcher matcher = fileSystem.getPathMatcher("glob:" + normalizedPattern);
 
-			// Find all matching files
+			// Find all matching files using safe traversal
 			List<Path> matchingFiles = new ArrayList<>();
-			try (Stream<Path> paths = Files.walk(searchRoot)) {
-				paths.filter(Files::isRegularFile).filter(path -> {
-					// Get relative path from search root for pattern matching
-					Path relativePath = searchRoot.relativize(path);
-					return matcher.matches(relativePath);
-				}).forEach(matchingFiles::add);
-			}
+			Files.walkFileTree(searchRoot, symlinkDetector.createSafeFileVisitor(searchRoot, (file, attrs) -> {
+				// Check if file matches the pattern
+				Path relativePath = searchRoot.relativize(file);
+				if (matcher.matches(relativePath)) {
+					matchingFiles.add(file);
+				}
+			}, null // No special directory handling needed
+			));
 
 			// Sort by modification time (most recently modified first)
 			matchingFiles.sort(Comparator.comparing((Path path) -> {

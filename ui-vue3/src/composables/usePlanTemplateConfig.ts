@@ -161,6 +161,9 @@ export function usePlanTemplateConfig() {
       accessLevel: accessLevel,
       serviceGroup: newConfig.serviceGroup || '',
     }
+    if (newConfig.maxSteps !== undefined) {
+      updatedConfig.maxSteps = newConfig.maxSteps
+    }
     if (newConfig.version !== undefined) {
       updatedConfig.version = newConfig.version
     }
@@ -209,7 +212,6 @@ export function usePlanTemplateConfig() {
     const accessLevel = config.accessLevel || (config.readOnly ? 'readOnly' : 'editable')
     const jsonConfig: PlanTemplateConfigVO = {
       title: config.title || '',
-      maxSteps: config.maxSteps,
       steps: (config.steps || []).map(step => ({
         ...step,
         // Ensure selectedToolKeys is always an array, not null
@@ -219,6 +221,10 @@ export function usePlanTemplateConfig() {
       planTemplateId: config.planTemplateId || '',
       accessLevel: accessLevel,
       serviceGroup: config.serviceGroup || '',
+    }
+    // Conditionally include optional properties to satisfy exactOptionalPropertyTypes
+    if (config.maxSteps !== undefined) {
+      jsonConfig.maxSteps = config.maxSteps
     }
     if (config.version !== undefined) {
       jsonConfig.version = config.version

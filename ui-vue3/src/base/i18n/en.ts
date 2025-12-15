@@ -1391,6 +1391,8 @@ const words: I18nType = {
     enableInConversation: 'Enable in Conversation',
     enableInConversationDescription:
       'When checked, this tool will be available for use in conversation mode, allowing the AI to call this function during chat interactions.',
+    singleParameterRequiredForConversation:
+      'Only methods with exactly one parameter can be enabled in conversation mode.',
     publishing: 'Publishing...',
     delete: 'Delete',
     deleting: 'Deleting...',

@@ -442,10 +442,9 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 		// Get the current plan directory (not hierarchical - only current plan)
 		Path planDirectory = textFileService.getRootPlanDirectory(this.currentPlanId);
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
-		
+
 		// Use the centralized method from UnifiedDirectoryManager
 		Path absolutePath = directoryManager.resolveAndValidatePath(planDirectory, filePath);
-
 
 		return absolutePath;
 	}
