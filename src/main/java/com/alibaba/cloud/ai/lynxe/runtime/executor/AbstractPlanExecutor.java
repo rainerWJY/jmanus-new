@@ -407,13 +407,15 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		if (lastExecutor != null) {
 			lastExecutor.clearUp(planId);
 		}
-		// Remove symbolic link directory when plan task finishes
-		if (unifiedDirectoryManager != null && planId != null) {
+		// Remove symbolic link directory when root plan task finishes
+		// Only clean up for root plan (currentPlanId == rootPlanId)
+		String rootPlanId = context.getRootPlanId();
+		if (unifiedDirectoryManager != null && rootPlanId != null && rootPlanId.equals(planId)) {
 			try {
-				unifiedDirectoryManager.removeExternalFolderLink(planId);
+				unifiedDirectoryManager.removeExternalFolderLink(rootPlanId);
 			}
 			catch (Exception e) {
-				logger.warn("Failed to remove external folder symbolic link for planId: {}", planId, e);
+				logger.warn("Failed to remove external folder symbolic link for rootPlanId: {}", rootPlanId, e);
 			}
 		}
 	}
