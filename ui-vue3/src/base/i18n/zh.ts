@@ -451,7 +451,7 @@ const words: I18nType = {
       general: {
         debugDetail: 'debug模式 ：会要求模型输出更多内容，方便查找问题，但速度更慢',
         externalLinkedFolder:
-          '外部目录映射 : 你可以指定一个外部的目录，系统会把这个目录映射到每个任务的一个子目录下面，这样就可以不需要将内容导入。 你可以用 带/或者不带/的绝对目录',
+          '外部目录映射 : 你可以指定一个外部的目录，系统会把这个目录映射到每个任务的一个子目录下面，这样就可以不需要将内容导入。 你可以用 带/或者不带/的绝对目录。映射后的目录可以通过 linked_external 子目录访问。',
         enableConversationMemory: '开启对话记忆',
       },
       interactionSettings: {
@@ -801,7 +801,7 @@ const words: I18nType = {
     clearParams: '清空参数',
     parameterRequirements: '参数要求',
     parameterRequirementsHelp:
-      '在模版编辑器的 "任务要求" 栏目中，你可以通过<<参数名>>的方式定义可变参数（可以是多个），用于告知模型你的函数需要什么格式的输入。默认描述为参数名称。',
+      '在模版编辑器的任务要求栏目中，你可以通过双尖括号加参数名再加双尖括号的方式定义可变参数（例如：参数名）。可以是多个参数。用于告知模型你的函数需要什么格式的输入。默认描述为参数名称。',
     clearAllParams: '清空所有参数',
     historyUp: '上一个值',
     historyDown: '下一个值',
@@ -959,6 +959,9 @@ const words: I18nType = {
     // 模型和工具键
     modelName: '模型名称',
     modelNameDescription: '指定模型名字用于处理特定任务（如图片识别等），如不指定则使用默认的模型',
+    maxSteps: '最大步数',
+    maxStepsPlaceholder: '输入最大步数（可选）',
+    maxStepsDescription: '覆盖此计划模板的默认最大步数',
     noModelSelected: '空',
     noModelsFound: '未找到模型',
     noTools:
@@ -1313,6 +1316,7 @@ const words: I18nType = {
     enableInConversation: '在对话中启用',
     enableInConversationDescription:
       '勾选后，此工具将在对话模式中可用，允许AI在聊天交互过程中调用此功能。',
+    singleParameterRequiredForConversation: '只有单参数方法才能在对话模式中启用。',
     publishing: '发布中...',
     delete: '删除',
     deleting: '删除中...',

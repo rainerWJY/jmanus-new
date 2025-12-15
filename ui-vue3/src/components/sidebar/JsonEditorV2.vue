@@ -93,13 +93,13 @@
               <div class="form-row">
                 <label class="form-label">{{ $t('sidebar.terminateColumns') }}</label>
 
-                <textarea
+                <input
                   :value="step.terminateColumns || ''"
                   @input="e => handleTerminateColumnsInput(e, index)"
-                  class="form-textarea auto-resize"
+                  type="text"
+                  class="form-input"
                   :placeholder="$t('sidebar.terminateColumnsPlaceholder')"
-                  rows="1"
-                ></textarea>
+                />
 
                 <!-- Preview Section -->
                 <div
@@ -236,6 +236,25 @@
                 <div v-if="modelsLoadError" class="error-message">
                   <Icon icon="carbon:warning" width="12" />
                   {{ modelsLoadError }}
+                </div>
+              </div>
+
+              <!-- Max Steps -->
+              <div class="form-row">
+                <label class="form-label">{{ $t('sidebar.maxSteps') || 'Max Steps' }}</label>
+                <input
+                  v-model.number="displayData.maxSteps"
+                  type="number"
+                  class="form-input"
+                  :placeholder="$t('sidebar.maxStepsPlaceholder') || 'Enter max steps (optional)'"
+                  min="1"
+                  @input="handleMaxStepsInput"
+                />
+                <div class="field-description">
+                  {{
+                    $t('sidebar.maxStepsDescription') ||
+                    'Override default max steps for this plan template'
+                  }}
                 </div>
               </div>
 
@@ -410,6 +429,7 @@ const templateConfig = usePlanTemplateConfigSingleton()
 // Display data - sync with templateConfig
 const displayData = reactive<{
   title: string
+  maxSteps?: number | undefined
   steps: StepConfigWithTools[]
 }>({
   title: '',
@@ -472,6 +492,12 @@ const syncDisplayDataFromConfig = () => {
     if (config.title?.trim() || !displayData.title?.trim()) {
       displayData.title = config.title || ''
     }
+    // Sync maxSteps
+    if (config.maxSteps !== undefined) {
+      displayData.maxSteps = config.maxSteps
+    } else {
+      delete displayData.maxSteps
+    }
     // Deep copy steps to avoid reference issues
     displayData.steps = (config.steps || []).map(step => ({ ...step }))
     // Sync service group
@@ -521,6 +547,7 @@ const syncDisplayDataToTemplateConfig = () => {
   isSyncingFromConfig.value = true
   try {
     templateConfig.setTitle(displayData.title)
+    templateConfig.setMaxSteps(displayData.maxSteps)
     templateConfig.setSteps(displayData.steps)
     if (templateConfig.currentPlanTemplateId.value) {
       templateStore.hasTaskRequirementModified = true
@@ -655,11 +682,15 @@ const handleTerminateColumnsInput = (e: Event, stepIndex: number) => {
   setEditingFlag()
   const step = displayData.steps[stepIndex]
   if (step) {
-    step.terminateColumns = (e.target as HTMLTextAreaElement).value
+    step.terminateColumns = (e.target as HTMLInputElement).value
   }
-  autoResizeTextarea(e)
   // Only update displayData, don't sync to templateConfig or trigger any watchers
   // Sync will happen on save via syncDisplayDataToTemplateConfig()
+}
+
+// Handle max steps input
+const handleMaxStepsInput = () => {
+  setEditingFlag()
 }
 
 // Add step handler
@@ -1716,6 +1747,10 @@ const formatTableHeader = (terminateColumns: string): string => {
   color: #ef4444;
   font-weight: 600;
   border: 1px solid rgba(239, 68, 68, 0.3);
+  word-break: break-all;
+  white-space: normal;
+  display: inline-block;
+  max-width: 100%;
 }
 
 /* Copy Plan Modal Styles */

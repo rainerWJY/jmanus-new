@@ -465,7 +465,7 @@ const words: I18nType = {
         debugDetail:
           'Debug mode: The model will output more content to facilitate problem - finding, but it will be slower',
         externalLinkedFolder:
-          "External Directory Mapping: You can specify an external directory, and the system will map this directory to a subdirectory under each task, so you don't need to import the content. You can use an absolute directory path with or without a trailing slash.",
+          "External Directory Mapping: You can specify an external directory, and the system will map this directory to a subdirectory under each task, so you don't need to import the content. You can use an absolute directory path with or without a trailing slash. The mapped directory can be accessed through the linked_external subdirectory.",
         enableConversationMemory: 'Enable Conversation Memory',
       },
       interactionSettings: {
@@ -854,7 +854,7 @@ const words: I18nType = {
     historyUp: 'Previous value',
     historyDown: 'Next value',
     parameterRequirementsHelp:
-      'In the template editor\'s "Task Requirements" section, you can define variable parameters using <<parameter_name>> format (multiple parameters are allowed) to inform the model what format of input your function requires. The default description is the parameter name.',
+      'In the template editor Task Requirements section, you can define variable parameters using the format: double angle brackets followed by parameter_name and closing brackets (e.g., parameter_name). Multiple parameters are allowed. This informs the model what format of input your function requires. The default description is the parameter name.',
     clearAllParams: 'Clear All Parameters',
     noParametersRequired: 'This plan template does not require any parameters',
     fillAllRequiredParameters: 'Please fill in all required parameters',
@@ -1017,6 +1017,9 @@ const words: I18nType = {
     modelName: 'Model Name',
     modelNameDescription:
       'Specify model name for handling specific tasks (such as image recognition, etc.). If not specified, the default model will be used.',
+    maxSteps: 'Max Steps',
+    maxStepsPlaceholder: 'Enter max steps (optional)',
+    maxStepsDescription: 'Override default max steps for this plan template',
     noModelSelected: 'Empty',
     noModelsFound: 'No models found',
     noTools:
@@ -1388,6 +1391,8 @@ const words: I18nType = {
     enableInConversation: 'Enable in Conversation',
     enableInConversationDescription:
       'When checked, this tool will be available for use in conversation mode, allowing the AI to call this function during chat interactions.',
+    singleParameterRequiredForConversation:
+      'Only methods with exactly one parameter can be enabled in conversation mode.',
     publishing: 'Publishing...',
     delete: 'Delete',
     deleting: 'Deleting...',

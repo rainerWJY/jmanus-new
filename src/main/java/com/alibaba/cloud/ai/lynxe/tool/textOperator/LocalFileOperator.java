@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -440,12 +441,10 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 
 		// Get the current plan directory (not hierarchical - only current plan)
 		Path planDirectory = textFileService.getRootPlanDirectory(this.currentPlanId);
-		Path absolutePath = planDirectory.resolve(filePath).normalize();
+		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
-		// Ensure the path stays within the plan directory
-		if (!absolutePath.startsWith(planDirectory)) {
-			throw new IOException("Access denied: File path must be within the current plan directory");
-		}
+		// Use the centralized method from UnifiedDirectoryManager
+		Path absolutePath = directoryManager.resolveAndValidatePath(planDirectory, filePath);
 
 		return absolutePath;
 	}
@@ -823,16 +822,13 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 
 			// Get the current plan directory
 			Path planDirectory = textFileService.getRootPlanDirectory(this.currentPlanId);
+			UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
 			// If a subdirectory path is provided, resolve it within plan directory
 			Path targetDirectory = planDirectory;
 			if (directoryPath != null && !directoryPath.isEmpty()) {
-				targetDirectory = planDirectory.resolve(directoryPath).normalize();
-
-				// Ensure the target directory stays within plan directory
-				if (!targetDirectory.startsWith(planDirectory)) {
-					return new ToolExecuteResult("Error: Directory path must be within the current plan directory");
-				}
+				// Use the centralized method from UnifiedDirectoryManager
+				targetDirectory = directoryManager.resolveAndValidatePath(planDirectory, directoryPath);
 			}
 
 			// Check if directory exists - don't create it for list operation
