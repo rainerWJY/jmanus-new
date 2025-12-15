@@ -488,4 +488,46 @@ public class UnifiedDirectoryManager {
 		}
 	}
 
+	/**
+	 * Remove the external folder symbolic link from root plan directory when plan task
+	 * finishes
+	 * @param rootPlanId The root plan ID
+	 */
+	public void removeExternalFolderLink(String rootPlanId) {
+		if (rootPlanId == null || rootPlanId.trim().isEmpty()) {
+			log.warn("removeExternalFolderLink called with null or empty rootPlanId");
+			return;
+		}
+
+		try {
+			Path rootPlanDir = getRootPlanDirectory(rootPlanId);
+			Path linkPath = rootPlanDir.resolve(LINKED_EXTERNAL_DIR);
+
+			if (!Files.exists(linkPath)) {
+				log.debug("Symbolic link does not exist, nothing to remove: {}", linkPath);
+				return;
+			}
+
+			// Check if it's a symbolic link
+			if (Files.isSymbolicLink(linkPath)) {
+				Files.delete(linkPath);
+				log.info("Removed external folder symbolic link: {}", linkPath);
+			}
+			else if (Files.isDirectory(linkPath)) {
+				// If it's a directory (not a symlink), remove it recursively
+				deleteDirectoryRecursively(linkPath);
+				log.info("Removed external folder directory (not a symlink): {}", linkPath);
+			}
+			else {
+				// If it's a file, just delete it
+				Files.delete(linkPath);
+				log.info("Removed external folder path: {}", linkPath);
+			}
+		}
+		catch (IOException e) {
+			log.warn("Failed to remove external folder symbolic link for rootPlanId={}: {}", rootPlanId,
+					e.getMessage());
+		}
+	}
+
 }

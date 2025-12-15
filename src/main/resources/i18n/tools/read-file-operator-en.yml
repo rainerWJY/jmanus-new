@@ -24,6 +24,12 @@ description: |
   - Supports both text files and image files (JPEG/JPG, PNG, GIF, WebP)
   - Files created here are accessible by all sub-plans within the execution context
   - Can read multiple files in parallel for better performance
+  
+  ## File Reading Best Practices:
+  Prioritize small-scope information retrieval:
+  1. **Use EnhancedGrep**: For searching specific patterns or keywords in files (most efficient for targeted information)
+  2. **Use offset/limit**: Read specific line ranges when you know approximate location
+  3. **Use bypass_limit**: Only when you cannot obtain needed information through grep or limited reading, and you need the entire file content
 
 parameters: |
   {

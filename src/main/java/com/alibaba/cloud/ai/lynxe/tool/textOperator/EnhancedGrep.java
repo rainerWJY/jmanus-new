@@ -42,6 +42,7 @@ import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -686,8 +687,14 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 					break;
 
 				String marker = match.isMatchLine ? ":" : "-";
-				String truncatedContent = truncateLongLine(match.lineContent, pattern, match.isMatchLine);
-				result.append(String.format("%d%s%s\n", match.lineNumber, marker, truncatedContent));
+				// Use SmartContentSavingService for truncation
+				String displayContent = match.lineContent;
+				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
+					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
+							.processContent(this.rootPlanId, match.lineContent, "grep_match");
+					displayContent = processed.getSummary();
+				}
+				result.append(String.format("%d%s%s\n", match.lineNumber, marker, displayContent));
 				totalMatches++;
 			}
 			result.append("\n");
@@ -732,14 +739,21 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 					}
 				}
 				
-				// Replace newlines with \n for display (or keep them for multiline display)
-				// Option 1: Replace newlines with visible marker
+				// Replace newlines with \n for display
 				String displayContent = matchedContent.replace("\n", "\\n").replace("\r", "");
 				
-				// Option 2: Keep newlines but truncate if too long
-				if (displayContent.length() > 500) {
-					displayContent = displayContent.substring(0, 250) + "...[truncated]..." 
-						+ displayContent.substring(displayContent.length() - 200);
+				// Use SmartContentSavingService for truncation if rootPlanId is available
+				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
+					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
+							.processContent(this.rootPlanId, displayContent, "grep_multiline_match");
+					displayContent = processed.getSummary();
+				}
+				else {
+					// Fallback truncation if no rootPlanId
+					if (displayContent.length() > 500) {
+						displayContent = displayContent.substring(0, 250) + "...[truncated]..." 
+							+ displayContent.substring(displayContent.length() - 200);
+					}
 				}
 				
 				results.add(new MatchResult(file.toString(), lineNumber, displayContent, true));
@@ -781,103 +795,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		return results;
 	}
 
-	/**
-	 * Truncate long lines with smart highlighting for matches. For match lines longer
-	 * than 400 characters, keeps the match in the center with 200 characters before and
-	 * 200 characters after (similar to search engine highlighting). For context lines
-	 * (non-match lines) longer than 500 characters, truncates to first 200 and last 200
-	 * characters.
-	 * @param line The line content to truncate
-	 * @param pattern The regex pattern used for matching
-	 * @param isMatchLine Whether this is a match line (true) or context line (false)
-	 * @return Truncated line if longer than threshold, otherwise original line
-	 */
-	private String truncateLongLine(String line, Pattern pattern, boolean isMatchLine) {
-		if (line == null) {
-			return "";
-		}
-
-		// For match lines longer than 400 characters, use smart truncation with match in
-		// center
-		if (isMatchLine && line.length() > 400) {
-			return truncateWithMatchInCenter(line, pattern);
-		}
-
-		// For context lines longer than 500 characters, truncate to first 200 and last
-		// 200 characters
-		if (!isMatchLine && line.length() > 500) {
-			return truncateContextLine(line);
-		}
-
-		// For shorter lines, use simple truncation (backward compatibility)
-		if (line.length() > 300) {
-			String prefix = line.substring(0, 250);
-			String suffix = line.substring(line.length() - 50);
-			return prefix + "..." + suffix;
-		}
-
-		return line;
-	}
-
-	/**
-	 * Truncate context line to first 200 and last 200 characters. Used for context lines
-	 * (non-match lines) that are longer than 500 characters.
-	 * @param line The line content to truncate
-	 * @return Truncated line with first 200 and last 200 characters
-	 */
-	private String truncateContextLine(String line) {
-		if (line == null || line.length() <= 500) {
-			return line;
-		}
-
-		String prefix = line.substring(0, 200);
-		String suffix = line.substring(line.length() - 200);
-		return prefix + "..." + suffix;
-	}
-
-	/**
-	 * Truncate long line keeping the match in the center with 200 chars before and after.
-	 * Similar to search engine highlighting approach. Shows 200 characters before match
-	 * start, the match itself, and 200 characters after match end.
-	 * @param line The line content
-	 * @param pattern The regex pattern to find match position
-	 * @return Truncated line with match in center
-	 */
-	private String truncateWithMatchInCenter(String line, Pattern pattern) {
-		Matcher matcher = pattern.matcher(line);
-		if (!matcher.find()) {
-			// If no match found, fall back to simple truncation
-			String prefix = line.substring(0, 250);
-			String suffix = line.substring(line.length() - 50);
-			return prefix + "..." + suffix;
-		}
-
-		// Find the first match position
-		int matchStart = matcher.start();
-		int matchEnd = matcher.end();
-
-		// Calculate start and end positions for extraction
-		// Show 200 chars before match start and 200 chars after match end
-		int contextBefore = 200;
-		int contextAfter = 200;
-		int extractStart = Math.max(0, matchStart - contextBefore);
-		int extractEnd = Math.min(line.length(), matchEnd + contextAfter);
-
-		// Extract the context around the match
-		String extracted = line.substring(extractStart, extractEnd);
-
-		// Add ellipsis if there's content before or after
-		StringBuilder result = new StringBuilder();
-		if (extractStart > 0) {
-			result.append("...");
-		}
-		result.append(extracted);
-		if (extractEnd < line.length()) {
-			result.append("...");
-		}
-
-		return result.toString();
-	}
 
 	/**
 	 * Search and return match counts Files are sorted by match count (descending) and

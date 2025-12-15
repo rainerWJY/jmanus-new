@@ -44,6 +44,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.FileUploadService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,9 +98,9 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 			LynxeEventPublisher lynxeEventPublisher, ObjectMapper objectMapper,
 			ParallelExecutionService parallelExecutionService, MemoryService memoryService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
-			ServiceGroupIndexService serviceGroupIndexService) {
+			ServiceGroupIndexService serviceGroupIndexService, UnifiedDirectoryManager unifiedDirectoryManager) {
 		super(agents, recorder, llmService, lynxeProperties, levelBasedExecutorPool, fileUploadService,
-				agentInterruptionHelper);
+				agentInterruptionHelper, unifiedDirectoryManager);
 		this.planningFactory = planningFactory;
 		this.toolCallingManager = toolCallingManager;
 		this.userInputService = userInputService;

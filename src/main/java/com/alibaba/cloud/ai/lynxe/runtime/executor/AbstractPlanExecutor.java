@@ -37,6 +37,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanInterface;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.StepResult;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
 import com.alibaba.cloud.ai.lynxe.runtime.service.FileUploadService;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 
 /**
  * Abstract base class for plan executors. Contains common logic and basic functionality
@@ -65,6 +66,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	protected final FileUploadService fileUploadService;
 
+	protected final UnifiedDirectoryManager unifiedDirectoryManager;
+
 	// Define static final strings for the keys used in executorParams
 	public static final String PLAN_STATUS_KEY = "planStatus";
 
@@ -78,7 +81,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	public AbstractPlanExecutor(List<DynamicAgentEntity> agents, PlanExecutionRecorder recorder, LlmService llmService,
 			LynxeProperties lynxeProperties, LevelBasedExecutorPool levelBasedExecutorPool,
-			FileUploadService fileUploadService, AgentInterruptionHelper agentInterruptionHelper) {
+			FileUploadService fileUploadService, AgentInterruptionHelper agentInterruptionHelper,
+			UnifiedDirectoryManager unifiedDirectoryManager) {
 		this.agents = agents;
 		this.recorder = recorder;
 		this.llmService = llmService;
@@ -86,6 +90,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		this.levelBasedExecutorPool = levelBasedExecutorPool;
 		this.fileUploadService = fileUploadService;
 		this.agentInterruptionHelper = agentInterruptionHelper;
+		this.unifiedDirectoryManager = unifiedDirectoryManager;
 	}
 
 	/**
@@ -401,6 +406,15 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		llmService.clearAgentMemory(planId);
 		if (lastExecutor != null) {
 			lastExecutor.clearUp(planId);
+		}
+		// Remove symbolic link directory when plan task finishes
+		if (unifiedDirectoryManager != null && planId != null) {
+			try {
+				unifiedDirectoryManager.removeExternalFolderLink(planId);
+			}
+			catch (Exception e) {
+				logger.warn("Failed to remove external folder symbolic link for planId: {}", planId, e);
+			}
 		}
 	}
 
