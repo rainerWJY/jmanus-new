@@ -102,7 +102,7 @@ public class GitIgnoreMatcher {
 				// If symlink resolution fails, fall back to absolute path
 				absolutePath = filePath.toAbsolutePath().normalize();
 			}
-			
+
 			if (!absolutePath.startsWith(rootPath)) {
 				// File is outside root, don't apply ignore rules
 				return false;
@@ -137,7 +137,7 @@ public class GitIgnoreMatcher {
 				// If symlink resolution fails, fall back to absolute path
 				absolutePath = dirPath.toAbsolutePath().normalize();
 			}
-			
+
 			if (!absolutePath.startsWith(rootPath)) {
 				return false;
 			}
@@ -173,7 +173,7 @@ public class GitIgnoreMatcher {
 		Path currentPath = rootPath;
 		for (Path segment : relativePath) {
 			Path nextPath = currentPath.resolve(segment);
-			
+
 			// Check patterns in the current directory (which might contain a .gitignore)
 			List<IgnorePattern> dirPatterns = getPatternsForDirectory(currentPath);
 			if (!dirPatterns.isEmpty()) {

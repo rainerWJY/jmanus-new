@@ -160,8 +160,8 @@ public class SymbolicLinkDetector {
 
 	/**
 	 * Create a FileVisitor that safely handles symbolic links during directory traversal.
-	 * This visitor tracks visited directories to prevent infinite loops and respects ignore
-	 * file rules.
+	 * This visitor tracks visited directories to prevent infinite loops and respects
+	 * ignore file rules.
 	 * @param rootPath The root path being traversed
 	 * @param onFile Callback for each regular file encountered
 	 * @param onDirectory Callback for each directory encountered (before entering)

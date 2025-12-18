@@ -354,8 +354,9 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	}
 
 	/**
-	 * Determine the root path for ignore file matching. If searching within linked_external,
-	 * use the actual external folder root. Otherwise, use the search root.
+	 * Determine the root path for ignore file matching. If searching within
+	 * linked_external, use the actual external folder root. Otherwise, use the search
+	 * root.
 	 * @param searchRoot The search root path
 	 * @return Root path for ignore file matching
 	 */
@@ -374,7 +375,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				Path current = normalized;
 				while (current != null && current.getNameCount() > 0) {
 					if ("linked_external".equals(current.getFileName().toString())) {
-						// This is the linked_external symlink, use its target as the ignore root
+						// This is the linked_external symlink, use its target as the
+						// ignore root
 						// For symlinks, we want to use the actual target directory
 						try {
 							Path realPath = current.toRealPath();
@@ -491,7 +493,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		Path rootPath = root;
 
 		// Initialize GitIgnoreMatcher if respectGitIgnore is enabled
-		boolean respectGitIgnore = lynxeProperties.getRespectGitIgnore() != null && lynxeProperties.getRespectGitIgnore();
+		boolean respectGitIgnore = lynxeProperties.getRespectGitIgnore() != null
+				&& lynxeProperties.getRespectGitIgnore();
 		Path ignoreRootPath = determineIgnoreRootPath(root);
 		gitIgnoreMatcher.initialize(ignoreRootPath, respectGitIgnore);
 

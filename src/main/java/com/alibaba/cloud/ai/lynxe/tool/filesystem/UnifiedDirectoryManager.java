@@ -500,7 +500,8 @@ public class UnifiedDirectoryManager {
 		}
 
 		try {
-			// Build path directly without calling getRootPlanDirectory() to avoid recreating the link
+			// Build path directly without calling getRootPlanDirectory() to avoid
+			// recreating the link
 			Path rootPlanDir = getWorkingDirectory().resolve(INNER_STORAGE_DIR).resolve(rootPlanId);
 			Path linkPath = rootPlanDir.resolve(LINKED_EXTERNAL_DIR);
 
