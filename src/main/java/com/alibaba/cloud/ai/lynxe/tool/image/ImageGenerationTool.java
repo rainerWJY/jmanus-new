@@ -37,6 +37,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
+import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.model.entity.DynamicModelEntity;
 import com.alibaba.cloud.ai.lynxe.model.repository.DynamicModelRepository;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
@@ -57,13 +58,16 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 	private final ToolI18nService toolI18nService;
 
+	private final LynxeProperties lynxeProperties;
+
 	public ImageGenerationTool(DynamicModelRepository dynamicModelRepository,
 			ObjectProvider<RestClient.Builder> restClientBuilderProvider, ObjectMapper objectMapper,
-			ToolI18nService toolI18nService) {
+			ToolI18nService toolI18nService, LynxeProperties lynxeProperties) {
 		this.dynamicModelRepository = dynamicModelRepository;
 		this.restClientBuilderProvider = restClientBuilderProvider;
 		this.objectMapper = objectMapper;
 		this.toolI18nService = toolI18nService;
+		this.lynxeProperties = lynxeProperties;
 	}
 
 	@Override
@@ -104,8 +108,15 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 				return new ToolExecuteResult("Prompt is required for image generation");
 			}
 
+			// Use configured model name if model in request is null
+			String modelName = request.getModel();
+			if (modelName == null || modelName.trim().isEmpty()) {
+				modelName = getConfiguredModelName();
+				log.debug("Model not specified in request, using configured model name: {}", modelName);
+			}
+
 			// Get model configuration
-			DynamicModelEntity modelEntity = getModelEntity(request.getModel());
+			DynamicModelEntity modelEntity = getModelEntity(modelName);
 			if (modelEntity == null) {
 				return new ToolExecuteResult("Model configuration not found. Please configure a model first.");
 			}
@@ -114,8 +125,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 			// Build OpenAiImageOptions
 			OpenAiImageOptions.Builder optionsBuilder = OpenAiImageOptions.builder();
-			if (request.getModel() != null) {
-				optionsBuilder.model(request.getModel());
+			if (modelName != null && !modelName.trim().isEmpty()) {
+				optionsBuilder.model(modelName);
 			}
 			if (request.getSize() != null) {
 				// Parse size string (e.g., "1024x1024") into width and height
@@ -188,8 +199,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			resultMap.put("images", imageUrls);
 			resultMap.put("count", imageUrls.size());
 			resultMap.put("prompt", request.getPrompt());
-			if (request.getModel() != null) {
-				resultMap.put("model", request.getModel());
+			if (modelName != null && !modelName.trim().isEmpty()) {
+				resultMap.put("model", modelName);
 			}
 			if (request.getSize() != null) {
 				resultMap.put("size", request.getSize());
@@ -362,6 +373,20 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 		}
 		// Fallback: try to convert output to string
 		return output != null ? output.toString() : null;
+	}
+
+	/**
+	 * Get configured model name from LynxeProperties
+	 * @return configured model name or null if not configured
+	 */
+	private String getConfiguredModelName() {
+		if (lynxeProperties != null) {
+			String configuredModelName = lynxeProperties.getImageGenerationModelName();
+			if (configuredModelName != null && !configuredModelName.trim().isEmpty()) {
+				return configuredModelName;
+			}
+		}
+		return null;
 	}
 
 	@Override

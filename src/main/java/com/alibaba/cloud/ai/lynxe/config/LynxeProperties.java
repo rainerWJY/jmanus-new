@@ -572,4 +572,28 @@ public class LynxeProperties {
 	// Image Recognition Settings
 	// End----------------------------------------------------------------------------------------------
 
+	// Image Generation Settings
+	// Begin-------------------------------------------------------------------------------------------
+
+	@ConfigProperty(group = "lynxe", subGroup = "imageGeneration", key = "modelName",
+			path = "lynxe.imageGeneration.modelName", description = "lynxe.imageGeneration.modelName.description",
+			defaultValue = "", inputType = ConfigInputType.TEXT)
+	private volatile String imageGenerationModelName;
+
+	public String getImageGenerationModelName() {
+		String configPath = "lynxe.imageGeneration.modelName";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			imageGenerationModelName = value;
+		}
+		return imageGenerationModelName;
+	}
+
+	public void setImageGenerationModelName(String imageGenerationModelName) {
+		this.imageGenerationModelName = imageGenerationModelName;
+	}
+
+	// Image Generation Settings
+	// End----------------------------------------------------------------------------------------------
+
 }

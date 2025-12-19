@@ -314,7 +314,7 @@ public class PlanningFactory {
 							new ImageRecognitionExecutorPool(lynxeProperties)),
 					excelProcessingService, objectMapper, toolI18nService));
 			toolDefinitions.add(new ImageGenerationTool(dynamicModelRepository, restClientBuilderProvider, objectMapper,
-					toolI18nService));
+					toolI18nService, lynxeProperties));
 			// toolDefinitions.add(new ExcelProcessorTool(excelProcessingService));
 		}
 		else {
