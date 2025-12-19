@@ -327,8 +327,12 @@ public class StreamingResponseHandler {
 
 				finalChatResponseRef.set(
 						new ChatResponse(List.of(new Generation(
-								new AssistantMessage(messageTextContentRef.get().toString(),
-										messageMetadataMapRef.get(), messageToolCallRef.get()),
+								AssistantMessage.builder()
+										.content(messageTextContentRef.get().toString())
+										.properties(messageMetadataMapRef.get())
+										.toolCalls(messageToolCallRef.get())
+										.media(List.of())
+										.build(),
 								generationMetadataRef.get())), chatResponseMetadata));
 				logCompletion(contextName, messageTextContentRef.get().toString(), messageToolCallRef.get().size(),
 						responseCounter.get(), startTime, usage);
@@ -390,8 +394,12 @@ public class StreamingResponseHandler {
 
 						// Create ChatResponse with accumulated text and empty tool calls
 						finalChatResponseRef.set(new ChatResponse(List.of(new Generation(
-								new AssistantMessage(messageTextContentRef.get().toString(),
-										messageMetadataMapRef.get(), messageToolCallRef.get()),
+								AssistantMessage.builder()
+										.content(messageTextContentRef.get().toString())
+										.properties(messageMetadataMapRef.get())
+										.toolCalls(messageToolCallRef.get())
+										.media(List.of())
+										.build(),
 								generationMetadataRef.get())), chatResponseMetadata));
 
 						log.info("Constructed ChatResponse from early termination: {} characters, {} tool calls",

@@ -166,6 +166,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		return getDynamicAgentChatClient(null);
 	}
 
+
 	public ChatClient getDynamicAgentChatClient(String modelName) {
 		if (defaultModel == null) {
 			log.warn("Default model not initialized...");
@@ -188,8 +189,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 
 		// Use unified ChatOptions creation
 		OpenAiChatOptions defaultOptions = OpenAiChatOptions.builder().build();
-		defaultOptions.setInternalToolExecutionEnabled(false);
-
+	
 		// Use unified ChatClient builder
 		ChatClient client = buildUnifiedChatClient(modelName, defaultModel, defaultOptions);
 
@@ -407,6 +407,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		}
 		return enhancedWebClientBuilder;
 	}
+
 
 	/**
 	 * Normalize baseUrl by removing trailing slashes
