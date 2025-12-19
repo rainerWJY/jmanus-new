@@ -31,6 +31,7 @@ import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -67,7 +68,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 	@Override
 	public String getServiceGroup() {
-		return "ai-service-group";
+		return "default-service-group";
 	}
 
 	@Override
@@ -108,7 +109,6 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			if (modelEntity == null) {
 				return new ToolExecuteResult("Model configuration not found. Please configure a model first.");
 			}
-
 			// Create ImageModel directly (similar to how PdfOcrProcessor uses ChatClient)
 			ImageModel imageModel = createImageModel(modelEntity);
 
@@ -136,7 +136,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 				}
 			}
 			else {
-				optionsBuilder.width(1024).height(1024); // Default for DALL-E 3
+				optionsBuilder.width(1024).height(1024);
 			}
 			if (request.getQuality() != null) {
 				optionsBuilder.quality(request.getQuality());
@@ -203,9 +203,29 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			return new ToolExecuteResult(resultJson);
 
 		}
+		catch (IllegalArgumentException e) {
+			log.error("Invalid argument in image generation: {}", e.getMessage(), e);
+			return new ToolExecuteResult("Image generation failed: Invalid argument - " + e.getMessage());
+		}
+		catch (RuntimeException e) {
+			log.error("Runtime error during image generation: {}", e.getMessage(), e);
+			// Include root cause if available
+			Throwable cause = e.getCause();
+			String errorMessage = "Image generation failed: " + e.getMessage();
+			if (cause != null && cause.getMessage() != null) {
+				errorMessage += " (Cause: " + cause.getMessage() + ")";
+			}
+			return new ToolExecuteResult(errorMessage);
+		}
 		catch (Exception e) {
-			log.error("Image generation failed", e);
-			return new ToolExecuteResult("Image generation failed: " + e.getMessage());
+			log.error("Unexpected error during image generation: {}", e.getMessage(), e);
+			// Include root cause if available
+			Throwable cause = e.getCause();
+			String errorMessage = "Image generation failed: " + e.getMessage();
+			if (cause != null && cause.getMessage() != null) {
+				errorMessage += " (Cause: " + cause.getMessage() + ")";
+			}
+			return new ToolExecuteResult(errorMessage);
 		}
 	}
 
@@ -256,23 +276,49 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 	 * @return ImageModel instance
 	 */
 	private ImageModel createImageModel(DynamicModelEntity dynamicModelEntity) {
-		// Normalize baseUrl
+		if (dynamicModelEntity == null) {
+			throw new IllegalArgumentException("DynamicModelEntity cannot be null");
+		}
+
+		// Normalize baseUrl - remove trailing slashes (similar to LlmService)
 		String baseUrl = normalizeBaseUrl(dynamicModelEntity.getBaseUrl());
+		if (baseUrl == null || baseUrl.trim().isEmpty()) {
+			throw new IllegalArgumentException("Base URL cannot be null or empty");
+		}
+
+		String apiKey = dynamicModelEntity.getApiKey();
+		if (apiKey == null || apiKey.trim().isEmpty()) {
+			throw new IllegalArgumentException("API key cannot be null or empty");
+		}
+
+		// Normalize baseUrl for image API endpoint
+		// OpenAiImageApi internally uses /v1/images/generations
+		// If baseUrl ends with /v1, we need to remove it to avoid duplicate /v1
+		// This follows the same logic as normalizeCompletionsPath in LlmService
+		String normalizedBaseUrl = normalizeBaseUrlForApiEndpoint(baseUrl);
 
 		// Build OpenAiImageApi - image generation endpoint is typically
 		// /v1/images/generations
 		// but OpenAiImageApi handles this internally, so we just need the base URL
 		OpenAiImageApi.Builder imageApiBuilder = OpenAiImageApi.builder()
-			.baseUrl(baseUrl != null ? baseUrl : "https://api.openai.com")
+			.baseUrl(normalizedBaseUrl != null ? normalizedBaseUrl : "https://api.openai.com")
 			.apiKey(new SimpleApiKey(dynamicModelEntity.getApiKey()));
 
-		// Add custom headers if present
+		// Prepare headers with Accept: application/json to ensure JSON response
+		// This fixes the issue where server returns HTML error page instead of JSON
+		MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>();
+
+		// Add Accept header to ensure JSON response
+		multiValueMap.add("Accept", MediaType.APPLICATION_JSON_VALUE);
+
+		// Add custom headers if present (these may override Accept if specified)
 		Map<String, String> headers = dynamicModelEntity.getHeaders();
 		if (headers != null && !headers.isEmpty()) {
-			MultiValueMap<String, String> multiValueMap = new LinkedMultiValueMap<>();
 			headers.forEach((key, value) -> multiValueMap.add(key, value));
-			imageApiBuilder.headers(multiValueMap);
 		}
+
+		// Set headers on the builder
+		imageApiBuilder.headers(multiValueMap);
 
 		// Use RestClient builder (OpenAiImageApi uses RestClient, not WebClient)
 		RestClient.Builder restClientBuilder = restClientBuilderProvider.getIfAvailable(RestClient::builder);
@@ -284,23 +330,6 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 		// Create OpenAiImageModel
 		return new OpenAiImageModel(imageApi);
-	}
-
-	/**
-	 * Normalize baseUrl by removing trailing slashes (similar to LlmService)
-	 * @param baseUrl The base URL to normalize
-	 * @return Normalized base URL
-	 */
-	private String normalizeBaseUrl(String baseUrl) {
-		if (baseUrl == null || baseUrl.trim().isEmpty()) {
-			return baseUrl;
-		}
-		String normalized = baseUrl.trim();
-		// Remove trailing slashes
-		while (normalized.endsWith("/")) {
-			normalized = normalized.substring(0, normalized.length() - 1);
-		}
-		return normalized;
 	}
 
 	/**
@@ -353,12 +382,11 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			StringBuilder stateBuilder = new StringBuilder();
 			stateBuilder.append("\n=== Image Generation Tool Current State ===\n");
 			stateBuilder.append("Tool is ready to generate images from text prompts.\n");
-			stateBuilder.append("Supported models: dall-e-2, dall-e-3\n");
 			stateBuilder.append("Default size: 1024x1024\n");
 			stateBuilder.append("Default quality: standard\n");
-			stateBuilder.append("DALL-E 2 supports: sizes 256x256, 512x512, 1024x1024; n=1-10\n");
-			stateBuilder
-				.append("DALL-E 3 supports: sizes 1024x1024, 1792x1024, 1024x1792; quality standard/hd; n=1 only\n");
+			stateBuilder.append("Supported sizes: 256x256, 512x512, 1024x1024, 1792x1024, 1024x1792\n");
+			stateBuilder.append("Supported quality: standard, hd\n");
+			stateBuilder.append("Supported number of images: 1-10\n");
 			stateBuilder.append("\n=== End Image Generation Tool State ===\n");
 			return stateBuilder.toString();
 		}

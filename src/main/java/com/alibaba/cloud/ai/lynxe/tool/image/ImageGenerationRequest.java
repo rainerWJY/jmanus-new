@@ -30,28 +30,25 @@ public class ImageGenerationRequest {
 
 	/**
 	 * Model name (optional, uses default from config if not specified) Supported models:
-	 * dall-e-2, dall-e-3
 	 */
 	@JsonProperty("model")
 	private String model;
 
 	/**
-	 * Image size (optional) For DALL-E 2: "256x256", "512x512", "1024x1024" For DALL-E 3:
-	 * "1024x1024", "1792x1024", "1024x1792" Default: "1024x1024"
+	 * Image size (optional) "256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"
+	 * Default: "1024x1024"
 	 */
 	@JsonProperty("size")
 	private String size;
 
 	/**
-	 * Quality setting (optional, only for DALL-E 3) Values: "standard" or "hd" Default:
-	 * "standard"
+	 * Quality setting (optional) Values: "standard" or "hd" Default: "standard"
 	 */
 	@JsonProperty("quality")
 	private String quality;
 
 	/**
-	 * Number of images to generate (optional) For DALL-E 2: 1-10 For DALL-E 3: 1 only
-	 * Default: 1
+	 * Number of images to generate (optional) 1-10
 	 */
 	@JsonProperty("n")
 	private Integer n;

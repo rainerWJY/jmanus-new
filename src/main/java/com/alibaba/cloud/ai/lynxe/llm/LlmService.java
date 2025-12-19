@@ -426,7 +426,8 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	}
 
 	/**
-	 * Normalize completionsPath to avoid duplicate /v1 segments when baseUrl already contains /v1
+	 * Normalize completionsPath to avoid duplicate /v1 segments when baseUrl already
+	 * contains /v1
 	 * @param baseUrl The normalized base URL
 	 * @param completionsPath The completions path to normalize
 	 * @return Normalized completions path
@@ -437,23 +438,24 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 			return "/v1/chat/completions";
 		}
 		String normalized = completionsPath.trim();
-		
+
 		// Ensure path starts with /
 		if (!normalized.startsWith("/")) {
 			normalized = "/" + normalized;
 		}
-		
-		// If baseUrl ends with /v1 and completionsPath starts with /v1, remove /v1 from completionsPath
+
+		// If baseUrl ends with /v1 and completionsPath starts with /v1, remove /v1 from
+		// completionsPath
 		if (baseUrl != null && baseUrl.endsWith("/v1") && normalized.startsWith("/v1/")) {
 			normalized = normalized.substring(3); // Remove "/v1" prefix
 			// Ensure it still starts with /
 			if (!normalized.startsWith("/")) {
 				normalized = "/" + normalized;
 			}
-			log.info("Normalized completionsPath from '{}' to '{}' to avoid duplicate /v1 in URL", 
-					completionsPath, normalized);
+			log.info("Normalized completionsPath from '{}' to '{}' to avoid duplicate /v1 in URL", completionsPath,
+					normalized);
 		}
-		
+
 		return normalized;
 	}
 
@@ -473,8 +475,8 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		String baseUrl = normalizeBaseUrl(dynamicModelEntity.getBaseUrl());
 		String completionsPath = normalizeCompletionsPath(baseUrl, dynamicModelEntity.getCompletionsPath());
 
-		return new OpenAiApi(baseUrl, new SimpleApiKey(dynamicModelEntity.getApiKey()),
-				multiValueMap, completionsPath, "/v1/embeddings", restClientBuilder, enhancedWebClientBuilder,
+		return new OpenAiApi(baseUrl, new SimpleApiKey(dynamicModelEntity.getApiKey()), multiValueMap, completionsPath,
+				"/v1/embeddings", restClientBuilder, enhancedWebClientBuilder,
 				RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER) {
 
 			@Override
