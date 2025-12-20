@@ -116,12 +116,35 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 				throw new IllegalArgumentException("API key is required for Qwen API");
 			}
 
-			// Get base URL from model entity or use default
+			// Get base URL from model entity and construct correct DashScope image generation API URL
+			// Image generation API uses: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+			// (not the /compatible-mode endpoint used for chat completions)
 			String rawBaseUrl = modelEntity.getBaseUrl();
-			String baseUrl = AbstractBaseTool.normalizeBaseUrl(rawBaseUrl);
-			if (baseUrl == null || baseUrl.trim().isEmpty()) {
+			String baseUrl;
+			
+			if (rawBaseUrl != null && !rawBaseUrl.trim().isEmpty()) {
+				String normalized = AbstractBaseTool.normalizeBaseUrl(rawBaseUrl);
+				// Extract domain from baseUrl (handle both Beijing and Singapore regions)
+				if (normalized.contains("dashscope-intl.aliyuncs.com")) {
+					// Singapore region
+					baseUrl = "https://dashscope-intl.aliyuncs.com";
+				}
+				else if (normalized.contains("dashscope.aliyuncs.com")) {
+					// Beijing region (default)
+					baseUrl = "https://dashscope.aliyuncs.com";
+				}
+				else {
+					// Unknown domain, use Beijing as default
+					log.warn("Unknown DashScope domain in baseUrl: {}, using Beijing region default", normalized);
+					baseUrl = "https://dashscope.aliyuncs.com";
+				}
+			}
+			else {
+				// Default to Beijing region
 				baseUrl = "https://dashscope.aliyuncs.com";
 			}
+			
+			log.debug("Using DashScope image generation baseUrl: {}", baseUrl);
 
 			// Build request body in Qwen format
 			Map<String, Object> requestBody = new HashMap<>();
@@ -145,13 +168,9 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 			parameters.put("prompt_extend", true);
 			parameters.put("watermark", false);
 
-			// Parse size from request (e.g., "1024x1024" -> "1024*1024")
-			String size = "1024*1024"; // Default
-			if (request.getSize() != null && !request.getSize().trim().isEmpty()) {
-				String sizeStr = request.getSize().trim();
-				// Convert "1024x1024" to "1024*1024"
-				size = sizeStr.replace("x", "*");
-			}
+			// Validate and map size to allowed Qwen image generation sizes
+			// Allowed sizes: 1664*928, 1472*1140, 1328*1328 (default), 1140*1472, 928*1664
+			String size = validateAndMapToAllowedSize(request.getSize());
 			parameters.put("size", size);
 			requestBody.put("parameters", parameters);
 
@@ -302,6 +321,86 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 		}
 
 		return imageUrls;
+	}
+
+	/**
+	 * Validate and map size to allowed Qwen image generation sizes
+	 * Allowed sizes: 1664*928, 1472*1140, 1328*1328 (default), 1140*1472, 928*1664
+	 * @param sizeStr Requested size string (e.g., "1024x1024", "1024*1024")
+	 * @return Validated size string in format "width*height" matching one of the allowed sizes
+	 */
+	private String validateAndMapToAllowedSize(String sizeStr) {
+		// Default size according to Qwen API documentation
+		String defaultSize = "1328*1328";
+		
+		// Allowed sizes for Qwen image generation API
+		String[] allowedSizes = {
+			"1664*928",   // 16:9 landscape
+			"1472*1140",  // 4:3 landscape
+			"1328*1328",  // 1:1 square (default)
+			"1140*1472",  // 3:4 portrait
+			"928*1664"    // 9:16 portrait
+		};
+		
+		if (sizeStr == null || sizeStr.trim().isEmpty()) {
+			log.debug("Size not specified, using default: {}", defaultSize);
+			return defaultSize;
+		}
+		
+		// Normalize separator (accept both "x" and "*")
+		String normalized = sizeStr.trim().replace("x", "*").replace("X", "*");
+		
+		// Check if it exactly matches one of the allowed sizes
+		for (String allowed : allowedSizes) {
+			if (allowed.equals(normalized)) {
+				log.debug("Size {} matches allowed size", normalized);
+				return normalized;
+			}
+		}
+		
+		// Try to parse and find closest match
+		try {
+			String[] parts = normalized.split("\\*");
+			if (parts.length != 2) {
+				log.warn("Invalid size format: {}, using default: {}", sizeStr, defaultSize);
+				return defaultSize;
+			}
+			
+			int requestedWidth = Integer.parseInt(parts[0].trim());
+			int requestedHeight = Integer.parseInt(parts[1].trim());
+			
+			// Calculate aspect ratio
+			double requestedAspectRatio = (double) requestedWidth / requestedHeight;
+			
+			// Find the closest allowed size based on aspect ratio
+			String closestSize = defaultSize;
+			double minAspectRatioDiff = Double.MAX_VALUE;
+			
+			for (String allowed : allowedSizes) {
+				String[] allowedParts = allowed.split("\\*");
+				int allowedWidth = Integer.parseInt(allowedParts[0]);
+				int allowedHeight = Integer.parseInt(allowedParts[1]);
+				double allowedAspectRatio = (double) allowedWidth / allowedHeight;
+				
+				double aspectRatioDiff = Math.abs(requestedAspectRatio - allowedAspectRatio);
+				if (aspectRatioDiff < minAspectRatioDiff) {
+					minAspectRatioDiff = aspectRatioDiff;
+					closestSize = allowed;
+				}
+			}
+			
+			log.info("Size {} (aspect ratio: {}) mapped to closest allowed size: {}", 
+				normalized, String.format("%.2f", requestedAspectRatio), closestSize);
+			return closestSize;
+		}
+		catch (NumberFormatException e) {
+			log.warn("Invalid size format (non-numeric): {}, using default: {}", sizeStr, defaultSize);
+			return defaultSize;
+		}
+		catch (Exception e) {
+			log.warn("Error parsing size: {}, using default: {}", sizeStr, defaultSize, e);
+			return defaultSize;
+		}
 	}
 
 }
