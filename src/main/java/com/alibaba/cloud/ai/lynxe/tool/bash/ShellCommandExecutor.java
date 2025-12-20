@@ -37,6 +37,26 @@ public interface ShellCommandExecutor {
 	void terminate();
 
 	/**
+	 * Send input to the current interactive process
+	 * @param input The input to send (e.g., 'n' for next page, 'q' for quit)
+	 * @throws Exception If there's an error sending input
+	 */
+	void sendInput(String input) throws Exception;
+
+	/**
+	 * Get current process state/output without executing a new command
+	 * @return Current process output/state
+	 * @throws Exception If there's an error getting state
+	 */
+	String getCurrentState() throws Exception;
+
+	/**
+	 * Check if the current process is still running
+	 * @return true if process is alive, false otherwise
+	 */
+	boolean isProcessAlive();
+
+	/**
 	 * Get the current system type
 	 * @return System type (windows/linux/mac)
 	 */

@@ -15,92 +15,264 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.bash;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class Bash extends AbstractBaseTool<Bash.BashInput> {
+public class Bash extends AbstractBaseTool<BashRequestVO> {
 
 	private final ObjectMapper objectMapper;
 
 	private final ToolI18nService toolI18nService;
 
+	private final ShellExecutorService shellExecutorService;
+
 	private static final Logger log = LoggerFactory.getLogger(Bash.class);
-
-	/**
-	 * Internal input class for defining Bash tool input parameters
-	 */
-	public static class BashInput {
-
-		private String command;
-
-		public BashInput() {
-		}
-
-		public BashInput(String command) {
-			this.command = command;
-		}
-
-		public String getCommand() {
-			return command;
-		}
-
-		public void setCommand(String command) {
-			this.command = command;
-		}
-
-	}
 
 	/**
 	 * Unified directory manager for directory operations
 	 */
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
+	/**
+	 * Configuration properties for bash security settings
+	 */
+	private final LynxeProperties lynxeProperties;
+
 	// Add operating system information
 	private static final String osName = System.getProperty("os.name");
 
 	private final String name = "bash";
 
-	public Bash(UnifiedDirectoryManager unifiedDirectoryManager, ObjectMapper objectMapper,
-			ToolI18nService toolI18nService) {
-		this.unifiedDirectoryManager = unifiedDirectoryManager;
-		this.objectMapper = objectMapper;
-		this.toolI18nService = toolI18nService;
-	}
+	// Track if run method has been called at least once
+	private volatile boolean hasRunAtLeastOnce = false;
 
 	private String lastCommand = "";
 
 	private String lastResult = "";
 
-	@Override
-	public ToolExecuteResult run(BashInput input) {
-		String command = input.getCommand();
-		log.info("Bash command: {}", command);
-		log.info("Current operating system: {}", osName);
-		this.lastCommand = command;
+	// Execution log to track full terminal session history
+	private final StringBuilder executionLog = new StringBuilder();
 
-		List<String> commandList = new ArrayList<>();
-		commandList.add(command);
+	public Bash(UnifiedDirectoryManager unifiedDirectoryManager, ObjectMapper objectMapper,
+			ToolI18nService toolI18nService, ShellExecutorService shellExecutorService,
+			LynxeProperties lynxeProperties) {
+		this.unifiedDirectoryManager = unifiedDirectoryManager;
+		this.objectMapper = objectMapper;
+		this.toolI18nService = toolI18nService;
+		this.shellExecutorService = shellExecutorService;
+		this.lynxeProperties = lynxeProperties;
+	}
 
+	/**
+	 * Get the working directory for bash execution
+	 * Uses rootPlanId directory if available, otherwise falls back to base working directory
+	 * @return Working directory path as string
+	 */
+	private String getWorkingDirectory() {
+		if (rootPlanId != null && !rootPlanId.trim().isEmpty()) {
+			try {
+				java.nio.file.Path rootPlanDir = unifiedDirectoryManager.getRootPlanDirectory(rootPlanId);
+				return rootPlanDir.toString();
+			}
+			catch (Exception e) {
+				log.warn("Failed to get root plan directory for rootPlanId: {}, falling back to base working directory. Error: {}",
+						rootPlanId, e.getMessage());
+			}
+		}
+		// Fallback to base working directory
+		return unifiedDirectoryManager.getWorkingDirectoryPath();
+	}
+
+	/**
+	 * Get executor for current planId
+	 */
+	private ShellCommandExecutor getExecutor() {
 		try {
-			// Use ShellExecutorFactory to create executor for corresponding operating
-			// system
-			ShellCommandExecutor executor = ShellExecutorFactory.createExecutor();
-			log.info("Using shell executor for OS: {}", osName);
-			List<String> result = executor.execute(commandList, unifiedDirectoryManager.getWorkingDirectoryPath());
-			this.lastResult = String.join("\n", result);
-			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
+			ShellCommandExecutor executor = shellExecutorService.getExecutor(currentPlanId);
+			if (executor == null) {
+				throw new RuntimeException("Failed to get executor for planId: " + currentPlanId);
+			}
+			return executor;
 		}
 		catch (Exception e) {
-			log.error("Error executing bash command", e);
-			return new ToolExecuteResult("Error executing command: " + e.getMessage());
+			log.error("Error getting executor for planId {}: {}", currentPlanId, e.getMessage(), e);
+			throw new RuntimeException("Failed to get executor for planId: " + currentPlanId, e);
+		}
+	}
+
+	@Override
+	public ToolExecuteResult run(BashRequestVO requestVO) {
+		String action = null;
+		try {
+			log.info("Bash tool requestVO: action={}", requestVO.getAction());
+
+			// Mark that run has been called at least once
+			hasRunAtLeastOnce = true;
+
+			// Get parameters from RequestVO
+			action = requestVO.getAction();
+			if (action == null || action.trim().isEmpty()) {
+				// Backward compatibility: if no action specified, treat as 'command' action
+				action = "command";
+			}
+
+			ToolExecuteResult result;
+			try {
+				switch (action) {
+					case "command": {
+						String command = requestVO.getCommand();
+						if (command == null || command.trim().isEmpty()) {
+							return new ToolExecuteResult("Command parameter is required for 'command' action");
+						}
+						
+						// Check bash security protection
+						if (lynxeProperties != null && lynxeProperties.getBashSecurityProtection() != null
+								&& lynxeProperties.getBashSecurityProtection()) {
+							String commandLower = command.toLowerCase().trim();
+							boolean isWindows = osName.toLowerCase().contains("windows");
+							
+							// Check for dangerous commands
+							boolean isDangerous = false;
+							String dangerousCommand = null;
+							
+							if (isWindows) {
+								// Windows: check for del command
+								// Use word boundary to avoid false positives (e.g., "delete" should not be blocked)
+								if (commandLower.matches(".*\\bdel\\b.*") || commandLower.startsWith("del ")) {
+									isDangerous = true;
+									dangerousCommand = "del";
+								}
+							}
+							else {
+								// Unix/Linux/Mac: check for rm and rmdir commands
+								// Use word boundary to avoid false positives (e.g., "grep" or "remove" should not be blocked)
+								if (commandLower.matches(".*\\brm\\b.*") || commandLower.startsWith("rm ")
+										|| commandLower.matches(".*\\brmdir\\b.*") || commandLower.startsWith("rmdir ")) {
+									isDangerous = true;
+									dangerousCommand = "rm/rmdir";
+								}
+							}
+							
+							if (isDangerous) {
+								log.warn("Command blocked by bash security protection: {}", command);
+								return new ToolExecuteResult(
+										"Command blocked by security protection: " + dangerousCommand
+												+ " commands are not allowed. Set bashSecurityProtection to false to disable this protection.");
+							}
+						}
+						
+						log.info("Executing bash command: {}", command);
+						log.info("Current operating system: {}", osName);
+						this.lastCommand = command;
+
+						// Add command to execution log with prompt-like format
+						String workingDir = getWorkingDirectory();
+						String username = System.getProperty("user.name");
+						String hostname = System.getenv("HOSTNAME");
+						if (hostname == null || hostname.isEmpty()) {
+							try {
+								hostname = java.net.InetAddress.getLocalHost().getHostName();
+							}
+							catch (Exception e) {
+								hostname = "localhost";
+							}
+						}
+						String dirName = workingDir.substring(workingDir.lastIndexOf('/') + 1);
+						if (dirName.isEmpty()) {
+							dirName = workingDir;
+						}
+						String prompt = String.format("%s@%s %s %% ", username, hostname, dirName);
+						executionLog.append(prompt).append(command).append("\n");
+
+						ShellCommandExecutor executor = getExecutor();
+						List<String> commandList = new ArrayList<>();
+						commandList.add(command);
+						List<String> executionResult = executor.execute(commandList, workingDir);
+						this.lastResult = String.join("\n", executionResult);
+						
+						// Add result to execution log
+						if (!this.lastResult.isEmpty()) {
+							executionLog.append(this.lastResult);
+							if (!this.lastResult.endsWith("\n")) {
+								executionLog.append("\n");
+							}
+						}
+						
+						result = new ToolExecuteResult(objectMapper.writeValueAsString(executionResult));
+						break;
+					}
+					case "send_input": {
+						String input = requestVO.getInput();
+						if (input == null || input.trim().isEmpty()) {
+							return new ToolExecuteResult("Input parameter is required for 'send_input' action");
+						}
+						log.info("Sending input to process: {}", input);
+
+						ShellCommandExecutor executor = getExecutor();
+						executor.sendInput(input);
+						// Get updated state after sending input
+						String state = executor.getCurrentState();
+						this.lastResult = state;
+						
+						// Add input and response to execution log
+						executionLog.append(input).append("\n");
+						if (!state.isEmpty()) {
+							executionLog.append(state);
+							if (!state.endsWith("\n")) {
+								executionLog.append("\n");
+							}
+						}
+						
+						result = new ToolExecuteResult("Input sent successfully. Current state:\n" + state);
+						break;
+					}
+					case "get_state": {
+						log.info("Getting current process state");
+
+						ShellCommandExecutor executor = getExecutor();
+						String state = executor.getCurrentState();
+						this.lastResult = state;
+						result = new ToolExecuteResult(state);
+						break;
+					}
+					case "terminate": {
+						log.info("Terminating current process");
+
+						ShellCommandExecutor executor = getExecutor();
+						executor.terminate();
+						this.lastResult = "Process terminated";
+						result = new ToolExecuteResult("Process terminated successfully");
+						break;
+					}
+					default:
+						return new ToolExecuteResult("Unknown action: " + action
+								+ ". Supported actions: command, send_input, get_state, terminate");
+				}
+			}
+			catch (IllegalStateException e) {
+				log.error("Illegal state error executing action '{}': {}", action, e.getMessage(), e);
+				return new ToolExecuteResult("Action '" + action + "' failed: " + e.getMessage());
+			}
+			catch (Exception e) {
+				log.error("Unexpected error executing action '{}': {}", action, e.getMessage(), e);
+				return new ToolExecuteResult("Action '" + action + "' failed: " + e.getMessage());
+			}
+
+			return result;
+		}
+		catch (Exception e) {
+			log.error("Unexpected error in bash tool for action '{}': {}", action, e.getMessage(), e);
+			return new ToolExecuteResult("Bash operation failed: " + e.getMessage());
 		}
 	}
 
@@ -120,8 +292,8 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 	}
 
 	@Override
-	public Class<BashInput> getInputType() {
-		return BashInput.class;
+	public Class<BashRequestVO> getInputType() {
+		return BashRequestVO.class;
 	}
 
 	@Override
@@ -131,25 +303,98 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 
 	@Override
 	public String getCurrentToolStateString() {
-		return String.format("""
-				            Current File Operation State:
-				            - Working Directory:
-				%s
+		// Only show state if run method has been called at least once
+		if (!hasRunAtLeastOnce) {
+			return "";
+		}
 
-				            - Last File Operation:
-				%s
+		try {
+			ShellCommandExecutor executor = getExecutor();
+			boolean isAlive = executor.isProcessAlive();
 
-				            - Last Operation Result:
-				%s
+			StringBuilder stateBuilder = new StringBuilder();
 
-				            """, unifiedDirectoryManager.getWorkingDirectoryPath(),
-				lastCommand.isEmpty() ? "No command executed yet" : lastCommand,
-				lastResult.isEmpty() ? "No result yet" : lastResult);
+			// Add execution log if available
+			if (executionLog.length() > 0) {
+				stateBuilder.append("Execution Log:\n");
+				stateBuilder.append(executionLog.toString());
+				stateBuilder.append("\n");
+			}
+
+			// Only add sections with actual data
+			String workingDir = getWorkingDirectory();
+			if (workingDir != null && !workingDir.isEmpty()) {
+				stateBuilder.append("- Working Directory:\n");
+				stateBuilder.append(workingDir);
+				stateBuilder.append("\n\n");
+			}
+
+			if (!lastCommand.isEmpty()) {
+				stateBuilder.append("- Last Command Executed:\n");
+				stateBuilder.append(lastCommand);
+				stateBuilder.append("\n\n");
+			}
+
+			if (isAlive) {
+				stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
+				try {
+					String currentState = executor.getCurrentState();
+					if (currentState != null && !currentState.isEmpty() && !currentState.equals("No active process")
+							&& !currentState.equals("Process has completed")) {
+						stateBuilder.append("- Current Process Output:\n");
+						stateBuilder.append(currentState);
+						stateBuilder.append("\n\n");
+					}
+				}
+				catch (Exception e) {
+					log.warn("Error getting current state: {}", e.getMessage());
+				}
+			}
+			else {
+				if (!lastResult.isEmpty() && !lastResult.equals("Process terminated")) {
+					stateBuilder.append(lastResult);
+					stateBuilder.append("\n\n");
+				}
+			}
+
+			return stateBuilder.toString();
+		}
+		catch (Exception e) {
+			// Handle any unexpected errors gracefully
+			log.warn("Error getting bash tool state string (non-fatal): {}", e.getMessage(), e);
+			StringBuilder errorBuilder = new StringBuilder();
+			if (executionLog.length() > 0) {
+				errorBuilder.append("Execution Log:\n");
+				errorBuilder.append(executionLog.toString());
+				errorBuilder.append("\n");
+			}
+			String workingDir = getWorkingDirectory();
+			if (workingDir != null && !workingDir.isEmpty()) {
+				errorBuilder.append("- Working Directory: ").append(workingDir).append("\n");
+			}
+			if (!lastCommand.isEmpty()) {
+				errorBuilder.append("- Last Command: ").append(lastCommand).append("\n");
+			}
+			if (!lastResult.isEmpty()) {
+				errorBuilder.append("- Last Result: ").append(lastResult).append("\n");
+			}
+			return errorBuilder.toString();
+		}
 	}
 
 	@Override
 	public void cleanup(String planId) {
-		log.info("Cleaned up resources for plan: {}", planId);
+		if (planId != null) {
+			log.info("Cleaning up shell executor resources for plan: {}", planId);
+			this.shellExecutorService.closeExecutorForPlan(planId);
+			// Reset execution log and state for the plan
+			synchronized (executionLog) {
+				executionLog.setLength(0);
+			}
+			lastCommand = "";
+			lastResult = "";
+			hasRunAtLeastOnce = false;
+		}
 	}
 
 	@Override

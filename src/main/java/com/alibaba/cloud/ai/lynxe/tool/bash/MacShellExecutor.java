@@ -41,7 +41,6 @@ public class MacShellExecutor implements ShellCommandExecutor {
 
 	private static final int DEFAULT_TIMEOUT = 60; // Default timeout in seconds
 
-	@SuppressWarnings("unused")
 	private BufferedWriter processInput;
 
 	// Cache for shell path to avoid repeated detection
@@ -219,6 +218,56 @@ public class MacShellExecutor implements ShellCommandExecutor {
 			return "Error (Exit Code " + exitCode + "): "
 					+ (errorBuilder.length() > 0 ? errorBuilder.toString() : outputBuilder.toString());
 		}
+	}
+
+	@Override
+	public void sendInput(String input) throws Exception {
+		if (currentProcess == null || !currentProcess.isAlive()) {
+			throw new IllegalStateException("No active process to send input to");
+		}
+		if (processInput == null) {
+			throw new IllegalStateException("Process input stream is not available");
+		}
+		try {
+			// Replace special sequences
+			String processedInput = input;
+			if ("\\n".equals(input) || "Enter".equalsIgnoreCase(input)) {
+				processedInput = "\n";
+			}
+			else if ("\\t".equals(input)) {
+				processedInput = "\t";
+			}
+
+			processInput.write(processedInput);
+			processInput.flush();
+			log.info("Sent input to process: {}", processedInput.replace("\n", "\\n"));
+		}
+		catch (IOException e) {
+			log.error("Error sending input to process", e);
+			throw new Exception("Failed to send input to process: " + e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public String getCurrentState() throws Exception {
+		if (currentProcess == null) {
+			return "No active process";
+		}
+		if (!currentProcess.isAlive()) {
+			return "Process has completed";
+		}
+		try {
+			return processOutput(currentProcess);
+		}
+		catch (Exception e) {
+			log.error("Error getting current state", e);
+			throw new Exception("Failed to get current state: " + e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public boolean isProcessAlive() {
+		return currentProcess != null && currentProcess.isAlive();
 	}
 
 }

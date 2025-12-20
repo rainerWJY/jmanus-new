@@ -380,6 +380,31 @@ public class LynxeProperties {
 		this.respectGitIgnore = respectGitIgnore;
 	}
 
+	@ConfigProperty(group = "lynxe", subGroup = "general", key = "bashSecurityProtection",
+			path = "lynxe.general.bashSecurityProtection",
+			description = "lynxe.general.bashSecurityProtection.description", defaultValue = "true",
+			inputType = ConfigInputType.CHECKBOX,
+			options = { @ConfigOption(value = "true", label = "lynxe.general.bashSecurityProtection.option.true"),
+					@ConfigOption(value = "false", label = "lynxe.general.bashSecurityProtection.option.false") })
+	private volatile Boolean bashSecurityProtection;
+
+	public Boolean getBashSecurityProtection() {
+		String configPath = "lynxe.general.bashSecurityProtection";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			bashSecurityProtection = Boolean.valueOf(value);
+		}
+		// Default to true if not configured
+		if (bashSecurityProtection == null) {
+			bashSecurityProtection = true;
+		}
+		return bashSecurityProtection;
+	}
+
+	public void setBashSecurityProtection(Boolean bashSecurityProtection) {
+		this.bashSecurityProtection = bashSecurityProtection;
+	}
+
 	// MCP Service Loader Settings
 	// Begin--------------------------------------------------------------------------------------------
 

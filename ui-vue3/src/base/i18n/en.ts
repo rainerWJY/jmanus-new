@@ -467,6 +467,8 @@ const words: I18nType = {
         externalLinkedFolder:
           "External Directory Mapping: You can specify an external directory, and the system will map this directory to a subdirectory under each task, so you don't need to import the content. You can use an absolute directory path with or without a trailing slash. The mapped directory can be accessed through the linked_external subdirectory.",
         enableConversationMemory: 'Enable Conversation Memory',
+        bashSecurityProtection:
+          'Bash security protection will block all rm commands because rm is extremely difficult to recover. If set to false, this protection will be disabled.',
       },
       interactionSettings: {
         openBrowser: 'Automatically open the browser on startup',
