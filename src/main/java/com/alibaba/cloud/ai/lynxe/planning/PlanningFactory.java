@@ -288,7 +288,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
-			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, shellExecutorService, lynxeProperties));
+			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, shellExecutorService,
+					lynxeProperties));
 			// toolDefinitions.add(new DocLoaderTool());
 
 			toolDefinitions.add(new GlobalFileReadOperator(textFileService, innerStorageService, objectMapper,

@@ -122,7 +122,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			for (ImageGenerationProvider p : imageGenerationProviders) {
 				if (p.supports(modelEntity, modelName)) {
 					provider = p;
-					log.info("Found image generation provider for model: {} - {}", modelName, p.getClass().getSimpleName());
+					log.info("Found image generation provider for model: {} - {}", modelName,
+							p.getClass().getSimpleName());
 					break;
 				}
 			}
@@ -161,7 +162,6 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			return new ToolExecuteResult(errorMessage);
 		}
 	}
-
 
 	/**
 	 * Generate image using direct Google Generative Language API
@@ -233,11 +233,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			log.debug("Calling Google API: {}{}", baseUrl, endpoint);
 
 			// Make the API call
-			String responseJson = restClient.post()
-				.uri(endpoint)
-				.body(requestBody)
-				.retrieve()
-				.body(String.class);
+			String responseJson = restClient.post().uri(endpoint).body(requestBody).retrieve().body(String.class);
 
 			if (responseJson == null || responseJson.trim().isEmpty()) {
 				return new ToolExecuteResult("No response received from Google API");
@@ -297,8 +293,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 	}
 
 	/**
-	 * Extract images from Google API response
-	 * Google API returns images in candidates[].content.parts[].inlineData format
+	 * Extract images from Google API response Google API returns images in
+	 * candidates[].content.parts[].inlineData format
 	 * @param responseJson JSON response string from Google API
 	 * @return List of base64 data URLs
 	 */
@@ -390,7 +386,6 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 		}
 	}
 
-
 	/**
 	 * Get configured model name from LynxeProperties
 	 * @return configured model name or null if not configured
@@ -435,7 +430,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 		// Check if model name matches Google Gemini patterns
 		if (modelName != null) {
 			String lowerModelName = modelName.toLowerCase();
-			// Check for Google Gemini image models (e.g., gemini-3-pro-image-preview, gemini-2.5-flash-image-preview)
+			// Check for Google Gemini image models (e.g., gemini-3-pro-image-preview,
+			// gemini-2.5-flash-image-preview)
 			if ((lowerModelName.contains("gemini") && lowerModelName.contains("image"))
 					|| lowerModelName.startsWith("gemini-") && lowerModelName.contains("-image-")) {
 				log.debug("Detected Google Gemini image model: {}", modelName);
@@ -446,11 +442,9 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 		return false;
 	}
 
-
-
 	/**
-	 * Map model name to Google API format
-	 * Converts names like "google/gemini-3-pro-image-preview" to "gemini-3-pro-image-preview"
+	 * Map model name to Google API format Converts names like
+	 * "google/gemini-3-pro-image-preview" to "gemini-3-pro-image-preview"
 	 * @param modelName Original model name
 	 * @return Model name suitable for Google API endpoint
 	 */
@@ -474,10 +468,9 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 		return mapped;
 	}
 
-
 	/**
-	 * Build enhanced error message for image generation failures
-	 * Provides detailed information about HTML response errors and OpenRouter-specific guidance
+	 * Build enhanced error message for image generation failures Provides detailed
+	 * information about HTML response errors and OpenRouter-specific guidance
 	 * @param e The exception that occurred
 	 * @param modelEntity The model entity used for the request (can be null)
 	 * @return Enhanced error message
@@ -495,8 +488,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			}
 		}
 		boolean isGoogleDirect = modelEntity != null && isGoogleDirectApiGeneration(modelEntity);
-		boolean isOpenRouter = modelEntity != null && !isGoogleDirect
-				&& modelEntity.getBaseUrl() != null
+		boolean isOpenRouter = modelEntity != null && !isGoogleDirect && modelEntity.getBaseUrl() != null
 				&& modelEntity.getBaseUrl().toLowerCase().contains("openrouter.ai");
 
 		// Check for HTML response errors
@@ -510,8 +502,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 				msg.append("Model: ").append(modelEntity.getModelName()).append("\n");
 				msg.append("Base URL: ").append(modelEntity.getBaseUrl()).append("\n");
 				String apiKeyPreview = modelEntity.getApiKey() != null && modelEntity.getApiKey().length() > 7
-						? modelEntity.getApiKey().substring(0, 7) + "..."
-						: "(not set)";
+						? modelEntity.getApiKey().substring(0, 7) + "..." : "(not set)";
 				msg.append("API Key: ").append(apiKeyPreview).append("\n");
 				String method = isGoogleDirect ? "Direct Google API"
 						: (isProviderBased ? "Provider-based" : "API-based");

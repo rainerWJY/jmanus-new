@@ -420,7 +420,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		String rootPlanId = context.getRootPlanId();
 		if (unifiedDirectoryManager != null && rootPlanId != null && rootPlanId.equals(planId)) {
 			try {
-				logger.info("Attempting to remove external folder link for rootPlanId: {}, currentPlanId: {}", rootPlanId, planId);
+				logger.info("Attempting to remove external folder link for rootPlanId: {}, currentPlanId: {}",
+						rootPlanId, planId);
 				unifiedDirectoryManager.removeExternalFolderLink(rootPlanId);
 				logger.info("Successfully removed external folder link for rootPlanId: {}", rootPlanId);
 			}
@@ -436,7 +437,9 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				logger.info("Skipping linked_external cleanup: rootPlanId is null, currentPlanId: {}", planId);
 			}
 			else if (!rootPlanId.equals(planId)) {
-				logger.info("Skipping linked_external cleanup: currentPlanId ({}) != rootPlanId ({}) - this is a sub-plan", planId, rootPlanId);
+				logger.info(
+						"Skipping linked_external cleanup: currentPlanId ({}) != rootPlanId ({}) - this is a sub-plan",
+						planId, rootPlanId);
 			}
 		}
 	}

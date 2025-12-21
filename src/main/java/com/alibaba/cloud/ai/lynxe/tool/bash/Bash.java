@@ -74,8 +74,8 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 	}
 
 	/**
-	 * Get the working directory for bash execution
-	 * Uses rootPlanId directory if available, otherwise falls back to base working directory
+	 * Get the working directory for bash execution Uses rootPlanId directory if
+	 * available, otherwise falls back to base working directory
 	 * @return Working directory path as string
 	 */
 	private String getWorkingDirectory() {
@@ -85,7 +85,8 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 				return rootPlanDir.toString();
 			}
 			catch (Exception e) {
-				log.warn("Failed to get root plan directory for rootPlanId: {}, falling back to base working directory. Error: {}",
+				log.warn(
+						"Failed to get root plan directory for rootPlanId: {}, falling back to base working directory. Error: {}",
 						rootPlanId, e.getMessage());
 			}
 		}
@@ -116,13 +117,20 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 		try {
 			log.info("Bash tool requestVO: action={}", requestVO.getAction());
 
+			// Check for thread interrupt before starting
+			if (Thread.currentThread().isInterrupted()) {
+				log.warn("Thread was interrupted before execution");
+				return new ToolExecuteResult("Operation cancelled: thread was interrupted");
+			}
+
 			// Mark that run has been called at least once
 			hasRunAtLeastOnce = true;
 
 			// Get parameters from RequestVO
 			action = requestVO.getAction();
 			if (action == null || action.trim().isEmpty()) {
-				// Backward compatibility: if no action specified, treat as 'command' action
+				// Backward compatibility: if no action specified, treat as 'command'
+				// action
 				action = "command";
 			}
 
@@ -130,24 +138,30 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 			try {
 				switch (action) {
 					case "command": {
+						// Check for interrupt
+						if (Thread.currentThread().isInterrupted()) {
+							return new ToolExecuteResult("Operation cancelled: thread was interrupted");
+						}
+
 						String command = requestVO.getCommand();
 						if (command == null || command.trim().isEmpty()) {
 							return new ToolExecuteResult("Command parameter is required for 'command' action");
 						}
-						
+
 						// Check bash security protection
 						if (lynxeProperties != null && lynxeProperties.getBashSecurityProtection() != null
 								&& lynxeProperties.getBashSecurityProtection()) {
 							String commandLower = command.toLowerCase().trim();
 							boolean isWindows = osName.toLowerCase().contains("windows");
-							
+
 							// Check for dangerous commands
 							boolean isDangerous = false;
 							String dangerousCommand = null;
-							
+
 							if (isWindows) {
 								// Windows: check for del command
-								// Use word boundary to avoid false positives (e.g., "delete" should not be blocked)
+								// Use word boundary to avoid false positives (e.g.,
+								// "delete" should not be blocked)
 								if (commandLower.matches(".*\\bdel\\b.*") || commandLower.startsWith("del ")) {
 									isDangerous = true;
 									dangerousCommand = "del";
@@ -155,22 +169,24 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 							}
 							else {
 								// Unix/Linux/Mac: check for rm and rmdir commands
-								// Use word boundary to avoid false positives (e.g., "grep" or "remove" should not be blocked)
+								// Use word boundary to avoid false positives (e.g.,
+								// "grep" or "remove" should not be blocked)
 								if (commandLower.matches(".*\\brm\\b.*") || commandLower.startsWith("rm ")
-										|| commandLower.matches(".*\\brmdir\\b.*") || commandLower.startsWith("rmdir ")) {
+										|| commandLower.matches(".*\\brmdir\\b.*")
+										|| commandLower.startsWith("rmdir ")) {
 									isDangerous = true;
 									dangerousCommand = "rm/rmdir";
 								}
 							}
-							
+
 							if (isDangerous) {
 								log.warn("Command blocked by bash security protection: {}", command);
-								return new ToolExecuteResult(
-										"Command blocked by security protection: " + dangerousCommand
-												+ " commands are not allowed. Set bashSecurityProtection to false to disable this protection.");
+								return new ToolExecuteResult("Command blocked by security protection: "
+										+ dangerousCommand
+										+ " commands are not allowed. Set bashSecurityProtection to false to disable this protection.");
 							}
 						}
-						
+
 						log.info("Executing bash command: {}", command);
 						log.info("Current operating system: {}", osName);
 						this.lastCommand = command;
@@ -194,12 +210,26 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 						String prompt = String.format("%s@%s %s %% ", username, hostname, dirName);
 						executionLog.append(prompt).append(command).append("\n");
 
+						// Check for interrupt before executing
+						if (Thread.currentThread().isInterrupted()) {
+							return new ToolExecuteResult(
+									"Operation cancelled: thread was interrupted before command execution");
+						}
+
 						ShellCommandExecutor executor = getExecutor();
 						List<String> commandList = new ArrayList<>();
 						commandList.add(command);
+
+						// Execute command (executors handle interrupts internally)
 						List<String> executionResult = executor.execute(commandList, workingDir);
+
+						// Check if result indicates interruption
+						if (executionResult.size() == 1 && executionResult.get(0).contains("interrupted")) {
+							log.warn("Command execution was interrupted");
+						}
+
 						this.lastResult = String.join("\n", executionResult);
-						
+
 						// Add result to execution log
 						if (!this.lastResult.isEmpty()) {
 							executionLog.append(this.lastResult);
@@ -207,7 +237,7 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 								executionLog.append("\n");
 							}
 						}
-						
+
 						result = new ToolExecuteResult(objectMapper.writeValueAsString(executionResult));
 						break;
 					}
@@ -223,7 +253,7 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 						// Get updated state after sending input
 						String state = executor.getCurrentState();
 						this.lastResult = state;
-						
+
 						// Add input and response to execution log
 						executionLog.append(input).append("\n");
 						if (!state.isEmpty()) {
@@ -232,7 +262,7 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 								executionLog.append("\n");
 							}
 						}
-						
+
 						result = new ToolExecuteResult("Input sent successfully. Current state:\n" + state);
 						break;
 					}
@@ -264,13 +294,41 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 				return new ToolExecuteResult("Action '" + action + "' failed: " + e.getMessage());
 			}
 			catch (Exception e) {
+				// Check if exception was caused by thread interrupt
+				if (Thread.currentThread().isInterrupted()) {
+					log.warn("Thread interrupted, exception: {}", e.getMessage());
+					Thread.currentThread().interrupt();
+					// Try to clean up by sending Ctrl+C
+					try {
+						ShellCommandExecutor executor = getExecutor();
+						if (executor != null && executor.isProcessAlive()) {
+							executor.sendInput("\u0003"); // Ctrl+C
+						}
+					}
+					catch (Exception ex) {
+						log.debug("Failed to send Ctrl+C after interrupt: {}", ex.getMessage());
+					}
+					return new ToolExecuteResult("Operation cancelled: thread was interrupted");
+				}
 				log.error("Unexpected error executing action '{}': {}", action, e.getMessage(), e);
 				return new ToolExecuteResult("Action '" + action + "' failed: " + e.getMessage());
+			}
+
+			// Check for interrupt before returning
+			if (Thread.currentThread().isInterrupted()) {
+				log.warn("Thread interrupted after action '{}' completed", action);
+				Thread.currentThread().interrupt();
 			}
 
 			return result;
 		}
 		catch (Exception e) {
+			// Check if exception was caused by thread interrupt
+			if (Thread.currentThread().isInterrupted()) {
+				log.warn("Thread interrupted, exception: {}", e.getMessage());
+				Thread.currentThread().interrupt();
+				return new ToolExecuteResult("Operation cancelled: thread was interrupted");
+			}
 			log.error("Unexpected error in bash tool for action '{}': {}", action, e.getMessage(), e);
 			return new ToolExecuteResult("Bash operation failed: " + e.getMessage());
 		}
@@ -316,7 +374,6 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 
 			// Add execution log if available
 			if (executionLog.length() > 0) {
-				stateBuilder.append("Execution Log:\n");
 				stateBuilder.append(executionLog.toString());
 				stateBuilder.append("\n");
 			}
@@ -364,7 +421,6 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 			log.warn("Error getting bash tool state string (non-fatal): {}", e.getMessage(), e);
 			StringBuilder errorBuilder = new StringBuilder();
 			if (executionLog.length() > 0) {
-				errorBuilder.append("Execution Log:\n");
 				errorBuilder.append(executionLog.toString());
 				errorBuilder.append("\n");
 			}

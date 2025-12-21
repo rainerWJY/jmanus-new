@@ -226,11 +226,12 @@ public class FileBrowserController {
 				mimeType = "application/octet-stream";
 			}
 
-			// Check if it's an image file - serve inline for images, attachment for others
+			// Check if it's an image file - serve inline for images, attachment for
+			// others
 			boolean isImage = mimeType != null && mimeType.startsWith("image/");
 			ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(mimeType));
-			
+
 			if (isImage) {
 				// Serve images inline so they can be displayed in browser
 				responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
@@ -241,7 +242,7 @@ public class FileBrowserController {
 				responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
 						"attachment; filename=\"" + targetFile.getFileName().toString() + "\"");
 			}
-			
+
 			return responseBuilder.body(resource);
 
 		}

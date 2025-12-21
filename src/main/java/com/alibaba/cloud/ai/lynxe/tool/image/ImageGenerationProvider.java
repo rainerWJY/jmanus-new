@@ -19,8 +19,8 @@ import com.alibaba.cloud.ai.lynxe.model.entity.DynamicModelEntity;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 
 /**
- * Interface for image generation providers
- * Different providers implement this interface to support various image generation APIs
+ * Interface for image generation providers Different providers implement this interface
+ * to support various image generation APIs
  */
 public interface ImageGenerationProvider {
 
@@ -37,9 +37,12 @@ public interface ImageGenerationProvider {
 	 * @param request Image generation request
 	 * @param modelEntity Model entity configuration
 	 * @param modelName Model name
-	 * @param rootPlanId Root plan ID for saving images to local folder (optional, can be null)
-	 * @return Tool execution result with image URLs (local file paths if rootPlanId is provided, otherwise remote URLs)
+	 * @param rootPlanId Root plan ID for saving images to local folder (optional, can be
+	 * null)
+	 * @return Tool execution result with image URLs (local file paths if rootPlanId is
+	 * provided, otherwise remote URLs)
 	 */
-	ToolExecuteResult generateImage(ImageGenerationRequest request, DynamicModelEntity modelEntity, String modelName, String rootPlanId);
+	ToolExecuteResult generateImage(ImageGenerationRequest request, DynamicModelEntity modelEntity, String modelName,
+			String rootPlanId);
 
 }

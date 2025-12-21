@@ -46,9 +46,9 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Image generation provider for Alibaba Wanx (通义万相) API
- * Uses DashScope multimodal generation API for text-to-image models
- * Uses DashScope image generation API for image editing models
+ * Image generation provider for Alibaba Wanx (通义万相) API Uses DashScope multimodal
+ * generation API for text-to-image models Uses DashScope image generation API for image
+ * editing models
  */
 @Component
 public class WanxImageGenerationProvider implements ImageGenerationProvider {
@@ -70,30 +70,25 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 
 	/**
 	 * Check if this provider supports the given model
-	 * 
+	 *
 	 * Supported models include:
-	 * 
-	 * Wanx Text-to-Image V2 (通义万相文生图V2版):
-	 *   - wan2.6-t2i, wan2.5-t2i-preview, wan2.2-t2i-plus, wan2.2-t2i-flash
-	 *   - wanx2.1-t2i-plus, wanx2.1-t2i-turbo, wanx2.0-t2i-turbo
-	 *   Endpoint: /api/v1/services/aigc/multimodal-generation/generation (synchronous)
-	 * 
-	 * Wanx Text-to-Image V1 (通义万相文生图V1版):
-	 *   - wanx-v1
-	 *   Endpoint: /api/v1/services/aigc/multimodal-generation/generation (synchronous)
-	 * 
-	 * Wanx Image Generation and Editing 2.6 (通义万相图像生成与编辑2.6):
-	 *   - wan2.6-image
-	 *   Endpoint: /api/v1/services/aigc/image-generation/generation (asynchronous)
-	 * 
-	 * Wanx Universal Image Editing (通义万相通用图像编辑):
-	 *   - wan2.5-i2i-preview, wanx2.1-imageedit
-	 * 
-	 * Other Wanx Models:
-	 *   - wanx-sketch-to-image-lite, wanx-x-painting, wanx-style-repaint-v1
-	 *   - wanx-background-generation-v2, image-out-painting
-	 *   - wanx-virtualmodel, virtualmodel-v2, shoemodel-v1
-	 *   - wanx-poster-generation-v1
+	 *
+	 * Wanx Text-to-Image V2 (通义万相文生图V2版): - wan2.6-t2i, wan2.5-t2i-preview,
+	 * wan2.2-t2i-plus, wan2.2-t2i-flash - wanx2.1-t2i-plus, wanx2.1-t2i-turbo,
+	 * wanx2.0-t2i-turbo Endpoint: /api/v1/services/aigc/multimodal-generation/generation
+	 * (synchronous)
+	 *
+	 * Wanx Text-to-Image V1 (通义万相文生图V1版): - wanx-v1 Endpoint:
+	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
+	 *
+	 * Wanx Image Generation and Editing 2.6 (通义万相图像生成与编辑2.6): - wan2.6-image Endpoint:
+	 * /api/v1/services/aigc/image-generation/generation (asynchronous)
+	 *
+	 * Wanx Universal Image Editing (通义万相通用图像编辑): - wan2.5-i2i-preview, wanx2.1-imageedit
+	 *
+	 * Other Wanx Models: - wanx-sketch-to-image-lite, wanx-x-painting,
+	 * wanx-style-repaint-v1 - wanx-background-generation-v2, image-out-painting -
+	 * wanx-virtualmodel, virtualmodel-v2, shoemodel-v1 - wanx-poster-generation-v1
 	 */
 	@Override
 	public boolean supports(DynamicModelEntity modelEntity, String modelName) {
@@ -116,7 +111,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 		}
 
 		// Step 2: Validate modelName - check for supported Wanx models
-		
+
 		// Wanx Text-to-Image Models V2 (通义万相文生图V2版)
 		boolean isWan26T2i = lowerModelName.contains("wan2.6-t2i");
 		boolean isWan25T2iPreview = lowerModelName.contains("wan2.5-t2i-preview");
@@ -125,51 +120,52 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 		boolean isWanx21T2iPlus = lowerModelName.contains("wanx2.1-t2i-plus");
 		boolean isWanx21T2iTurbo = lowerModelName.contains("wanx2.1-t2i-turbo");
 		boolean isWanx20T2iTurbo = lowerModelName.contains("wanx2.0-t2i-turbo");
-		
+
 		// Wanx Text-to-Image Models V1 (通义万相文生图V1版)
 		boolean isWanxV1 = lowerModelName.equals("wanx-v1") || lowerModelName.contains("wanx-v1");
-		
+
 		// Wanx Image Generation and Editing 2.6 (通义万相图像生成与编辑2.6)
 		boolean isWan26Image = lowerModelName.contains("wan2.6-image");
-		
+
 		// Wanx Universal Image Editing 2.5 (通义万相通用图像编辑2.5)
 		boolean isWan25I2iPreview = lowerModelName.contains("wan2.5-i2i-preview");
-		
+
 		// Wanx Universal Image Editing 2.1 (通义万相通用图像编辑2.1)
 		boolean isWanx21ImageEdit = lowerModelName.contains("wanx2.1-imageedit");
-		
+
 		// Wanx Sketch to Image (通义万相涂鸦作画)
 		boolean isWanxSketch = lowerModelName.contains("wanx-sketch-to-image");
-		
+
 		// Wanx Local Repainting (通义万相图像局部重绘)
 		boolean isWanxPainting = lowerModelName.contains("wanx-x-painting");
-		
+
 		// Wanx Portrait Style Repainting (人像风格重绘)
 		boolean isWanxStyleRepaint = lowerModelName.contains("wanx-style-repaint");
-		
+
 		// Wanx Background Generation (图像背景生成)
 		boolean isWanxBackground = lowerModelName.contains("wanx-background-generation");
-		
+
 		// Image Expansion (图像画面扩展)
 		boolean isImageOutPainting = lowerModelName.contains("image-out-painting");
-		
+
 		// Virtual Model (虚拟模特)
-		boolean isWanxVirtualModel = lowerModelName.contains("wanx-virtualmodel") || lowerModelName.contains("virtualmodel");
-		
+		boolean isWanxVirtualModel = lowerModelName.contains("wanx-virtualmodel")
+				|| lowerModelName.contains("virtualmodel");
+
 		// Shoe Model (鞋靴模特)
 		boolean isShoeModel = lowerModelName.contains("shoemodel");
-		
+
 		// Poster Generation (创意海报生成)
 		boolean isWanxPoster = lowerModelName.contains("wanx-poster-generation");
-		
+
 		// General Wanx pattern (catch-all for other wanx models)
-		boolean isWanx = lowerModelName.contains("wanx") || lowerModelName.contains("wan2.") || lowerModelName.contains("wanx2.");
-		
+		boolean isWanx = lowerModelName.contains("wanx") || lowerModelName.contains("wan2.")
+				|| lowerModelName.contains("wanx2.");
+
 		// Check if model matches any supported pattern
-		if (isWan26T2i || isWan25T2iPreview || isWan22T2iPlus || isWan22T2iFlash
-				|| isWanx21T2iPlus || isWanx21T2iTurbo || isWanx20T2iTurbo || isWanxV1
-				|| isWan26Image || isWan25I2iPreview || isWanx21ImageEdit || isWanxSketch
-				|| isWanxPainting || isWanxStyleRepaint || isWanxBackground || isImageOutPainting
+		if (isWan26T2i || isWan25T2iPreview || isWan22T2iPlus || isWan22T2iFlash || isWanx21T2iPlus || isWanx21T2iTurbo
+				|| isWanx20T2iTurbo || isWanxV1 || isWan26Image || isWan25I2iPreview || isWanx21ImageEdit
+				|| isWanxSketch || isWanxPainting || isWanxStyleRepaint || isWanxBackground || isImageOutPainting
 				|| isWanxVirtualModel || isShoeModel || isWanxPoster || isWanx) {
 			log.debug("Detected Wanx image generation: model={}, baseUrl={}", modelName, baseUrl);
 			return true;
@@ -189,11 +185,13 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 			}
 
 			// Determine full endpoint URL based on region
-			// Beijing region: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
-			// Singapore region: https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+			// Beijing region:
+			// https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+			// Singapore region:
+			// https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
 			String rawBaseUrl = modelEntity.getBaseUrl();
 			String fullEndpointUrl;
-			
+
 			if (rawBaseUrl != null && !rawBaseUrl.trim().isEmpty()) {
 				String normalizedBaseUrl = AbstractBaseTool.normalizeBaseUrl(rawBaseUrl);
 				// Check if it's Singapore region
@@ -233,10 +231,11 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 			parameters.put("watermark", false);
 
 			// Parse and validate size from request (e.g., "1024x1024" -> "1024*1024")
-			// Default size: 1280*1280 for wan2.6-t2i and wan2.5-t2i-preview, 1024*1024 for older models
+			// Default size: 1280*1280 for wan2.6-t2i and wan2.5-t2i-preview, 1024*1024
+			// for older models
 			String size = validateAndAdjustSize(request.getSize(), modelName);
 			parameters.put("size", size);
-			
+
 			// Add number of images to generate (n parameter, range 1-4 for Wanx models)
 			// Default to 1 if not specified
 			int n = 1; // Default value
@@ -244,7 +243,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 				n = request.getN();
 			}
 			parameters.put("n", n);
-			
+
 			requestBody.put("parameters", parameters);
 
 			// Log the request JSON for debugging
@@ -284,11 +283,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 			log.debug("Calling Wanx API: {}", fullEndpointUrl);
 
 			// Make the API call
-			String responseJson = restClient.post()
-				.uri(endpointPath)
-				.body(requestBody)
-				.retrieve()
-				.body(String.class);
+			String responseJson = restClient.post().uri(endpointPath).body(requestBody).retrieve().body(String.class);
 
 			if (responseJson == null || responseJson.trim().isEmpty()) {
 				return new ToolExecuteResult("No response received from Wanx API");
@@ -316,16 +311,17 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 				try {
 					@SuppressWarnings("unchecked")
 					Map<String, Object> responseMap = objectMapper.readValue(responseJson, Map.class);
-					
+
 					// Check for error code and message at root level
 					Object code = responseMap.get("code");
 					Object message = responseMap.get("message");
 					if (code != null || message != null) {
-						String errorMsg = message != null ? message.toString() : (code != null ? code.toString() : "Unknown error");
+						String errorMsg = message != null ? message.toString()
+								: (code != null ? code.toString() : "Unknown error");
 						log.error("Wanx API returned error: code={}, message={}", code, message);
 						return new ToolExecuteResult("Wanx API error: " + errorMsg);
 					}
-					
+
 					// Also check for error object (legacy format)
 					Object error = responseMap.get("error");
 					if (error != null) {
@@ -371,8 +367,8 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 	}
 
 	/**
-	 * Extract images from Wanx API response
-	 * Wanx returns images in output.choices[].message.content[].image format
+	 * Extract images from Wanx API response Wanx returns images in
+	 * output.choices[].message.content[].image format
 	 * @param responseJson JSON response string from Wanx API
 	 * @return List of image URLs
 	 */
@@ -431,23 +427,23 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 	 */
 	private List<String> downloadImagesToLocalFolder(List<String> remoteUrls, String rootPlanId) throws IOException {
 		List<String> localPaths = new ArrayList<>();
-		
+
 		if (rootPlanId == null || rootPlanId.trim().isEmpty()) {
 			log.warn("rootPlanId is null or empty, cannot download images to local folder");
 			return remoteUrls;
 		}
-		
+
 		// Get root plan directory
 		Path rootPlanDir = directoryManager.getRootPlanDirectory(rootPlanId);
-		
+
 		// Create images subdirectory if it doesn't exist
 		Path imagesDir = rootPlanDir.resolve("images");
 		Files.createDirectories(imagesDir);
-		
+
 		// Generate timestamp and UUID for unique filenames
 		String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
 		String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-		
+
 		// Download each image using HttpURLConnection to preserve OSS signed URL exactly
 		for (int i = 0; i < remoteUrls.size(); i++) {
 			String remoteUrl = remoteUrls.get(i);
@@ -455,31 +451,35 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 				// Generate unique filename: wanx_image_20250121_143022_a1b2c3d4_1.png
 				String filename = String.format("wanx_image_%s_%s_%d.png", timestamp, uniqueId, i + 1);
 				Path localFile = imagesDir.resolve(filename);
-				
-				// Download image using HttpURLConnection to preserve exact URL (important for OSS signed URLs)
+
+				// Download image using HttpURLConnection to preserve exact URL (important
+				// for OSS signed URLs)
 				URI uri = URI.create(remoteUrl);
 				HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
 				connection.setRequestMethod("GET");
 				connection.setConnectTimeout(30000); // 30 seconds
 				connection.setReadTimeout(60000); // 60 seconds
 				connection.setInstanceFollowRedirects(true);
-				
+
 				int responseCode = connection.getResponseCode();
 				if (responseCode == HttpURLConnection.HTTP_OK) {
 					try (InputStream inputStream = connection.getInputStream()) {
 						byte[] imageData = inputStream.readAllBytes();
-						
+
 						if (imageData != null && imageData.length > 0) {
 							// Save to local file
 							Files.write(localFile, imageData);
-							
-							// Return API URL format for frontend access: /api/file-browser/download/{planId}?path={relativePath}
+
+							// Return API URL format for frontend access:
+							// /api/file-browser/download/{planId}?path={relativePath}
 							String relativePath = rootPlanDir.relativize(localFile).toString().replace("\\", "/");
 							// URL encode the path parameter
 							String encodedPath = URLEncoder.encode(relativePath, StandardCharsets.UTF_8);
-							String apiUrl = String.format("/api/file-browser/download/%s?path=%s", rootPlanId, encodedPath);
+							String apiUrl = String.format("/api/file-browser/download/%s?path=%s", rootPlanId,
+									encodedPath);
 							localPaths.add(apiUrl);
-							log.debug("Downloaded image {} to {} ({} bytes), API URL: {}", remoteUrl, localFile, imageData.length, apiUrl);
+							log.debug("Downloaded image {} to {} ({} bytes), API URL: {}", remoteUrl, localFile,
+									imageData.length, apiUrl);
 						}
 						else {
 							log.warn("Downloaded image data is empty for URL: {}", remoteUrl);
@@ -493,7 +493,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					// Fallback to remote URL if download fails
 					localPaths.add(remoteUrl);
 				}
-				
+
 				connection.disconnect();
 			}
 			catch (Exception e) {
@@ -502,17 +502,16 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 				localPaths.add(remoteUrl);
 			}
 		}
-		
+
 		return localPaths;
 	}
 
 	/**
 	 * Validate and adjust image size according to model requirements
-	 * 
-	 * wan2.6-t2i and wan2.5-t2i-preview: Total pixels between [768*768, 1440*1440] = [589824, 2073600]
-	 *   Aspect ratio between [1:4, 4:1]
-	 * wan2.2 and below: Width and height between [512, 1440] pixels
-	 * 
+	 *
+	 * wan2.6-t2i and wan2.5-t2i-preview: Total pixels between [768*768, 1440*1440] =
+	 * [589824, 2073600] Aspect ratio between [1:4, 4:1] wan2.2 and below: Width and
+	 * height between [512, 1440] pixels
 	 * @param sizeStr Size string in format "WIDTHxHEIGHT" or "WIDTH*HEIGHT"
 	 * @param modelName Model name to determine constraints
 	 * @return Validated size string in format "WIDTH*HEIGHT"
@@ -520,37 +519,39 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 	private String validateAndAdjustSize(String sizeStr, String modelName) {
 		String lowerModelName = modelName != null ? modelName.toLowerCase() : "";
 		boolean isNewModel = lowerModelName.contains("wan2.6-t2i") || lowerModelName.contains("wan2.5-t2i-preview");
-		
+
 		// Default sizes
 		String defaultSize = isNewModel ? "1280*1280" : "1024*1024";
-		
+
 		if (sizeStr == null || sizeStr.trim().isEmpty()) {
 			return defaultSize;
 		}
-		
+
 		// Normalize separator (accept both "x" and "*")
 		String normalized = sizeStr.trim().replace("x", "*").replace("X", "*");
-		
+
 		// Parse width and height
 		String[] parts = normalized.split("\\*");
 		if (parts.length != 2) {
 			log.warn("Invalid size format: {}, using default: {}", sizeStr, defaultSize);
 			return defaultSize;
 		}
-		
+
 		try {
 			int width = Integer.parseInt(parts[0].trim());
 			int height = Integer.parseInt(parts[1].trim());
-			
+
 			if (isNewModel) {
-				// wan2.6-t2i and wan2.5-t2i-preview: Total pixels between [589824, 2073600]
+				// wan2.6-t2i and wan2.5-t2i-preview: Total pixels between [589824,
+				// 2073600]
 				// Aspect ratio between [1:4, 4:1]
 				long totalPixels = (long) width * height;
-				
+
 				// First, check and adjust aspect ratio if needed [1:4, 4:1]
 				double aspectRatio = width > height ? (double) width / height : (double) height / width;
 				if (aspectRatio > 4.0) {
-					// Aspect ratio too extreme - adjust to 4:1 while maintaining total pixels if possible
+					// Aspect ratio too extreme - adjust to 4:1 while maintaining total
+					// pixels if possible
 					if (width > height) {
 						// Maintain width, adjust height
 						height = width / 4;
@@ -562,7 +563,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					totalPixels = (long) width * height;
 					log.info("Aspect ratio was too extreme, adjusted to {}*{}", width, height);
 				}
-				
+
 				// Then adjust total pixels if needed
 				if (totalPixels < 589824) {
 					// Too small - scale up to minimum while maintaining aspect ratio
@@ -570,8 +571,8 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					width = (int) Math.round(width * scale);
 					height = (int) Math.round(height * scale);
 					totalPixels = (long) width * height;
-					log.info("Size {} was too small, adjusted to {}*{} (total pixels: {})", 
-						sizeStr, width, height, totalPixels);
+					log.info("Size {} was too small, adjusted to {}*{} (total pixels: {})", sizeStr, width, height,
+							totalPixels);
 				}
 				else if (totalPixels > 2073600) {
 					// Too large - scale down to maximum while maintaining aspect ratio
@@ -579,8 +580,8 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					width = (int) Math.round(width * scale);
 					height = (int) Math.round(height * scale);
 					totalPixels = (long) width * height;
-					log.info("Size {} was too large, adjusted to {}*{} (total pixels: {})", 
-						sizeStr, width, height, totalPixels);
+					log.info("Size {} was too large, adjusted to {}*{} (total pixels: {})", sizeStr, width, height,
+							totalPixels);
 				}
 			}
 			else {
@@ -593,7 +594,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					width = 1440;
 					log.info("Width was too large, adjusted to 1440");
 				}
-				
+
 				if (height < 512) {
 					height = 512;
 					log.info("Height was too small, adjusted to 512");
@@ -602,7 +603,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					height = 1440;
 					log.info("Height was too large, adjusted to 1440");
 				}
-				
+
 				// Check max resolution (1440*1440)
 				long totalPixels = (long) width * height;
 				if (totalPixels > 2073600) { // 1440 * 1440
@@ -613,7 +614,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 					log.info("Total resolution was too large, adjusted to {}*{}", width, height);
 				}
 			}
-			
+
 			return width + "*" + height;
 		}
 		catch (NumberFormatException e) {

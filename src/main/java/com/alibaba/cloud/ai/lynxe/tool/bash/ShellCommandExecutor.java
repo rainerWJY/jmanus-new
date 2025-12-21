@@ -19,40 +19,48 @@ import java.util.List;
 
 /**
  * Shell command executor interface. Provides cross-platform (Windows/Linux/Mac) shell
- * command execution capability
+ * command execution capability using a persistent interactive shell session
  */
 public interface ShellCommandExecutor {
 
 	/**
-	 * Execute shell commands
+	 * Initialize the persistent shell session
+	 * @param workingDir Initial working directory for the shell
+	 * @throws Exception If initialization fails
+	 */
+	void initialize(String workingDir) throws Exception;
+
+	/**
+	 * Execute shell commands in the persistent shell session
 	 * @param commands List of commands to execute
-	 * @param workingDir Working directory
+	 * @param workingDir Working directory (will change directory if different from
+	 * current)
 	 * @return List of command execution results
 	 */
 	List<String> execute(List<String> commands, String workingDir);
 
 	/**
-	 * Terminate the currently executing process
+	 * Terminate the persistent shell process
 	 */
 	void terminate();
 
 	/**
-	 * Send input to the current interactive process
+	 * Send input to the persistent shell process
 	 * @param input The input to send (e.g., 'n' for next page, 'q' for quit)
 	 * @throws Exception If there's an error sending input
 	 */
 	void sendInput(String input) throws Exception;
 
 	/**
-	 * Get current process state/output without executing a new command
-	 * @return Current process output/state
+	 * Get current shell state/output without executing a new command
+	 * @return Current shell output/state
 	 * @throws Exception If there's an error getting state
 	 */
 	String getCurrentState() throws Exception;
 
 	/**
-	 * Check if the current process is still running
-	 * @return true if process is alive, false otherwise
+	 * Check if the persistent shell process is still running
+	 * @return true if shell process is alive, false otherwise
 	 */
 	boolean isProcessAlive();
 

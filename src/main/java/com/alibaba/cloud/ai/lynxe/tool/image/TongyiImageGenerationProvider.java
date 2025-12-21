@@ -34,10 +34,9 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Image generation provider for Alibaba Tongyi Qwen (通义千问) API
- * Uses DashScope multimodal generation API
- * Handles Qwen image generation and editing models only
- * For Wanx models, use WanxImageGenerationProvider
+ * Image generation provider for Alibaba Tongyi Qwen (通义千问) API Uses DashScope multimodal
+ * generation API Handles Qwen image generation and editing models only For Wanx models,
+ * use WanxImageGenerationProvider
  */
 @Component
 public class TongyiImageGenerationProvider implements ImageGenerationProvider {
@@ -56,17 +55,16 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 
 	/**
 	 * Check if this provider supports the given model
-	 * 
+	 *
 	 * Supported models include:
-	 * 
-	 * Qwen Image Generation (通义千问文生图):
-	 *   - qwen-image-plus, qwen-image
-	 *   Endpoint: /api/v1/services/aigc/multimodal-generation/generation (synchronous)
-	 * 
-	 * Qwen Image Editing (通义千问图像编辑):
-	 *   - qwen-image-edit-plus, qwen-image-edit-plus-2025-10-30, qwen-image-edit
-	 *   Endpoint: /api/v1/services/aigc/multimodal-generation/generation (synchronous)
-	 * 
+	 *
+	 * Qwen Image Generation (通义千问文生图): - qwen-image-plus, qwen-image Endpoint:
+	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
+	 *
+	 * Qwen Image Editing (通义千问图像编辑): - qwen-image-edit-plus,
+	 * qwen-image-edit-plus-2025-10-30, qwen-image-edit Endpoint:
+	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
+	 *
 	 * Note: For Wanx models, use WanxImageGenerationProvider
 	 */
 	@Override
@@ -89,15 +87,16 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 			return false;
 		}
 
-		// Step 2: Validate modelName - check for supported Qwen image generation models only
-		
+		// Step 2: Validate modelName - check for supported Qwen image generation models
+		// only
+
 		// Qwen Image Generation Models (通义千问文生图)
 		boolean isQwenImagePlus = lowerModelName.contains("qwen-image-plus");
 		boolean isQwenImage = lowerModelName.contains("qwen-image") && !lowerModelName.contains("edit");
-		
+
 		// Qwen Image Editing Models (通义千问图像编辑)
 		boolean isQwenImageEdit = lowerModelName.contains("qwen-image-edit");
-		
+
 		// Check if model matches any supported Qwen pattern
 		if (isQwenImagePlus || isQwenImage || isQwenImageEdit) {
 			log.debug("Detected Qwen image generation: model={}, baseUrl={}", modelName, baseUrl);
@@ -106,6 +105,7 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 
 		return false;
 	}
+
 	@Override
 	public ToolExecuteResult generateImage(ImageGenerationRequest request, DynamicModelEntity modelEntity,
 			String modelName, String rootPlanId) {
@@ -116,12 +116,14 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 				throw new IllegalArgumentException("API key is required for Qwen API");
 			}
 
-			// Get base URL from model entity and construct correct DashScope image generation API URL
-			// Image generation API uses: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+			// Get base URL from model entity and construct correct DashScope image
+			// generation API URL
+			// Image generation API uses:
+			// https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
 			// (not the /compatible-mode endpoint used for chat completions)
 			String rawBaseUrl = modelEntity.getBaseUrl();
 			String baseUrl;
-			
+
 			if (rawBaseUrl != null && !rawBaseUrl.trim().isEmpty()) {
 				String normalized = AbstractBaseTool.normalizeBaseUrl(rawBaseUrl);
 				// Extract domain from baseUrl (handle both Beijing and Singapore regions)
@@ -143,7 +145,7 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 				// Default to Beijing region
 				baseUrl = "https://dashscope.aliyuncs.com";
 			}
-			
+
 			log.debug("Using DashScope image generation baseUrl: {}", baseUrl);
 
 			// Build request body in Qwen format
@@ -169,7 +171,8 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 			parameters.put("watermark", false);
 
 			// Validate and map size to allowed Qwen image generation sizes
-			// Allowed sizes: 1664*928, 1472*1140, 1328*1328 (default), 1140*1472, 928*1664
+			// Allowed sizes: 1664*928, 1472*1140, 1328*1328 (default), 1140*1472,
+			// 928*1664
 			String size = validateAndMapToAllowedSize(request.getSize());
 			parameters.put("size", size);
 			requestBody.put("parameters", parameters);
@@ -208,11 +211,7 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 			log.debug("Calling Qwen API: {}{}", baseUrl, endpoint);
 
 			// Make the API call
-			String responseJson = restClient.post()
-				.uri(endpoint)
-				.body(requestBody)
-				.retrieve()
-				.body(String.class);
+			String responseJson = restClient.post().uri(endpoint).body(requestBody).retrieve().body(String.class);
 
 			if (responseJson == null || responseJson.trim().isEmpty()) {
 				return new ToolExecuteResult("No response received from Qwen API");
@@ -272,8 +271,8 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 	}
 
 	/**
-	 * Extract images from Qwen API response
-	 * Qwen returns images in output.choices[].message.content[].image format
+	 * Extract images from Qwen API response Qwen returns images in
+	 * output.choices[].message.content[].image format
 	 * @param responseJson JSON response string from Qwen API
 	 * @return List of image URLs
 	 */
@@ -324,32 +323,32 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 	}
 
 	/**
-	 * Validate and map size to allowed Qwen image generation sizes
-	 * Allowed sizes: 1664*928, 1472*1140, 1328*1328 (default), 1140*1472, 928*1664
+	 * Validate and map size to allowed Qwen image generation sizes Allowed sizes:
+	 * 1664*928, 1472*1140, 1328*1328 (default), 1140*1472, 928*1664
 	 * @param sizeStr Requested size string (e.g., "1024x1024", "1024*1024")
-	 * @return Validated size string in format "width*height" matching one of the allowed sizes
+	 * @return Validated size string in format "width*height" matching one of the allowed
+	 * sizes
 	 */
 	private String validateAndMapToAllowedSize(String sizeStr) {
 		// Default size according to Qwen API documentation
 		String defaultSize = "1328*1328";
-		
+
 		// Allowed sizes for Qwen image generation API
-		String[] allowedSizes = {
-			"1664*928",   // 16:9 landscape
-			"1472*1140",  // 4:3 landscape
-			"1328*1328",  // 1:1 square (default)
-			"1140*1472",  // 3:4 portrait
-			"928*1664"    // 9:16 portrait
+		String[] allowedSizes = { "1664*928", // 16:9 landscape
+				"1472*1140", // 4:3 landscape
+				"1328*1328", // 1:1 square (default)
+				"1140*1472", // 3:4 portrait
+				"928*1664" // 9:16 portrait
 		};
-		
+
 		if (sizeStr == null || sizeStr.trim().isEmpty()) {
 			log.debug("Size not specified, using default: {}", defaultSize);
 			return defaultSize;
 		}
-		
+
 		// Normalize separator (accept both "x" and "*")
 		String normalized = sizeStr.trim().replace("x", "*").replace("X", "*");
-		
+
 		// Check if it exactly matches one of the allowed sizes
 		for (String allowed : allowedSizes) {
 			if (allowed.equals(normalized)) {
@@ -357,7 +356,7 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 				return normalized;
 			}
 		}
-		
+
 		// Try to parse and find closest match
 		try {
 			String[] parts = normalized.split("\\*");
@@ -365,32 +364,32 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 				log.warn("Invalid size format: {}, using default: {}", sizeStr, defaultSize);
 				return defaultSize;
 			}
-			
+
 			int requestedWidth = Integer.parseInt(parts[0].trim());
 			int requestedHeight = Integer.parseInt(parts[1].trim());
-			
+
 			// Calculate aspect ratio
 			double requestedAspectRatio = (double) requestedWidth / requestedHeight;
-			
+
 			// Find the closest allowed size based on aspect ratio
 			String closestSize = defaultSize;
 			double minAspectRatioDiff = Double.MAX_VALUE;
-			
+
 			for (String allowed : allowedSizes) {
 				String[] allowedParts = allowed.split("\\*");
 				int allowedWidth = Integer.parseInt(allowedParts[0]);
 				int allowedHeight = Integer.parseInt(allowedParts[1]);
 				double allowedAspectRatio = (double) allowedWidth / allowedHeight;
-				
+
 				double aspectRatioDiff = Math.abs(requestedAspectRatio - allowedAspectRatio);
 				if (aspectRatioDiff < minAspectRatioDiff) {
 					minAspectRatioDiff = aspectRatioDiff;
 					closestSize = allowed;
 				}
 			}
-			
-			log.info("Size {} (aspect ratio: {}) mapped to closest allowed size: {}", 
-				normalized, String.format("%.2f", requestedAspectRatio), closestSize);
+
+			log.info("Size {} (aspect ratio: {}) mapped to closest allowed size: {}", normalized,
+					String.format("%.2f", requestedAspectRatio), closestSize);
 			return closestSize;
 		}
 		catch (NumberFormatException e) {

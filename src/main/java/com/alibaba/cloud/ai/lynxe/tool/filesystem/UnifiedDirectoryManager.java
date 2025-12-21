@@ -130,7 +130,8 @@ public class UnifiedDirectoryManager {
 				ensureExternalFolderLink(rootPlanDir, rootPlanId);
 			}
 			else {
-				log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up", rootPlanId);
+				log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up",
+						rootPlanId);
 			}
 		}
 		catch (IOException e) {
@@ -409,11 +410,12 @@ public class UnifiedDirectoryManager {
 		}
 
 		Path linkPath = rootPlanDir.resolve(LINKED_EXTERNAL_DIR);
-		
-		// Prevent circular reference: external folder should not be inside the working directory
+
+		// Prevent circular reference: external folder should not be inside the working
+		// directory
 		Path workingDir = getWorkingDirectory().toAbsolutePath().normalize();
 		Path normalizedExternalPath = externalPath.toAbsolutePath().normalize();
-		
+
 		if (normalizedExternalPath.startsWith(workingDir)) {
 			log.warn(
 					"Circular reference detected: external folder {} is inside working directory {}. This would create a circular symlink. Skipping link creation for rootPlanId={}",
@@ -457,9 +459,12 @@ public class UnifiedDirectoryManager {
 			try {
 				if (Files.isSymbolicLink(linkPath)) {
 					Path existingTarget = Files.readSymbolicLink(linkPath);
-					Path existingTargetAbsolute = linkPath.getParent().resolve(existingTarget).toAbsolutePath().normalize();
+					Path existingTargetAbsolute = linkPath.getParent()
+						.resolve(existingTarget)
+						.toAbsolutePath()
+						.normalize();
 					Path expectedTargetAbsolute = externalPath.toAbsolutePath().normalize();
-					
+
 					if (existingTargetAbsolute.equals(expectedTargetAbsolute)) {
 						// Link already exists and points to correct target
 						log.debug("External folder link already exists: {} -> {}", linkPath, externalPath);
@@ -467,7 +472,8 @@ public class UnifiedDirectoryManager {
 					}
 					else {
 						// Link exists but points to wrong target, remove it
-						log.info("Removing existing link with wrong target: {} -> {} (expected: {})", linkPath, existingTargetAbsolute, expectedTargetAbsolute);
+						log.info("Removing existing link with wrong target: {} -> {} (expected: {})", linkPath,
+								existingTargetAbsolute, expectedTargetAbsolute);
 						try {
 							Files.delete(linkPath);
 							log.debug("Successfully deleted existing symlink: {}", linkPath);
@@ -480,7 +486,8 @@ public class UnifiedDirectoryManager {
 				}
 				else {
 					// Link path exists but is not a symbolic link, remove it
-					log.info("Removing existing non-symbolic link path: {} (isDirectory: {})", linkPath, Files.isDirectory(linkPath));
+					log.info("Removing existing non-symbolic link path: {} (isDirectory: {})", linkPath,
+							Files.isDirectory(linkPath));
 					try {
 						if (Files.isDirectory(linkPath)) {
 							deleteDirectoryRecursively(linkPath);

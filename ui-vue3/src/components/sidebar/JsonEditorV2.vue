@@ -806,8 +806,8 @@ const closeModelDropdown = (stepIndex: number) => {
     // Clear the filter to ensure it stays empty
     setSearchFilter(stepIndex, '')
   } else {
-    // Only reset filter if there's a model name to show
-    setSearchFilter(stepIndex, step.modelName ?? '')
+  // Only reset filter if there's a model name to show
+  setSearchFilter(stepIndex, step.modelName ?? '')
   }
 }
 

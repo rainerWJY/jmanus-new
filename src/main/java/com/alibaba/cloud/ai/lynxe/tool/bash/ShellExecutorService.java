@@ -28,8 +28,8 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
 
 /**
- * Service for managing shell executors per planId
- * Similar to ChromeDriverService, maintains shell executor instances for each plan
+ * Service for managing shell executors per planId Similar to ChromeDriverService,
+ * maintains shell executor instances for each plan
  */
 @Service
 @Primary
@@ -42,8 +42,8 @@ public class ShellExecutorService {
 	private final Lock executorLock = new ReentrantLock();
 
 	/**
-	 * Get executor for a specific planId
-	 * Creates a new executor if one doesn't exist for the planId
+	 * Get executor for a specific planId Creates a new executor if one doesn't exist for
+	 * the planId
 	 * @param planId The plan ID
 	 * @return ShellCommandExecutor instance for the planId
 	 */
@@ -110,9 +110,8 @@ public class ShellExecutorService {
 		if (executor == null) {
 			return false;
 		}
-		// For now, we consider executor healthy if it exists
-		// In the future, we could add more sophisticated health checks
-		return true;
+		// Check if the persistent shell process is alive
+		return executor.isProcessAlive();
 	}
 
 	/**

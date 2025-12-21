@@ -34,8 +34,8 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Image generation provider for OpenRouter API
- * Uses OpenRouter's chat completions API with modalities parameter
+ * Image generation provider for OpenRouter API Uses OpenRouter's chat completions API
+ * with modalities parameter
  */
 @Component
 public class OpenRouterImageGenerationProvider implements ImageGenerationProvider {
@@ -76,13 +76,14 @@ public class OpenRouterImageGenerationProvider implements ImageGenerationProvide
 		// Google models
 		// Nano Banana Pro (Gemini 3 Pro Image Preview)
 		boolean isNanoBananaPro = lowerModelName.contains("nano banana pro")
-				|| lowerModelName.contains("gemini 3 pro image")
-				|| lowerModelName.contains("gemini-3-pro-image")
+				|| lowerModelName.contains("gemini 3 pro image") || lowerModelName.contains("gemini-3-pro-image")
 				|| lowerModelName.contains("gemini-3-pro-image-preview");
 
 		// Gemini 2.5 Flash Image (Nano Banana)
-		boolean isNanoBanana = (lowerModelName.contains("nano banana")
-				&& !lowerModelName.contains("pro")) // Exclude "nano banana pro"
+		boolean isNanoBanana = (lowerModelName.contains("nano banana") && !lowerModelName.contains("pro")) // Exclude
+																											// "nano
+																											// banana
+																											// pro"
 				|| lowerModelName.contains("gemini 2.5 flash image")
 				|| lowerModelName.contains("gemini-2.5-flash-image");
 
@@ -105,8 +106,7 @@ public class OpenRouterImageGenerationProvider implements ImageGenerationProvide
 
 		// Sourceful models
 		// Riverflow V2 Max Preview
-		boolean isRiverflow = lowerModelName.contains("riverflow v2 max")
-				|| lowerModelName.contains("riverflow-v2-max")
+		boolean isRiverflow = lowerModelName.contains("riverflow v2 max") || lowerModelName.contains("riverflow-v2-max")
 				|| lowerModelName.contains("riverflow-v2-max-preview");
 
 		// Black Forest Labs models
@@ -198,11 +198,7 @@ public class OpenRouterImageGenerationProvider implements ImageGenerationProvide
 			log.debug("Calling OpenRouter API: {}{}", baseUrl, endpoint);
 
 			// Make the API call
-			String responseJson = restClient.post()
-				.uri(endpoint)
-				.body(requestBody)
-				.retrieve()
-				.body(String.class);
+			String responseJson = restClient.post().uri(endpoint).body(requestBody).retrieve().body(String.class);
 
 			if (responseJson == null || responseJson.trim().isEmpty()) {
 				return new ToolExecuteResult("No response received from OpenRouter API");
@@ -262,8 +258,8 @@ public class OpenRouterImageGenerationProvider implements ImageGenerationProvide
 	}
 
 	/**
-	 * Extract images from OpenRouter API response
-	 * OpenRouter returns images in choices[].message.images[].image_url.url format
+	 * Extract images from OpenRouter API response OpenRouter returns images in
+	 * choices[].message.images[].image_url.url format
 	 * @param responseJson JSON response string from OpenRouter API
 	 * @return List of base64 data URLs
 	 */

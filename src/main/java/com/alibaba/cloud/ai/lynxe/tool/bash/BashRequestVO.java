@@ -15,16 +15,14 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.bash;
 
-
 /**
- * Bash tool request object for encapsulating bash operation request parameters
- * Supports action-based interface similar to BrowserUseTool
+ * Bash tool request object for encapsulating bash operation request parameters Supports
+ * action-based interface similar to BrowserUseTool
  */
 public class BashRequestVO {
 
 	/**
-	 * Bash operation type
-	 * Supports: command, send_input, get_state, terminate
+	 * Bash operation type Supports: command, send_input, get_state, terminate
 	 */
 	private String action;
 
