@@ -379,10 +379,36 @@ public class LinuxShellExecutor implements ShellCommandExecutor {
 		errorReaderThread.start();
 	}
 
+	/**
+	 * Clean ANSI escape codes and terminal control sequences from output
+	 * @param text The text to clean
+	 * @return Cleaned text without ANSI codes and control sequences
+	 */
+	private static String cleanAnsiCodes(String text) {
+		if (text == null || text.isEmpty()) {
+			return text;
+		}
+		// Remove ANSI escape sequences: \u001B[ or \033[ followed by parameters and command letter
+		// Pattern matches: ESC[ followed by optional parameters (digits, semicolons) and a command letter
+		text = text.replaceAll("\u001B\\[[\\d;]*[a-zA-Z]", "");
+		text = text.replaceAll("\033\\[[\\d;]*[a-zA-Z]", "");
+		// Remove terminal control sequences like [?2004h, [?2004l, [J, [K, [H, etc.
+		text = text.replaceAll("\\[\\?[\\d;]*[a-zA-Z]", "");
+		text = text.replaceAll("\\[[\\d;]*[HJKl]", "");
+		// Remove other common control characters
+		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
+		// Remove carriage returns that might interfere
+		text = text.replace("\r", "");
+		return text;
+	}
+
 	private void processOutputLine(String line) {
 		if (line == null) {
 			return;
 		}
+
+		// Clean ANSI escape codes and terminal control sequences
+		line = cleanAnsiCodes(line);
 
 		// Check for command start marker (exact match for better reliability)
 		if (line.startsWith(CMD_START_PREFIX)) {
@@ -460,6 +486,11 @@ public class LinuxShellExecutor implements ShellCommandExecutor {
 	}
 
 	private void processErrorLine(String line) {
+		if (line == null) {
+			return;
+		}
+		// Clean ANSI escape codes and terminal control sequences
+		line = cleanAnsiCodes(line);
 		// Add error line to all active command outputs
 		allOutput.append(line).append("\n");
 		for (CommandOutput cmdOutput : commandOutputs.values()) {

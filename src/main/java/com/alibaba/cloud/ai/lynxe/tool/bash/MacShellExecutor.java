@@ -41,9 +41,10 @@ public class MacShellExecutor implements ShellCommandExecutor {
 
 	private static final Logger log = LoggerFactory.getLogger(MacShellExecutor.class);
 
-	private static final String CMD_START_PREFIX = "__CMD_START__";
-
-	private static final String CMD_END_PREFIX = "__CMD_END__";
+	// Simplified marker for serialized command execution
+	// Since commands are executed serially, we only need an end marker
+	// to know when a command has completed
+	private static final String CMD_END_MARKER = "__CMD_DONE__";
 
 	private static final int COMMAND_TIMEOUT_SECONDS = 60;
 
@@ -234,37 +235,30 @@ public class MacShellExecutor implements ShellCommandExecutor {
 	}
 
 	private String executeCommand(String command) throws Exception {
-		// Generate unique command ID (timestamp + random to ensure uniqueness)
-		long timestamp = System.currentTimeMillis();
-		int random = (int) (Math.random() * 10000);
-		String commandId = timestamp + "_" + random;
+		// For serialized execution, we use a single output buffer
+		// No need for unique command IDs since only one command runs at a time
 		CommandOutput cmdOutput = new CommandOutput();
-		commandOutputs.put(commandId, cmdOutput);
+		// Use a simple key for serialized execution
+		String commandKey = "current";
+		commandOutputs.put(commandKey, cmdOutput);
 
 		try {
-			// Send command markers and command
-			// Use printf with explicit flush to ensure output is not buffered
-			// The \n in printf ensures the marker is on its own line
-			// Use single quotes to avoid shell interpretation issues
-			String startMarker = "printf '%s\\n' '" + CMD_START_PREFIX + commandId + "' && echo ''\n";
-			log.info("Sending START marker command: {}", startMarker.trim());
-			shellInput.write(startMarker);
-			shellInput.flush();
-			// Small delay to ensure marker is sent and processed
-			Thread.sleep(100);
+			// Activate output collection immediately (serialized execution)
+			cmdOutput.active = true;
 
-			log.info("Sending actual command: {}", command);
+			log.info("Sending command: {}", command);
 			shellInput.write(command + "\n");
 			shellInput.flush();
 			Thread.sleep(50);
 
-			// Send end marker
-			String endMarker = "printf '%s\\n' '" + CMD_END_PREFIX + commandId + "' && echo ''\n";
-			log.info("Sending END marker command: {}", endMarker.trim());
+			// Send simple end marker to signal command completion
+			// This marker will be printed after the command finishes
+			String endMarker = "printf '%s\\n' '" + CMD_END_MARKER + "'\n";
+			log.debug("Sending END marker command: {}", endMarker.trim());
 			shellInput.write(endMarker);
 			shellInput.flush();
 
-			log.info("Command sent to shell with ID {}: {} (waiting for markers)", commandId, command);
+			log.info("Command sent: {} (waiting for completion marker)", command);
 
 			// Wait for command to complete (with timeout)
 			// This await can be interrupted, which we handle below
@@ -284,7 +278,7 @@ public class MacShellExecutor implements ShellCommandExecutor {
 					log.debug("Failed to send Ctrl+C after interrupt: {}", ioEx.getMessage());
 				}
 				// Remove from tracking and throw to propagate interrupt
-				commandOutputs.remove(commandId);
+				commandOutputs.remove(commandKey);
 				throw new InterruptedException("Command execution was interrupted: " + command);
 			}
 
@@ -300,12 +294,12 @@ public class MacShellExecutor implements ShellCommandExecutor {
 				catch (IOException ioEx) {
 					log.debug("Failed to send Ctrl+C after interrupt: {}", ioEx.getMessage());
 				}
-				commandOutputs.remove(commandId);
+				commandOutputs.remove(commandKey);
 				throw new InterruptedException("Command execution was interrupted: " + command);
 			}
 
 			if (!completed) {
-				log.warn("Command timed out: {} (commandId: {})", command, commandId);
+				log.warn("Command timed out: {}", command);
 				// If we have some output, return it even though we didn't get the end
 				// marker
 				if (cmdOutput.output.length() > 0 || cmdOutput.error.length() > 0) {
@@ -319,15 +313,20 @@ public class MacShellExecutor implements ShellCommandExecutor {
 				return "Error: Command timed out after " + COMMAND_TIMEOUT_SECONDS + " seconds";
 			}
 
-			// Return output (excluding markers)
+			// Return output (excluding the end marker line)
 			String output = cmdOutput.output.toString().trim();
+			// Remove the end marker line if present
+			if (output.endsWith(CMD_END_MARKER)) {
+				output = output.substring(0, output.length() - CMD_END_MARKER.length()).trim();
+			}
 			if (output.isEmpty() && !cmdOutput.error.toString().isEmpty()) {
 				return "Error: " + cmdOutput.error.toString().trim();
 			}
 			return output;
 		}
 		finally {
-			commandOutputs.remove(commandId);
+			// Clean up for serialized execution
+			commandOutputs.remove(commandKey);
 		}
 	}
 
@@ -338,21 +337,17 @@ public class MacShellExecutor implements ShellCommandExecutor {
 
 		log.debug("Changing working directory from {} to {}", currentWorkingDir, targetDir);
 
-		// Send cd command
-		long timestamp = System.currentTimeMillis();
-		String commandId = String.valueOf(timestamp);
+		// Send cd command with simplified marker for serialized execution
 		CommandOutput cmdOutput = new CommandOutput();
-		commandOutputs.put(commandId, cmdOutput);
+		cmdOutput.active = true;
+		String commandKey = "cd";
+		commandOutputs.put(commandKey, cmdOutput);
 
 		try {
-			shellInput.write("printf \"" + CMD_START_PREFIX + commandId + "\\n\"\n");
-			shellInput.flush();
-			Thread.sleep(50);
-
 			shellInput.write("cd \"" + targetDir.replace("\"", "\\\"") + "\"\n");
 			shellInput.flush();
 
-			shellInput.write("printf \"" + CMD_END_PREFIX + commandId + "\\n\"\n");
+			shellInput.write("printf '%s\\n' '" + CMD_END_MARKER + "'\n");
 			shellInput.flush();
 
 			// Wait for cd to complete
@@ -375,7 +370,7 @@ public class MacShellExecutor implements ShellCommandExecutor {
 			}
 		}
 		finally {
-			commandOutputs.remove(commandId);
+			commandOutputs.remove(commandKey);
 		}
 	}
 
@@ -523,81 +518,69 @@ public class MacShellExecutor implements ShellCommandExecutor {
 		errorReaderThread.start();
 	}
 
+	/**
+	 * Clean ANSI escape codes and terminal control sequences from output
+	 * @param text The text to clean
+	 * @return Cleaned text without ANSI codes and control sequences
+	 */
+	private static String cleanAnsiCodes(String text) {
+		if (text == null || text.isEmpty()) {
+			return text;
+		}
+		// Remove ANSI escape sequences: \u001B[ or \033[ followed by parameters and command letter
+		// Pattern matches: ESC[ followed by optional parameters (digits, semicolons) and a command letter
+		text = text.replaceAll("\u001B\\[[\\d;]*[a-zA-Z]", "");
+		text = text.replaceAll("\033\\[[\\d;]*[a-zA-Z]", "");
+		// Remove terminal control sequences like [?2004h, [?2004l, [J, [K, [H, etc.
+		text = text.replaceAll("\\[\\?[\\d;]*[a-zA-Z]", "");
+		text = text.replaceAll("\\[[\\d;]*[HJKl]", "");
+		// Remove other common control characters
+		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
+		// Remove carriage returns that might interfere
+		text = text.replace("\r", "");
+		return text;
+	}
+
 	private void processOutputLine(String line) {
 		if (line == null) {
 			return;
 		}
 
+		// Clean ANSI escape codes and terminal control sequences
+		line = cleanAnsiCodes(line);
+
 		// Debug: log all lines being read (first 100 chars to avoid spam)
 		log.debug("Read line (length={}): {}", line.length(),
 				line.length() > 100 ? line.substring(0, 100) + "..." : line);
 
-		// Check for command start marker (exact match for better reliability)
-		if (line.startsWith(CMD_START_PREFIX)) {
-			// Extract command ID (everything after the prefix)
-			String commandId = line.substring(CMD_START_PREFIX.length()).trim();
-			CommandOutput cmdOutput = commandOutputs.get(commandId);
-			if (cmdOutput != null) {
-				cmdOutput.active = true;
-				log.info("Command started: {} (active commands: {})", commandId, commandOutputs.size());
-			}
-			else {
-				log.warn("Received START marker for unknown command ID: {} (available IDs: {})", commandId,
-						commandOutputs.keySet());
-			}
-			return; // Don't add marker line to output
-		}
-		// Check for command end marker (exact match for better reliability)
-		else if (line.startsWith(CMD_END_PREFIX)) {
-			// Extract command ID (everything after the prefix)
-			String commandId = line.substring(CMD_END_PREFIX.length()).trim();
-			CommandOutput cmdOutput = commandOutputs.get(commandId);
+		// Check for command end marker (simplified for serialized execution)
+		if (line.trim().equals(CMD_END_MARKER)) {
+			// For serialized execution, we only have one active command
+			CommandOutput cmdOutput = commandOutputs.get("current");
 			if (cmdOutput != null) {
 				cmdOutput.active = false;
 				cmdOutput.latch.countDown();
-				log.info("Command completed: {} (output length: {}, error length: {})", commandId,
-						cmdOutput.output.length(), cmdOutput.error.length());
+				log.info("Command completed (output length: {}, error length: {})", cmdOutput.output.length(),
+						cmdOutput.error.length());
 			}
 			else {
-				log.warn("Received END marker for unknown command ID: {} (available IDs: {})", commandId,
-						commandOutputs.keySet());
+				log.warn("Received END marker but no active command found");
 			}
 			return; // Don't add marker line to output
 		}
-		// Also check for markers that might be embedded in other text (fallback)
-		else if (line.contains(CMD_START_PREFIX)) {
-			int startIdx = line.indexOf(CMD_START_PREFIX);
-			if (startIdx >= 0) {
-				String commandId = line.substring(startIdx + CMD_START_PREFIX.length()).trim();
-				// Remove any trailing text after the command ID
-				int spaceIdx = commandId.indexOf(' ');
-				if (spaceIdx > 0) {
-					commandId = commandId.substring(0, spaceIdx);
-				}
-				CommandOutput cmdOutput = commandOutputs.get(commandId);
-				if (cmdOutput != null) {
-					cmdOutput.active = true;
-					log.debug("Command started (embedded marker): {}", commandId);
-					return; // Don't add marker line to output
-				}
+		// Also check if marker is embedded in the line (fallback)
+		else if (line.contains(CMD_END_MARKER)) {
+			// Extract the marker and signal completion
+			CommandOutput cmdOutput = commandOutputs.get("current");
+			if (cmdOutput != null) {
+				cmdOutput.active = false;
+				cmdOutput.latch.countDown();
+				log.debug("Command completed (embedded marker)");
 			}
-		}
-		else if (line.contains(CMD_END_PREFIX)) {
-			int startIdx = line.indexOf(CMD_END_PREFIX);
-			if (startIdx >= 0) {
-				String commandId = line.substring(startIdx + CMD_END_PREFIX.length()).trim();
-				// Remove any trailing text after the command ID
-				int spaceIdx = commandId.indexOf(' ');
-				if (spaceIdx > 0) {
-					commandId = commandId.substring(0, spaceIdx);
-				}
-				CommandOutput cmdOutput = commandOutputs.get(commandId);
-				if (cmdOutput != null) {
-					cmdOutput.active = false;
-					cmdOutput.latch.countDown();
-					log.debug("Command completed (embedded marker): {}", commandId);
-					return; // Don't add marker line to output
-				}
+			// Remove the marker from the line before adding to output
+			line = line.replace(CMD_END_MARKER, "").trim();
+			if (line.isEmpty()) {
+				return; // Don't add empty line
 			}
 		}
 
@@ -611,6 +594,11 @@ public class MacShellExecutor implements ShellCommandExecutor {
 	}
 
 	private void processErrorLine(String line) {
+		if (line == null) {
+			return;
+		}
+		// Clean ANSI escape codes and terminal control sequences
+		line = cleanAnsiCodes(line);
 		// Add error line to all active command outputs
 		allOutput.append(line).append("\n");
 		for (CommandOutput cmdOutput : commandOutputs.values()) {
