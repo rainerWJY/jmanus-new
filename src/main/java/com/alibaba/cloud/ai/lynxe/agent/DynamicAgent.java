@@ -30,12 +30,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -44,6 +46,7 @@ import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.util.CollectionUtils;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.event.LynxeEventPublisher;
@@ -825,35 +828,63 @@ public class DynamicAgent extends ReActAgent {
 			toolContextMap.put("planDepth", getPlanDepth());
 			ToolContext parentToolContext = new ToolContext(toolContextMap);
 
-			// Create execution requests for each tool with their corresponding toolCallId
-			// This ensures the toolCallId used during execution matches the one in
-			// ActToolParam
+			// Validate that actToolInfoList size matches toolCalls size
+			// This ensures order consistency between actToolInfoList and execution results
+			if (actToolInfoList.size() != toolCalls.size()) {
+				String errorMessage = String.format(
+						"Size mismatch: actToolInfoList has %d items but toolCalls has %d items. "
+								+ "This indicates an inconsistency in tool call tracking.",
+						actToolInfoList.size(), toolCalls.size());
+				log.error(errorMessage);
+				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
+			}
+
+			// Phase 1: Prepare execution data and metadata in a single loop
+			// Collect all related data together to ensure consistency
+			// Note: We need two loops because execution is asynchronous - we must prepare
+			// all data before execution, then process results after execution completes
 			List<ParallelExecutionService.ParallelExecutionRequest> executions = new ArrayList<>();
-			for (int i = 0; i < toolCalls.size() && i < actToolInfoList.size(); i++) {
+			ToolExecutionMetadata[] toolMetadata = new ToolExecutionMetadata[toolCalls.size()];
+
+			for (int i = 0; i < toolCalls.size(); i++) {
 				ToolCall toolCall = toolCalls.get(i);
 				ActToolParam param = actToolInfoList.get(i);
 				Map<String, Object> params = parseToolArguments(toolCall.arguments());
-				// Pass the toolCallId from ActToolParam to ensure consistency
+
+				// Create execution request (order: executions[i] = toolCalls[i])
 				executions.add(new ParallelExecutionService.ParallelExecutionRequest(toolCall.name(), params,
 						param.getToolCallId()));
+
+				// Store metadata for result processing (order: metadata[i] = executions[i] = toolCalls[i])
+				toolMetadata[i] = new ToolExecutionMetadata(toolCall, param, toolCall.name());
 			}
 
-			// Execute tools in parallel
+			// Phase 2: Execute all tools in parallel (asynchronous, must wait for completion)
 			CompletableFuture<List<Map<String, Object>>> executionFuture = parallelExecutionService
 				.executeToolsInParallel(executions, toolCallbackMap, parentToolContext);
 			List<Map<String, Object>> parallelResults = executionFuture.join();
 			log.info("Executed {} tools in parallel", parallelResults.size());
 
-			// Process results and update actToolInfoList
-			// Results are sorted by index, so they match the order of toolCalls
+			// Validate result size matches expectations
+			if (parallelResults.size() != toolCalls.size()) {
+				String errorMessage = String.format(
+						"Size mismatch: parallelResults has %d items but toolCalls has %d items. "
+								+ "Expected %d results from %d executions.",
+						parallelResults.size(), toolCalls.size(), executions.size(), executions.size());
+				log.error(errorMessage);
+				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
+			}
+
+			// Phase 3: Process all results in a single loop
+			// Order is guaranteed: parallelResults[i] (sorted by index) = executions[i] = toolMetadata[i]
+			// This loop handles: updating actToolInfoList, building resultList, and building toolResponses
 			List<String> resultList = new ArrayList<>();
-			for (int i = 0; i < toolCalls.size() && i < actToolInfoList.size() && i < parallelResults.size(); i++) {
-				ToolCall toolCall = toolCalls.get(i);
-				String toolName = toolCall.name();
-				ActToolParam param = actToolInfoList.get(i);
+			List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
+			for (int i = 0; i < toolCalls.size(); i++) {
+				ToolExecutionMetadata metadata = toolMetadata[i];
 				Map<String, Object> result = parallelResults.get(i);
 
-				// Extract result from ParallelExecutionService format
+				// Extract and process result
 				String status = (String) result.get("status");
 				String processedResult;
 				if ("SUCCESS".equals(status)) {
@@ -865,22 +896,43 @@ public class DynamicAgent extends ReActAgent {
 					processedResult = "Error: " + (errorObj != null ? errorObj.toString() : "Unknown error");
 				}
 
-				param.setResult(processedResult);
+				// Update actToolInfoList (order guaranteed by metadata array)
+				metadata.param.setResult(processedResult);
+				log.info("Tool {} executed successfully for planId: {}", metadata.toolName, getCurrentPlanId());
+
+				// Build result list and tool responses
 				resultList.add(processedResult);
-				log.info("Tool {} executed successfully for planId: {}", toolName, getCurrentPlanId());
+				toolResponses.add(new ToolResponseMessage.ToolResponse(metadata.toolCall.id(),
+						metadata.toolCall.name(), processedResult));
 			}
 
 			// Record the results
 			recordActionResult(actToolInfoList);
 
-			// Update memory using ToolCallingManager (for compatibility)
-			try {
-				ToolExecutionResult toolExecutionResult = toolCallingManager.executeToolCalls(userPrompt, response);
-				processMemory(toolExecutionResult);
+			ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder().responses(toolResponses).build();
+
+			// Get AssistantMessage from response (contains tool calls)
+			AssistantMessage assistantMessage = extractAssistantMessageFromResponse(response);
+
+			// Build conversation history
+			List<Message> conversationHistory = new ArrayList<>();
+			// Add previous messages from prompt
+			if (userPrompt != null && userPrompt.getInstructions() != null) {
+				conversationHistory.addAll(userPrompt.getInstructions());
 			}
-			catch (Exception e) {
-				log.warn("Error processing memory after parallel execution: {}", e.getMessage());
-			}
+			// Add assistant message with tool calls
+			conversationHistory.add(assistantMessage);
+			// Add tool response message
+			conversationHistory.add(toolResponseMessage);
+
+			// Build ToolExecutionResult
+			ToolExecutionResult toolExecutionResult = ToolExecutionResult.builder()
+				.conversationHistory(conversationHistory)
+				.returnDirect(false) // Multiple tools never return direct
+				.build();
+
+			// Update memory
+			processMemory(toolExecutionResult);
 
 			// Return result
 			return new AgentExecResult(resultList.toString(), AgentState.IN_PROGRESS);
@@ -889,6 +941,41 @@ public class DynamicAgent extends ReActAgent {
 			log.error("Error executing multiple tools: {}", e.getMessage(), e);
 			return new AgentExecResult("Error executing tools: " + e.getMessage(), AgentState.IN_PROGRESS);
 		}
+	}
+
+	/**
+	 * Internal class to store tool execution metadata
+	 * Used to maintain order consistency between execution requests and results
+	 */
+	private static class ToolExecutionMetadata {
+
+		final ToolCall toolCall;
+
+		final ActToolParam param;
+
+		final String toolName;
+
+		ToolExecutionMetadata(ToolCall toolCall, ActToolParam param, String toolName) {
+			this.toolCall = toolCall;
+			this.param = param;
+			this.toolName = toolName;
+		}
+
+	}
+
+	/**
+	 * Extract AssistantMessage from ChatResponse
+	 * @param response The ChatResponse containing the assistant message
+	 * @return AssistantMessage with tool calls
+	 */
+	private AssistantMessage extractAssistantMessageFromResponse(ChatResponse response) {
+		// Find the generation with tool calls
+		Generation generation = response.getResults().stream()
+			.filter(g -> !CollectionUtils.isEmpty(g.getOutput().getToolCalls()))
+			.findFirst()
+			.orElseThrow(() -> new IllegalStateException("No tool calls found in response"));
+
+		return generation.getOutput();
 	}
 
 	/**
