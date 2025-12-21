@@ -1,10 +1,11 @@
 description: |
   在终端中执行bash命令，支持交互式操作（当前操作系统：%s）。
   * 基于操作的接口：支持的操作包括：'command'（执行新命令）、'send_input'（向交互式进程发送输入）、'terminate'（停止当前进程）。
-  * 交互式命令：对于像 `git log` 这样需要分页的命令，使用 'command' 操作启动，然后使用 'send_input' 操作，input='n' 查看下一页，input='q' 退出，或 input='\\n' 按回车键。
+  * 分页器已禁用：所有分页器（more、less、git pager等）已通过环境变量自动禁用。命令将直接输出所有内容，无需分页。对于git命令，建议显式使用 '--no-pager' 标志（例如：'git --no-pager log'）以确保不使用分页器。请勿使用 'more' 或 'less' 等命令，因为它们在此环境中无法正常工作。
   * 长时间运行的命令：对于可能无限期运行的命令，应该在后台运行并将输出重定向到文件，例如：command = `python3 app.py > server.log 2>&1 &`。
   * 进程管理：使用 'terminate' 停止正在运行的进程。进程状态会自动跟踪并在工具状态中可用。
   * 超时处理：如果命令执行结果显示"Command timed out. Sending SIGINT to the process"，助手应该尝试在后台重新运行该命令。
+  * 大输出：如果命令输出很长，将自动保存到文件并返回摘要。
 
 parameters: |
   {
@@ -12,16 +13,16 @@ parameters: |
       "properties": {
           "action": {
               "type": "string",
-              "description": "要执行的操作。支持的操作：'command'（执行新的shell命令）、'send_input'（向当前交互式进程发送输入，例如 'n' 查看下一页，'q' 退出）、'terminate'（终止当前进程）。如果未指定，为向后兼容性默认为 'command'。",
+              "description": "要执行的操作。支持的操作：'command'（执行新的shell命令）、'send_input'（向当前交互式进程发送输入）、'terminate'（终止当前进程）。如果未指定，为向后兼容性默认为 'command'。",
               "enum": ["command", "send_input", "terminate"]
           },
           "command": {
               "type": "string",
-              "description": "要执行的bash命令。'command' 操作必需。"
+              "description": "要执行的bash命令。'command' 操作必需。对于git命令，请使用 '--no-pager' 标志以确保输出不被分页（例如：'git --no-pager log --oneline'）。"
           },
           "input": {
               "type": "string",
-              "description": "发送到当前交互式进程的输入。'send_input' 操作必需。示例：'n' 查看下一页，'q' 退出，'\\n' 或 'Enter' 表示回车键。"
+              "description": "发送到当前交互式进程的输入。'send_input' 操作必需。示例：'\\n' 或 'Enter' 表示回车键。"
           }
       },
       "required": []

@@ -289,7 +289,7 @@ public class PlanningFactory {
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
 			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, shellExecutorService,
-					lynxeProperties));
+					lynxeProperties, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 
 			toolDefinitions.add(new GlobalFileReadOperator(textFileService, innerStorageService, objectMapper,

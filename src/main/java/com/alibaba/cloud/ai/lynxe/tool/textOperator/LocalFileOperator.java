@@ -627,7 +627,7 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 			SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 				.processContent(this.currentPlanId, content, "get_all_text");
 
-			return new ToolExecuteResult(processedResult.getSummary());
+			return new ToolExecuteResult(processedResult.getComprehensiveResult());
 		}
 		catch (IOException e) {
 			log.error("Error retrieving all text from file: {}", filePath, e);

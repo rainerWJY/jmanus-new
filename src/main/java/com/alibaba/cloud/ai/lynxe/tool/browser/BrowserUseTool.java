@@ -177,7 +177,7 @@ public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 						try {
 							SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 								.processContent(currentPlanId, result.getOutput(), "get_text");
-							return new ToolExecuteResult(processedResult.getSummary());
+							return new ToolExecuteResult(processedResult.getComprehensiveResult());
 						}
 						catch (Exception e) {
 							log.warn("Failed to process get_text content intelligently: {}", e.getMessage());
@@ -190,7 +190,7 @@ public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 						try {
 							SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 								.processContent(currentPlanId, result.getOutput(), "execute_js");
-							return new ToolExecuteResult(processedResult.getSummary());
+							return new ToolExecuteResult(processedResult.getComprehensiveResult());
 						}
 						catch (Exception e) {
 							log.warn("Failed to process execute_js content intelligently: {}", e.getMessage());
@@ -272,7 +272,7 @@ public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 			try {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(currentPlanId, result.getOutput(), action);
-				return new ToolExecuteResult(processedResult.getSummary());
+				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 			catch (Exception e) {
 				log.warn("Failed to process content intelligently for action '{}': {}", action, e.getMessage());

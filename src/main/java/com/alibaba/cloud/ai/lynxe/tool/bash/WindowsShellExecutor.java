@@ -21,10 +21,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -69,17 +67,6 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 
 	private final StringBuilder allOutput = new StringBuilder();
 
-	// Deduplication: Track recent unique lines to avoid duplicate pager output
-	// Use LinkedHashSet to maintain insertion order and enable O(1) lookup
-	private final Set<String> recentUniqueLines = new LinkedHashSet<>();
-	
-	// Maximum number of recent lines to track for deduplication
-	// This prevents memory growth while still catching pager re-displays
-	private static final int MAX_RECENT_LINES = 500;
-	
-	// Track if we're likely in a pager (detected by pager prompts/controls)
-	// Note: Windows rarely uses pagers, but this helps with consistency and edge cases
-	private volatile boolean inPager = false;
 
 	@Override
 	public void initialize(String workingDir) throws Exception {
@@ -100,6 +87,10 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 		// Windows-specific environment variable setup
 		pb.environment().put("PATHEXT", ".COM;.EXE;.BAT;.CMD");
 		pb.environment().put("SystemRoot", System.getenv("SystemRoot"));
+		// Disable all pagers by setting them to cat (for Git Bash compatibility)
+		pb.environment().put("PAGER", "cat");
+		pb.environment().put("GIT_PAGER", "cat");
+		pb.environment().put("MANPAGER", "cat");
 
 		shellProcess = pb.start();
 		shellInput = new BufferedWriter(new OutputStreamWriter(shellProcess.getOutputStream(), "GBK"));
@@ -403,88 +394,14 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
 		// Remove carriage returns that might interfere
 		text = text.replace("\r", "");
-		// Remove backspace characters and their effects (pager often uses \b for formatting)
+		// Remove backspace characters
 		text = text.replace("\b", "");
 		// Remove pager control sequences and prompts more aggressively
-		text = text.replaceAll("\\(END\\)", "");
-		text = text.replaceAll("\\(press RETURN\\)", "");
-		text = text.replaceAll("press RETURN", "");
-		text = text.replaceAll("goto mark:.*", "");
-		text = text.replaceAll("Invalid mark letter.*", "");
-		text = text.replaceAll("No previous regular expression.*", "");
-		text = text.replaceAll("No next tag.*", "");
-		text = text.replaceAll("Examine:.*", "");
-		text = text.replaceAll("Repaint by scrolling.*", "");
-		text = text.replaceAll("set mark:.*", "");
-		text = text.replaceAll("Determining length of file.*", "");
-		text = text.replaceAll("\\.\\.\\.skipping\\.\\.\\..*", "");
-		text = text.replaceAll("Cannot query.*", "");
 		// Remove bell character
 		text = text.replace("\u0007", "");
 		return text;
 	}
 	
-	/**
-	 * Check if a line indicates pager activity
-	 * Windows rarely uses pagers, but this helps with consistency and edge cases
-	 * @param line The line to check
-	 * @return true if the line suggests pager is active
-	 */
-	private static boolean isPagerLine(String line) {
-		if (line == null || line.trim().isEmpty()) {
-			return false;
-		}
-		String trimmed = line.trim();
-		// Check for pager prompts and controls
-		return trimmed.equals("(END)") 
-			|| trimmed.contains("(press RETURN)")
-			|| trimmed.contains("press RETURN")
-			|| trimmed.startsWith("goto mark:")
-			|| trimmed.startsWith("Invalid mark letter")
-			|| trimmed.startsWith("No previous regular expression")
-			|| trimmed.startsWith("No next tag")
-			|| trimmed.startsWith("Examine:")
-			|| trimmed.startsWith("Repaint by scrolling")
-			|| trimmed.startsWith("set mark:")
-			|| trimmed.startsWith("Determining length of file")
-			|| trimmed.contains("...skipping...")
-			|| trimmed.startsWith("Cannot query");
-	}
-	
-	/**
-	 * Check if line is a duplicate of recently seen content
-	 * This helps prevent pager re-displays from creating duplicate output
-	 * @param line The line to check
-	 * @return true if this line is a duplicate
-	 */
-	private boolean isDuplicateLine(String line) {
-		if (line == null || line.trim().isEmpty()) {
-			// Empty lines are not considered duplicates (they're separators)
-			return false;
-		}
-		// Normalize the line for comparison (trim and remove extra whitespace)
-		String normalized = line.trim().replaceAll("\\s+", " ");
-		// Check if we've seen this exact line recently
-		return recentUniqueLines.contains(normalized);
-	}
-	
-	/**
-	 * Add a line to the recent lines tracking set
-	 * Maintains a sliding window of recent unique lines
-	 * @param line The line to add
-	 */
-	private void addToRecentLines(String line) {
-		if (line == null || line.trim().isEmpty()) {
-			return;
-		}
-		String normalized = line.trim().replaceAll("\\s+", " ");
-		// If set is at capacity, remove oldest entry (LinkedHashSet maintains insertion order)
-		if (recentUniqueLines.size() >= MAX_RECENT_LINES) {
-			String first = recentUniqueLines.iterator().next();
-			recentUniqueLines.remove(first);
-		}
-		recentUniqueLines.add(normalized);
-	}
 
 	private void processOutputLine(String line) {
 		if (line == null) {
@@ -493,26 +410,6 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 
 		// Clean ANSI escape codes and terminal control sequences
 		line = cleanAnsiCodes(line);
-
-		// Check if this is a pager control line
-		if (isPagerLine(line)) {
-			inPager = true;
-			// Don't add pager control lines to output (they're just UI artifacts)
-			log.debug("Skipping pager control line: {}", line.length() > 100 ? line.substring(0, 100) + "..." : line);
-			// Still check for markers in pager lines (unlikely but possible)
-			// Continue processing to check for command markers
-		}
-		
-		// If we detect we're no longer in pager (normal content after pager), reset flag
-		if (inPager && !line.trim().isEmpty() && !isPagerLine(line)) {
-			// Check if this looks like normal output (not pager-related)
-			// If we see normal content, we might have exited pager
-			// But keep flag set until we see clear evidence we're out (like a prompt)
-			if (line.contains(">") || line.contains("C:\\") || line.contains("Microsoft")) {
-				// Might be a prompt or Windows-specific output, reset pager flag
-				inPager = false;
-			}
-		}
 
 		// Check for command start marker (exact match for better reliability)
 		if (line.startsWith(CMD_START_PREFIX)) {
@@ -541,8 +438,6 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 			else {
 				log.warn("Received END marker for unknown command ID: {}", commandId);
 			}
-			// Reset pager flag when command completes
-			inPager = false;
 			return; // Don't add marker line to output
 		}
 		// Also check for markers that might be embedded in other text (fallback)
@@ -577,23 +472,11 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 					cmdOutput.active = false;
 					cmdOutput.latch.countDown();
 					log.debug("Command completed (embedded marker): {}", commandId);
-					// Reset pager flag when command completes
-					inPager = false;
 					return; // Don't add marker line to output
 				}
 			}
 		}
 
-		// Deduplication: Skip duplicate lines when pager is active
-		// This prevents pager re-displays from creating duplicate output
-		if (inPager && isDuplicateLine(line)) {
-			log.debug("Skipping duplicate line (pager re-display): {}", 
-					line.length() > 80 ? line.substring(0, 80) + "..." : line);
-			return; // Don't add duplicate line
-		}
-
-		// Add line to recent lines tracking (for deduplication)
-		addToRecentLines(line);
 
 		// Add line to all active command outputs
 		allOutput.append(line).append("\n");
@@ -610,24 +493,6 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 		}
 		// Clean ANSI escape codes and terminal control sequences
 		line = cleanAnsiCodes(line);
-		
-		// Check if this is a pager control line (pagers sometimes send prompts to stderr)
-		if (isPagerLine(line)) {
-			inPager = true;
-			log.debug("Skipping pager control line from stderr: {}", 
-					line.length() > 100 ? line.substring(0, 100) + "..." : line);
-			return;
-		}
-		
-		// Deduplication: Skip duplicate lines when pager is active
-		if (inPager && isDuplicateLine(line)) {
-			log.debug("Skipping duplicate error line (pager re-display): {}", 
-					line.length() > 80 ? line.substring(0, 80) + "..." : line);
-			return;
-		}
-		
-		// Add line to recent lines tracking (for deduplication)
-		addToRecentLines(line);
 		
 		// Add error line to all active command outputs
 		allOutput.append(line).append("\n");
@@ -684,8 +549,6 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 		currentWorkingDir = null;
 		commandOutputs.clear();
 		allOutput.setLength(0);
-		recentUniqueLines.clear();
-		inPager = false;
 	}
 
 	@Override

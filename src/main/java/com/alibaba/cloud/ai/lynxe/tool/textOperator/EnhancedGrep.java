@@ -767,7 +767,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
 						.processContent(this.rootPlanId, match.lineContent, "grep_match");
-					displayContent = processed.getSummary();
+					displayContent = processed.getComprehensiveResult();
 				}
 				result.append(String.format("%d%s%s\n", match.lineNumber, marker, displayContent));
 				totalMatches++;
@@ -821,7 +821,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processed = textFileService.getInnerStorageService()
 						.processContent(this.rootPlanId, displayContent, "grep_multiline_match");
-					displayContent = processed.getSummary();
+					displayContent = processed.getComprehensiveResult();
 				}
 				else {
 					// Fallback truncation if no rootPlanId

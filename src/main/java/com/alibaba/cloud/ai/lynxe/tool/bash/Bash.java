@@ -30,6 +30,7 @@ import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Bash extends AbstractBaseTool<BashRequestVO> {
@@ -51,6 +52,11 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 	 * Configuration properties for bash security settings
 	 */
 	private final LynxeProperties lynxeProperties;
+
+	/**
+	 * Smart content saving service for handling long outputs
+	 */
+	private final SmartContentSavingService smartContentSavingService;
 
 	// Add operating system information
 	private static final String osName = System.getProperty("os.name");
@@ -87,64 +93,23 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
 		// Remove carriage returns that might interfere
 		text = text.replace("\r", "");
-		// Remove backspace characters and their effects (pager often uses \b for formatting)
+		// Remove backspace characters
 		text = text.replace("\b", "");
-		// Remove pager control sequences and prompts more aggressively
-		text = text.replaceAll("\\(END\\)", "");
-		text = text.replaceAll("\\(press RETURN\\)", "");
-		text = text.replaceAll("press RETURN", "");
-		text = text.replaceAll("goto mark:.*", "");
-		text = text.replaceAll("Invalid mark letter.*", "");
-		text = text.replaceAll("No previous regular expression.*", "");
-		text = text.replaceAll("No next tag.*", "");
-		text = text.replaceAll("Examine:.*", "");
-		text = text.replaceAll("Repaint by scrolling.*", "");
-		text = text.replaceAll("set mark:.*", "");
-		text = text.replaceAll("Determining length of file.*", "");
-		text = text.replaceAll("\\.\\.\\.skipping\\.\\.\\..*", "");
-		text = text.replaceAll("Cannot query.*", "");
 		// Remove bell character
 		text = text.replace("\u0007", "");
 		return text;
 	}
 
-	/**
-	 * Automatically disable pager for git commands to prevent interactive paging
-	 * This reduces memory consumption and avoids duplicate output
-	 * @param command The original command
-	 * @return Modified command with --no-pager flag if it's a git command
-	 */
-	private static String disablePagerForGitCommands(String command) {
-		if (command == null || command.trim().isEmpty()) {
-			return command;
-		}
-		
-		String trimmed = command.trim();
-		// Check if command starts with 'git ' or contains '&& git ' or '| git '
-		// Pattern: git command (with optional --no-pager already present)
-		if (trimmed.startsWith("git ") || trimmed.matches(".*(&&|\\|)\\s+git\\s+")) {
-			// Check if --no-pager is already present
-			if (!trimmed.contains("--no-pager")) {
-				// Insert --no-pager after 'git' but before the subcommand
-				// Handle: "git log ..." -> "git --no-pager log ..."
-				// Handle: "cd dir && git log ..." -> "cd dir && git --no-pager log ..."
-				// Handle: "command | git log ..." -> "command | git --no-pager log ..."
-				trimmed = trimmed.replaceAll("(^|\\s|&&|\\|)\\s*git\\s+", "$1git --no-pager ");
-				log.debug("Auto-disabled pager for git command: {}", trimmed);
-			}
-		}
-		
-		return trimmed;
-	}
 
 	public Bash(UnifiedDirectoryManager unifiedDirectoryManager, ObjectMapper objectMapper,
 			ToolI18nService toolI18nService, ShellExecutorService shellExecutorService,
-			LynxeProperties lynxeProperties) {
+			LynxeProperties lynxeProperties, SmartContentSavingService smartContentSavingService) {
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		this.objectMapper = objectMapper;
 		this.toolI18nService = toolI18nService;
 		this.shellExecutorService = shellExecutorService;
 		this.lynxeProperties = lynxeProperties;
+		this.smartContentSavingService = smartContentSavingService;
 	}
 
 	/**
@@ -395,9 +360,6 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 							return new ToolExecuteResult("Command parameter is required for 'command' action");
 						}
 
-						// Automatically disable pager for git commands to prevent interactive paging
-						// This reduces memory consumption and avoids duplicate output
-						command = disablePagerForGitCommands(command);
 
 						// Validate paths in command to ensure they are within allowed
 						// working directory
@@ -497,7 +459,18 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 							}
 						}
 
-						result = new ToolExecuteResult(objectMapper.writeValueAsString(executionResult));
+						// Use SmartContentSavingService to process the result
+						String resultContent = this.lastResult;
+						if (smartContentSavingService != null && rootPlanId != null) {
+							SmartContentSavingService.SmartProcessResult smartResult = 
+								smartContentSavingService.processContent(rootPlanId, resultContent, "bash");
+							resultContent = smartResult.getComprehensiveResult();
+						}
+
+						// Create result with processed content
+						List<String> processedResult = new ArrayList<>();
+						processedResult.add(resultContent);
+						result = new ToolExecuteResult(objectMapper.writeValueAsString(processedResult));
 						break;
 					}
 					case "send_input": {
@@ -647,29 +620,12 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 
 			// Get current state from executor (replaces executionLog and lastResult)
 			try {
-				String currentState = executor.getCurrentState();
-				if (currentState != null && !currentState.isEmpty() 
-						&& !currentState.equals("No active shell process")
-						&& !currentState.equals("Shell process has terminated")
-						&& !currentState.equals("No active process")
-						&& !currentState.equals("Process has completed")) {
-					// Clean ANSI codes from current state
-					currentState = cleanAnsiCodes(currentState);
-					if (isAlive) {
-						stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
-						stateBuilder.append("- Current Process Output:\n");
-					}
-					else {
-						stateBuilder.append("- Last Command Output:\n");
-					}
-					stateBuilder.append(currentState);
-					if (!currentState.endsWith("\n")) {
-						stateBuilder.append("\n");
-					}
-					stateBuilder.append("\n");
-				}
-				else if (isAlive) {
+				if (isAlive) {
 					stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
+				}
+				else
+				{
+					stateBuilder.append("- Process Status: Terminated\n\n");
 				}
 			}
 			catch (Exception e) {
