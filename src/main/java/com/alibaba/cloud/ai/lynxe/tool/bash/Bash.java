@@ -87,7 +87,54 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
 		// Remove carriage returns that might interfere
 		text = text.replace("\r", "");
+		// Remove backspace characters and their effects (pager often uses \b for formatting)
+		text = text.replace("\b", "");
+		// Remove pager control sequences and prompts more aggressively
+		text = text.replaceAll("\\(END\\)", "");
+		text = text.replaceAll("\\(press RETURN\\)", "");
+		text = text.replaceAll("press RETURN", "");
+		text = text.replaceAll("goto mark:.*", "");
+		text = text.replaceAll("Invalid mark letter.*", "");
+		text = text.replaceAll("No previous regular expression.*", "");
+		text = text.replaceAll("No next tag.*", "");
+		text = text.replaceAll("Examine:.*", "");
+		text = text.replaceAll("Repaint by scrolling.*", "");
+		text = text.replaceAll("set mark:.*", "");
+		text = text.replaceAll("Determining length of file.*", "");
+		text = text.replaceAll("\\.\\.\\.skipping\\.\\.\\..*", "");
+		text = text.replaceAll("Cannot query.*", "");
+		// Remove bell character
+		text = text.replace("\u0007", "");
 		return text;
+	}
+
+	/**
+	 * Automatically disable pager for git commands to prevent interactive paging
+	 * This reduces memory consumption and avoids duplicate output
+	 * @param command The original command
+	 * @return Modified command with --no-pager flag if it's a git command
+	 */
+	private static String disablePagerForGitCommands(String command) {
+		if (command == null || command.trim().isEmpty()) {
+			return command;
+		}
+		
+		String trimmed = command.trim();
+		// Check if command starts with 'git ' or contains '&& git ' or '| git '
+		// Pattern: git command (with optional --no-pager already present)
+		if (trimmed.startsWith("git ") || trimmed.matches(".*(&&|\\|)\\s+git\\s+")) {
+			// Check if --no-pager is already present
+			if (!trimmed.contains("--no-pager")) {
+				// Insert --no-pager after 'git' but before the subcommand
+				// Handle: "git log ..." -> "git --no-pager log ..."
+				// Handle: "cd dir && git log ..." -> "cd dir && git --no-pager log ..."
+				// Handle: "command | git log ..." -> "command | git --no-pager log ..."
+				trimmed = trimmed.replaceAll("(^|\\s|&&|\\|)\\s*git\\s+", "$1git --no-pager ");
+				log.debug("Auto-disabled pager for git command: {}", trimmed);
+			}
+		}
+		
+		return trimmed;
 	}
 
 	public Bash(UnifiedDirectoryManager unifiedDirectoryManager, ObjectMapper objectMapper,
@@ -348,6 +395,10 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 							return new ToolExecuteResult("Command parameter is required for 'command' action");
 						}
 
+						// Automatically disable pager for git commands to prevent interactive paging
+						// This reduces memory consumption and avoids duplicate output
+						command = disablePagerForGitCommands(command);
+
 						// Validate paths in command to ensure they are within allowed
 						// working directory
 						String workingDir = getWorkingDirectory();
@@ -475,28 +526,25 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 						result = new ToolExecuteResult("Input sent successfully. Current state:\n" + state);
 						break;
 					}
-					case "get_state": {
-						log.info("Getting current process state");
-
-						ShellCommandExecutor executor = getExecutor();
-						String state = executor.getCurrentState();
-						// Clean ANSI codes from state before returning
-						this.lastResult = cleanAnsiCodes(state);
-						result = new ToolExecuteResult(this.lastResult);
-						break;
-					}
 					case "terminate": {
 						log.info("Terminating current process");
 
 						ShellCommandExecutor executor = getExecutor();
 						executor.terminate();
-						this.lastResult = "Process terminated";
+						
+						// Clear all state after termination
+						this.lastCommand = "";
+						this.lastResult = "";
+						synchronized (executionLog) {
+							executionLog.setLength(0);
+						}
+						
 						result = new ToolExecuteResult("Process terminated successfully");
 						break;
 					}
 					default:
 						return new ToolExecuteResult("Unknown action: " + action
-								+ ". Supported actions: command, send_input, get_state, terminate");
+								+ ". Supported actions: command, send_input, terminate");
 				}
 			}
 			catch (IllegalStateException e) {
@@ -582,12 +630,6 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 
 			StringBuilder stateBuilder = new StringBuilder();
 
-			// Add execution log if available
-			if (executionLog.length() > 0) {
-				stateBuilder.append(executionLog.toString());
-				stateBuilder.append("\n");
-			}
-
 			// Only add sections with actual data
 			// Display working directory as relative path (task root as /)
 			String displayWorkingDir = getDisplayWorkingDirectory();
@@ -603,27 +645,43 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 				stateBuilder.append("\n\n");
 			}
 
-			if (isAlive) {
-				stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
-				try {
-					String currentState = executor.getCurrentState();
-					if (currentState != null && !currentState.isEmpty() && !currentState.equals("No active process")
-							&& !currentState.equals("Process has completed")) {
-						// Clean ANSI codes from current state
-						currentState = cleanAnsiCodes(currentState);
+			// Get current state from executor (replaces executionLog and lastResult)
+			try {
+				String currentState = executor.getCurrentState();
+				if (currentState != null && !currentState.isEmpty() 
+						&& !currentState.equals("No active shell process")
+						&& !currentState.equals("Shell process has terminated")
+						&& !currentState.equals("No active process")
+						&& !currentState.equals("Process has completed")) {
+					// Clean ANSI codes from current state
+					currentState = cleanAnsiCodes(currentState);
+					if (isAlive) {
+						stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
 						stateBuilder.append("- Current Process Output:\n");
-						stateBuilder.append(currentState);
-						stateBuilder.append("\n\n");
 					}
+					else {
+						stateBuilder.append("- Last Command Output:\n");
+					}
+					stateBuilder.append(currentState);
+					if (!currentState.endsWith("\n")) {
+						stateBuilder.append("\n");
+					}
+					stateBuilder.append("\n");
 				}
-				catch (Exception e) {
-					log.warn("Error getting current state: {}", e.getMessage());
+				else if (isAlive) {
+					stateBuilder.append("- Process Status: Running (waiting for input)\n\n");
 				}
 			}
-			else {
+			catch (Exception e) {
+				log.warn("Error getting current state: {}", e.getMessage());
+				// Fallback to lastResult if getCurrentState fails
 				if (!lastResult.isEmpty() && !lastResult.equals("Process terminated")) {
+					stateBuilder.append("- Last Command Output:\n");
 					stateBuilder.append(lastResult);
-					stateBuilder.append("\n\n");
+					if (!lastResult.endsWith("\n")) {
+						stateBuilder.append("\n");
+					}
+					stateBuilder.append("\n");
 				}
 			}
 
@@ -633,10 +691,6 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 			// Handle any unexpected errors gracefully
 			log.warn("Error getting bash tool state string (non-fatal): {}", e.getMessage(), e);
 			StringBuilder errorBuilder = new StringBuilder();
-			if (executionLog.length() > 0) {
-				errorBuilder.append(executionLog.toString());
-				errorBuilder.append("\n");
-			}
 			String displayWorkingDir = getDisplayWorkingDirectory();
 			if (displayWorkingDir != null && !displayWorkingDir.isEmpty()) {
 				errorBuilder.append("- Working Directory: ").append(displayWorkingDir).append("\n");
@@ -644,8 +698,28 @@ public class Bash extends AbstractBaseTool<BashRequestVO> {
 			if (!lastCommand.isEmpty()) {
 				errorBuilder.append("- Last Command: ").append(lastCommand).append("\n");
 			}
-			if (!lastResult.isEmpty()) {
-				errorBuilder.append("- Last Result: ").append(lastResult).append("\n");
+			// Try to get current state from executor as fallback
+			try {
+				ShellCommandExecutor executor = getExecutor();
+				String currentState = executor.getCurrentState();
+				if (currentState != null && !currentState.isEmpty() 
+						&& !currentState.equals("No active shell process")
+						&& !currentState.equals("Shell process has terminated")) {
+					currentState = cleanAnsiCodes(currentState);
+					errorBuilder.append("- Current State:\n").append(currentState);
+					if (!currentState.endsWith("\n")) {
+						errorBuilder.append("\n");
+					}
+				}
+				else if (!lastResult.isEmpty()) {
+					errorBuilder.append("- Last Result: ").append(lastResult).append("\n");
+				}
+			}
+			catch (Exception ex) {
+				log.debug("Failed to get current state in error handler: {}", ex.getMessage());
+				if (!lastResult.isEmpty()) {
+					errorBuilder.append("- Last Result: ").append(lastResult).append("\n");
+				}
 			}
 			return errorBuilder.toString();
 		}

@@ -22,7 +22,7 @@ package com.alibaba.cloud.ai.lynxe.tool.bash;
 public class BashRequestVO {
 
 	/**
-	 * Bash operation type Supports: command, send_input, get_state, terminate
+	 * Bash operation type Supports: command, send_input, terminate
 	 */
 	private String action;
 

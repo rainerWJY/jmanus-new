@@ -1,9 +1,9 @@
 description: |
   Execute bash commands in terminal with interactive support (current OS: %s).
-  * Action-based interface: Supports actions: 'command' (execute new command), 'send_input' (send input to interactive process), 'get_state' (get current process output), 'terminate' (stop current process).
+  * Action-based interface: Supports actions: 'command' (execute new command), 'send_input' (send input to interactive process), 'terminate' (stop current process).
   * Interactive commands: For commands like `git log` that require pagination, use 'command' action to start, then use 'send_input' with input='n' for next page, input='q' to quit, or input='\\n' for Enter key.
   * Long-running commands: For commands that may run indefinitely, they should be run in background with output redirected to file, e.g.: command = `python3 app.py > server.log 2>&1 &`.
-  * Process state: Use 'get_state' action to check current process output without executing a new command. Use 'terminate' to stop a running process.
+  * Process management: Use 'terminate' to stop a running process. Process state is automatically tracked and available in tool state.
   * Timeout handling: If command execution result shows "Command timed out. Sending SIGINT to the process", assistant should try to re-run the command in background.
 
 parameters: |
@@ -12,8 +12,8 @@ parameters: |
       "properties": {
           "action": {
               "type": "string",
-              "description": "The action to perform. Supported actions: 'command' (execute a new shell command), 'send_input' (send input to current interactive process, e.g., 'n' for next page, 'q' to quit), 'get_state' (get current process output without executing new command), 'terminate' (terminate current process). If not specified, defaults to 'command' for backward compatibility.",
-              "enum": ["command", "send_input", "get_state", "terminate"]
+              "description": "The action to perform. Supported actions: 'command' (execute a new shell command), 'send_input' (send input to current interactive process, e.g., 'n' for next page, 'q' to quit), 'terminate' (terminate current process). If not specified, defaults to 'command' for backward compatibility.",
+              "enum": ["command", "send_input", "terminate"]
           },
           "command": {
               "type": "string",
