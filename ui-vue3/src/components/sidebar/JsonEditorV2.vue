@@ -806,8 +806,8 @@ const closeModelDropdown = (stepIndex: number) => {
     // Clear the filter to ensure it stays empty
     setSearchFilter(stepIndex, '')
   } else {
-  // Only reset filter if there's a model name to show
-  setSearchFilter(stepIndex, step.modelName ?? '')
+    // Only reset filter if there's a model name to show
+    setSearchFilter(stepIndex, step.modelName ?? '')
   }
 }
 
@@ -932,7 +932,7 @@ const handleClickOutside = (event: MouseEvent) => {
 // Only initialize filters for new steps, don't override user input
 watch(
   () => displayData.steps.length,
-  (newLength, oldLength) => {
+  (_newLength, _oldLength) => {
     // Initialize filters for all steps on first load or when steps are added
     displayData.steps.forEach((step, index) => {
       // Only set filter if it doesn't exist (new step or first load)
