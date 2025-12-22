@@ -93,6 +93,7 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileBasedParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileSplitterTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
@@ -317,6 +318,7 @@ public class PlanningFactory {
 					new ImageOcrProcessor(unifiedDirectoryManager, llmService, lynxeProperties,
 							new ImageRecognitionExecutorPool(lynxeProperties)),
 					excelProcessingService, objectMapper, toolI18nService));
+			toolDefinitions.add(new MarkdownToDocxTool(textFileService, unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new ImageGenerationTool(dynamicModelRepository, restClientBuilderProvider, objectMapper,
 					toolI18nService, lynxeProperties, imageGenerationProviders));
 			// toolDefinitions.add(new ExcelProcessorTool(excelProcessingService));
