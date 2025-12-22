@@ -47,14 +47,16 @@ import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Markdown to DOCX converter tool that transforms markdown files into Word document format.
- * This tool provides access to files in the root plan directory and converts markdown content
- * to DOCX format with proper formatting including headers, lists, tables, code blocks, and more.
+ * Markdown to DOCX converter tool that transforms markdown files into Word document
+ * format. This tool provides access to files in the root plan directory and converts
+ * markdown content to DOCX format with proper formatting including headers, lists,
+ * tables, code blocks, and more.
  *
- * Keywords: markdown to docx, markdown to word, convert markdown, docx conversion,
- * word document conversion, root directory files, root plan folder.
+ * Keywords: markdown to docx, markdown to word, convert markdown, docx conversion, word
+ * document conversion, root directory files, root plan folder.
  *
- * Use this tool to convert markdown files to Word document format in the root plan directory.
+ * Use this tool to convert markdown files to Word document format in the root plan
+ * directory.
  */
 public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.MarkdownToDocxInput> {
 
@@ -471,15 +473,16 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 	}
 
 	/**
-	 * Process inline markdown formatting (bold, italic, code)
-	 * Note: Images are handled separately, so we don't remove image syntax here
+	 * Process inline markdown formatting (bold, italic, code) Note: Images are handled
+	 * separately, so we don't remove image syntax here
 	 */
 	private String processInlineFormatting(String text) {
 		// Remove markdown formatting (but keep images for separate processing)
 		text = text.replaceAll("\\*\\*(.+?)\\*\\*", "$1"); // Bold
 		text = text.replaceAll("\\*(.+?)\\*", "$1"); // Italic
 		text = text.replaceAll("`(.+?)`", "$1"); // Inline code
-		text = text.replaceAll("\\[([^\\]]+)\\]\\([^\\)]+\\)", "$1"); // Links (but not images)
+		text = text.replaceAll("\\[([^\\]]+)\\]\\([^\\)]+\\)", "$1"); // Links (but not
+																		// images)
 		return text;
 	}
 
@@ -536,8 +539,8 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 	}
 
 	/**
-	 * Resolve image path relative to root plan directory
-	 * Handles both file system paths and API URLs like /api/file-browser/download/{planId}?path={relativePath}
+	 * Resolve image path relative to root plan directory Handles both file system paths
+	 * and API URLs like /api/file-browser/download/{planId}?path={relativePath}
 	 */
 	private Path resolveImagePath(Path rootPlanDirectory, String imagePath) {
 		try {
@@ -567,7 +570,8 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 				return imageFile;
 			}
 
-			// If currentPlanId exists and differs from rootPlanId, check subplan directory
+			// If currentPlanId exists and differs from rootPlanId, check subplan
+			// directory
 			if (this.currentPlanId != null && !this.currentPlanId.isEmpty()
 					&& !this.currentPlanId.equals(this.rootPlanId)) {
 				Path subplanDirectory = rootPlanDirectory.resolve(this.currentPlanId);
@@ -587,8 +591,8 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 	}
 
 	/**
-	 * Extract the actual file path from an API URL
-	 * Format: /api/file-browser/download/{planId}?path={relativePath}
+	 * Extract the actual file path from an API URL Format:
+	 * /api/file-browser/download/{planId}?path={relativePath}
 	 * @param apiUrl The API URL string
 	 * @return The decoded file path, or null if extraction fails
 	 */
@@ -601,7 +605,8 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 				return null;
 			}
 
-			// Extract the path value (everything after "?path=" until next & or end of string)
+			// Extract the path value (everything after "?path=" until next & or end of
+			// string)
 			int startIndex = pathParamIndex + 6; // 6 is length of "?path="
 			int endIndex = apiUrl.indexOf("&", startIndex);
 			String pathValue = (endIndex == -1) ? apiUrl.substring(startIndex) : apiUrl.substring(startIndex, endIndex);
