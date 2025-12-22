@@ -309,6 +309,7 @@ public class DynamicAgent extends ReActAgent {
 							messages.addAll(conversationHistory);
 						}
 					}
+
 					catch (Exception e) {
 						log.warn(
 								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
@@ -347,14 +348,9 @@ public class DynamicAgent extends ReActAgent {
 				else {
 					chatClient = llmService.getDynamicAgentChatClient(modelName);
 				}
-				// Calculate input character count from all messages before calling LLM
-				int inputCharCount = messages.stream().mapToInt(message -> {
-					String text = message.getText();
-					if (text == null || text.trim().isEmpty()) {
-						return 0;
-					}
-					return text.length();
-				}).sum();
+				// Calculate input character count from all messages by serializing to JSON
+				// This gives a more accurate count of the actual data sent to LLM
+				int inputCharCount = (int) calculateTotalLength(messages);
 				log.info("User prompt character count: {}", inputCharCount);
 
 				// Use streaming response handler for better user experience and content
@@ -839,11 +835,10 @@ public class DynamicAgent extends ReActAgent {
 				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
 			}
 
-			// Phase 1: Prepare execution data and metadata in a single loop
-			// Collect all related data together to ensure consistency
-			// Note: We need two loops because execution is asynchronous - we must prepare
-			// all data before execution, then process results after execution completes
+			// Prepare execution data and metadata in a single pass
+			// This ensures all related data is collected together for consistency
 			List<ParallelExecutionService.ParallelExecutionRequest> executions = new ArrayList<>();
+			// Store tool metadata for result processing (order matches executions)
 			ToolExecutionMetadata[] toolMetadata = new ToolExecutionMetadata[toolCalls.size()];
 
 			for (int i = 0; i < toolCalls.size(); i++) {
@@ -851,15 +846,15 @@ public class DynamicAgent extends ReActAgent {
 				ActToolParam param = actToolInfoList.get(i);
 				Map<String, Object> params = parseToolArguments(toolCall.arguments());
 
-				// Create execution request (order: executions[i] = toolCalls[i])
+				// Create execution request
 				executions.add(new ParallelExecutionService.ParallelExecutionRequest(toolCall.name(), params,
 						param.getToolCallId()));
 
-				// Store metadata for result processing (order: metadata[i] = executions[i] = toolCalls[i])
+				// Store metadata for result processing (order guaranteed: metadata[i] = executions[i])
 				toolMetadata[i] = new ToolExecutionMetadata(toolCall, param, toolCall.name());
 			}
 
-			// Phase 2: Execute all tools in parallel (asynchronous, must wait for completion)
+			// Execute tools in parallel
 			CompletableFuture<List<Map<String, Object>>> executionFuture = parallelExecutionService
 				.executeToolsInParallel(executions, toolCallbackMap, parentToolContext);
 			List<Map<String, Object>> parallelResults = executionFuture.join();
@@ -875,9 +870,8 @@ public class DynamicAgent extends ReActAgent {
 				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
 			}
 
-			// Phase 3: Process all results in a single loop
-			// Order is guaranteed: parallelResults[i] (sorted by index) = executions[i] = toolMetadata[i]
-			// This loop handles: updating actToolInfoList, building resultList, and building toolResponses
+			// Process all results in a single loop: update actToolInfoList, build resultList and toolResponses
+			// Order is guaranteed: parallelResults[i] corresponds to executions[i] and toolMetadata[i]
 			List<String> resultList = new ArrayList<>();
 			List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
 			for (int i = 0; i < toolCalls.size(); i++) {
@@ -896,7 +890,7 @@ public class DynamicAgent extends ReActAgent {
 					processedResult = "Error: " + (errorObj != null ? errorObj.toString() : "Unknown error");
 				}
 
-				// Update actToolInfoList (order guaranteed by metadata array)
+				// Update actToolInfoList
 				metadata.param.setResult(processedResult);
 				log.info("Tool {} executed successfully for planId: {}", metadata.toolName, getCurrentPlanId());
 
@@ -1424,6 +1418,7 @@ public class DynamicAgent extends ReActAgent {
 		if (messages.isEmpty()) {
 			return;
 		}
+		List<Message> messagesToAdd = new ArrayList<>();
 		// clear current plan memory
 		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
 		for (Message message : messages) {
@@ -1432,13 +1427,13 @@ public class DynamicAgent extends ReActAgent {
 				continue;
 			}
 			// exclude env data message
-			if (message instanceof UserMessage userMessage
-					&& userMessage.getMetadata().containsKey(CURRENT_STEP_ENV_DATA_KEY)) {
+			if (message instanceof UserMessage) {
 				continue;
 			}
 			// only keep assistant message and tool_call message
-			llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), message);
+			messagesToAdd.add(message);
 		}
+		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), messagesToAdd);
 	}
 
 	@Override
@@ -1712,6 +1707,47 @@ public class DynamicAgent extends ReActAgent {
 		}
 		else if (formInputTool.getInputState() == FormInputTool.InputState.INPUT_TIMEOUT) {
 			log.warn("User input timed out for planId: {}", getCurrentPlanId());
+		}
+	}
+
+	/**
+	 * Calculate the total escaped string length for all messages in a Prompt.
+	 * Directly serializes the messages list to JSON and returns the length.
+	 * 
+	 * @param prompt the Prompt containing messages
+	 * @return the total length of all messages when serialized to JSON
+	 */
+	private long calculateTotalLength(Prompt prompt) {
+		if (prompt == null || prompt.getInstructions() == null) {
+			return 0;
+		}
+		return calculateTotalLength(prompt.getInstructions());
+	}
+
+	/**
+	 * Calculate the total escaped string length for a list of messages.
+	 * Directly serializes the messages list to JSON and returns the length.
+	 * 
+	 * @param messages the list of messages
+	 * @return the total length of all messages when serialized to JSON
+	 */
+	private long calculateTotalLength(List<Message> messages) {
+		if (messages == null || messages.isEmpty()) {
+			return 0;
+		}
+
+		try {
+			// Directly serialize the entire messages list to JSON
+			String json = objectMapper.writeValueAsString(messages);
+			return json.length();
+		}
+		catch (Exception e) {
+			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+			// Fallback to simple text length calculation
+			return messages.stream().mapToLong(message -> {
+				String text = message.getText();
+				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
+			}).sum();
 		}
 	}
 
