@@ -323,10 +323,6 @@ public class DynamicAgent extends ReActAgent {
 				messages.addAll(historyMem);
 				messages.add(currentStepEnvMessage);
 
-				// Save user request (stepText) to conversation memory after building
-				// messages
-				// This prevents duplicate messages in the conversation history
-				saveUserRequestToConversationMemory();
 
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
@@ -1611,54 +1607,6 @@ public class DynamicAgent extends ReActAgent {
 		return envDataStringBuilder.toString();
 	}
 
-	// Add a method to wait for user input or handle timeout.
-	/**
-	 * Save user request (stepText) to conversation memory
-	 */
-	private void saveUserRequestToConversationMemory() {
-		// Skip if already saved (prevents duplicate saves during retries)
-		if (userRequestSavedToConversationMemory) {
-			log.debug("User request already saved to conversation memory, skipping");
-			return;
-		}
-
-		// Skip if conversation memory is disabled
-		if (!lynxeProperties.getEnableConversationMemory()) {
-			log.debug("Conversation memory is disabled, skipping user request save");
-			return;
-		}
-
-		if (getConversationId() == null || getConversationId().trim().isEmpty()) {
-			log.debug("No conversationId available, skipping user request save");
-			return;
-		}
-
-		// Get stepText from initSettingData
-		Object stepTextObj = getInitSettingData().get(AbstractPlanExecutor.STEP_TEXT_KEY);
-		if (stepTextObj == null) {
-			log.debug("No stepText found in initSettingData, skipping user request save");
-			return;
-		}
-
-		String stepText = stepTextObj.toString();
-		if (stepText == null || stepText.trim().isEmpty()) {
-			log.debug("stepText is empty, skipping user request save");
-			return;
-		}
-
-		try {
-			UserMessage userMessage = new UserMessage(stepText);
-			llmService.addToConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId(),
-					userMessage);
-			userRequestSavedToConversationMemory = true; // Mark as saved
-			log.info("Saved user request to conversation memory for conversationId: {}, request length: {}",
-					getConversationId(), stepText.length());
-		}
-		catch (Exception e) {
-			log.warn("Failed to save user request to conversation memory for conversationId: {}", getConversationId(),
-					e);
-		}
-	}
 
 	private void waitForUserInputOrTimeout(FormInputTool formInputTool) {
 		log.info("Waiting for user input for planId: {}...", getCurrentPlanId());
