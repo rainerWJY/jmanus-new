@@ -68,6 +68,12 @@ public class LinuxShellExecutor implements ShellCommandExecutor {
 				pb.environment().put("LANG", "en_US.UTF-8");
 				pb.environment().put("SHELL", "/bin/bash");
 				pb.environment().put("PATH", System.getenv("PATH") + ":/usr/local/bin");
+				// Disable all pagers to ensure direct output without pagination
+				pb.environment().put("PAGER", "cat");
+				pb.environment().put("GIT_PAGER", "cat");
+				pb.environment().put("MANPAGER", "cat");
+				pb.environment().put("LESS", "-R");
+				pb.environment().put("MORE", "-R");
 
 				currentProcess = pb.start();
 				processInput = new BufferedWriter(new OutputStreamWriter(currentProcess.getOutputStream()));

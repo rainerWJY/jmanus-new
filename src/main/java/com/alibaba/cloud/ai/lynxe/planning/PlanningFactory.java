@@ -66,7 +66,6 @@ import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.bash.Bash;
-import com.alibaba.cloud.ai.lynxe.tool.bash.ShellExecutorService;
 import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
@@ -211,9 +210,6 @@ public class PlanningFactory {
 	@Autowired(required = false)
 	private List<ImageGenerationProvider> imageGenerationProviders;
 
-	@Autowired
-	private ShellExecutorService shellExecutorService;
-
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
 			SmartContentSavingService innerStorageService, UnifiedDirectoryManager unifiedDirectoryManager,
@@ -288,8 +284,7 @@ public class PlanningFactory {
 			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
-			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, shellExecutorService,
-					lynxeProperties, innerStorageService));
+			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 
 			toolDefinitions.add(new GlobalFileReadOperator(textFileService, innerStorageService, objectMapper,
