@@ -46,9 +46,8 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Image generation provider for Alibaba Wanx (通义万相) API Uses DashScope multimodal
- * generation API for text-to-image models Uses DashScope image generation API for image
- * editing models
+ * Image generation provider for Alibaba Wanx API Uses DashScope multimodal generation API
+ * for text-to-image models Uses DashScope image generation API for image editing models
  */
 @Component
 public class WanxImageGenerationProvider implements ImageGenerationProvider {
@@ -73,18 +72,17 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 	 *
 	 * Supported models include:
 	 *
-	 * Wanx Text-to-Image V2 (通义万相文生图V2版): - wan2.6-t2i, wan2.5-t2i-preview,
-	 * wan2.2-t2i-plus, wan2.2-t2i-flash - wanx2.1-t2i-plus, wanx2.1-t2i-turbo,
-	 * wanx2.0-t2i-turbo Endpoint: /api/v1/services/aigc/multimodal-generation/generation
-	 * (synchronous)
-	 *
-	 * Wanx Text-to-Image V1 (通义万相文生图V1版): - wanx-v1 Endpoint:
+	 * Wanx Text-to-Image V2: - wan2.6-t2i, wan2.5-t2i-preview, wan2.2-t2i-plus,
+	 * wan2.2-t2i-flash - wanx2.1-t2i-plus, wanx2.1-t2i-turbo, wanx2.0-t2i-turbo Endpoint:
 	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
 	 *
-	 * Wanx Image Generation and Editing 2.6 (通义万相图像生成与编辑2.6): - wan2.6-image Endpoint:
+	 * Wanx Text-to-Image V1: - wanx-v1 Endpoint:
+	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
+	 *
+	 * Wanx Image Generation and Editing 2.6: - wan2.6-image Endpoint:
 	 * /api/v1/services/aigc/image-generation/generation (asynchronous)
 	 *
-	 * Wanx Universal Image Editing (通义万相通用图像编辑): - wan2.5-i2i-preview, wanx2.1-imageedit
+	 * Wanx Universal Image Editing: - wan2.5-i2i-preview, wanx2.1-imageedit
 	 *
 	 * Other Wanx Models: - wanx-sketch-to-image-lite, wanx-x-painting,
 	 * wanx-style-repaint-v1 - wanx-background-generation-v2, image-out-painting -
@@ -112,7 +110,7 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 
 		// Step 2: Validate modelName - check for supported Wanx models
 
-		// Wanx Text-to-Image Models V2 (通义万相文生图V2版)
+		// Wanx Text-to-Image Models V2
 		boolean isWan26T2i = lowerModelName.contains("wan2.6-t2i");
 		boolean isWan25T2iPreview = lowerModelName.contains("wan2.5-t2i-preview");
 		boolean isWan22T2iPlus = lowerModelName.contains("wan2.2-t2i-plus");
@@ -121,41 +119,41 @@ public class WanxImageGenerationProvider implements ImageGenerationProvider {
 		boolean isWanx21T2iTurbo = lowerModelName.contains("wanx2.1-t2i-turbo");
 		boolean isWanx20T2iTurbo = lowerModelName.contains("wanx2.0-t2i-turbo");
 
-		// Wanx Text-to-Image Models V1 (通义万相文生图V1版)
+		// Wanx Text-to-Image Models V1
 		boolean isWanxV1 = lowerModelName.equals("wanx-v1") || lowerModelName.contains("wanx-v1");
 
-		// Wanx Image Generation and Editing 2.6 (通义万相图像生成与编辑2.6)
+		// Wanx Image Generation and Editing 2.6
 		boolean isWan26Image = lowerModelName.contains("wan2.6-image");
 
-		// Wanx Universal Image Editing 2.5 (通义万相通用图像编辑2.5)
+		// Wanx Universal Image Editing 2.5
 		boolean isWan25I2iPreview = lowerModelName.contains("wan2.5-i2i-preview");
 
-		// Wanx Universal Image Editing 2.1 (通义万相通用图像编辑2.1)
+		// Wanx Universal Image Editing 2.1
 		boolean isWanx21ImageEdit = lowerModelName.contains("wanx2.1-imageedit");
 
-		// Wanx Sketch to Image (通义万相涂鸦作画)
+		// Wanx Sketch to Image
 		boolean isWanxSketch = lowerModelName.contains("wanx-sketch-to-image");
 
-		// Wanx Local Repainting (通义万相图像局部重绘)
+		// Wanx Local Repainting
 		boolean isWanxPainting = lowerModelName.contains("wanx-x-painting");
 
-		// Wanx Portrait Style Repainting (人像风格重绘)
+		// Wanx Portrait Style Repainting
 		boolean isWanxStyleRepaint = lowerModelName.contains("wanx-style-repaint");
 
-		// Wanx Background Generation (图像背景生成)
+		// Wanx Background Generation
 		boolean isWanxBackground = lowerModelName.contains("wanx-background-generation");
 
-		// Image Expansion (图像画面扩展)
+		// Image Expansion
 		boolean isImageOutPainting = lowerModelName.contains("image-out-painting");
 
-		// Virtual Model (虚拟模特)
+		// Virtual Model
 		boolean isWanxVirtualModel = lowerModelName.contains("wanx-virtualmodel")
 				|| lowerModelName.contains("virtualmodel");
 
-		// Shoe Model (鞋靴模特)
+		// Shoe Model
 		boolean isShoeModel = lowerModelName.contains("shoemodel");
 
-		// Poster Generation (创意海报生成)
+		// Poster Generation
 		boolean isWanxPoster = lowerModelName.contains("wanx-poster-generation");
 
 		// General Wanx pattern (catch-all for other wanx models)

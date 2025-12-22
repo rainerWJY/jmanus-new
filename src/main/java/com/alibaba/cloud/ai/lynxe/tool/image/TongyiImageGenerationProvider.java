@@ -34,7 +34,7 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Image generation provider for Alibaba Tongyi Qwen (通义千问) API Uses DashScope multimodal
+ * Image generation provider for Alibaba Tongyi Qwen API Uses DashScope multimodal
  * generation API Handles Qwen image generation and editing models only For Wanx models,
  * use WanxImageGenerationProvider
  */
@@ -58,12 +58,12 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 	 *
 	 * Supported models include:
 	 *
-	 * Qwen Image Generation (通义千问文生图): - qwen-image-plus, qwen-image Endpoint:
+	 * Qwen Image Generation: - qwen-image-plus, qwen-image Endpoint:
 	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
 	 *
-	 * Qwen Image Editing (通义千问图像编辑): - qwen-image-edit-plus,
-	 * qwen-image-edit-plus-2025-10-30, qwen-image-edit Endpoint:
-	 * /api/v1/services/aigc/multimodal-generation/generation (synchronous)
+	 * Qwen Image Editing: - qwen-image-edit-plus, qwen-image-edit-plus-2025-10-30,
+	 * qwen-image-edit Endpoint: /api/v1/services/aigc/multimodal-generation/generation
+	 * (synchronous)
 	 *
 	 * Note: For Wanx models, use WanxImageGenerationProvider
 	 */
@@ -90,11 +90,11 @@ public class TongyiImageGenerationProvider implements ImageGenerationProvider {
 		// Step 2: Validate modelName - check for supported Qwen image generation models
 		// only
 
-		// Qwen Image Generation Models (通义千问文生图)
+		// Qwen Image Generation Models
 		boolean isQwenImagePlus = lowerModelName.contains("qwen-image-plus");
 		boolean isQwenImage = lowerModelName.contains("qwen-image") && !lowerModelName.contains("edit");
 
-		// Qwen Image Editing Models (通义千问图像编辑)
+		// Qwen Image Editing Models
 		boolean isQwenImageEdit = lowerModelName.contains("qwen-image-edit");
 
 		// Check if model matches any supported Qwen pattern
