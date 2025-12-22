@@ -1462,7 +1462,8 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 											currentConversationId);
 								}
 								catch (Exception e) {
-									logger.warn("Failed to save user message to conversation memory for conversationId: {}",
+									logger.warn(
+											"Failed to save user message to conversation memory for conversationId: {}",
 											currentConversationId, e);
 								}
 							}

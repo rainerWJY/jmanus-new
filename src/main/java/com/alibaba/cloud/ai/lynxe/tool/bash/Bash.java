@@ -107,7 +107,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				// Process error message through SmartContentSavingService
 				if (innerStorageService != null) {
 					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-							.processContent(rootPlanId, errorMessage, "bash_path_validation_error");
+						.processContent(rootPlanId, errorMessage, "bash_path_validation_error");
 					return new ToolExecuteResult(processedResult.getComprehensiveResult());
 				}
 				return new ToolExecuteResult(errorMessage);
@@ -122,7 +122,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 			// system
 			ShellCommandExecutor executor = ShellExecutorFactory.createExecutor();
 			log.info("Using shell executor for OS: {}", osName);
-			
+
 			// Use root plan directory as working directory if rootPlanId is available
 			// This ensures all commands execute from the root-plan-folder
 			String workingDir;
@@ -134,18 +134,18 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				workingDir = unifiedDirectoryManager.getWorkingDirectoryPath();
 				log.warn("rootPlanId is not available, using default working directory: {}", workingDir);
 			}
-			
+
 			List<String> result = executor.execute(commandList, workingDir);
 			String resultContent = String.join("\n", result);
 			this.lastResult = resultContent;
-			
+
 			// Process result through SmartContentSavingService to handle large outputs
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-						.processContent(rootPlanId, resultContent, "bash");
+					.processContent(rootPlanId, resultContent, "bash");
 				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
-			
+
 			// Fallback: return JSON format if innerStorageService is not available
 			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
 		}
@@ -155,7 +155,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 			// Process error message through SmartContentSavingService
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-						.processContent(rootPlanId, errorMessage, "bash_execution_error");
+					.processContent(rootPlanId, errorMessage, "bash_execution_error");
 				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 			return new ToolExecuteResult(errorMessage);
@@ -163,11 +163,9 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 	}
 
 	/**
-	 * Validate that all paths in the command stay within root-plan-folder
-	 * This method checks for:
-	 * 1. Absolute paths outside root-plan-folder
-	 * 2. cd commands that would leave root-plan-folder
-	 * 3. Paths with .. that would escape root-plan-folder
+	 * Validate that all paths in the command stay within root-plan-folder This method
+	 * checks for: 1. Absolute paths outside root-plan-folder 2. cd commands that would
+	 * leave root-plan-folder 3. Paths with .. that would escape root-plan-folder
 	 * @param command The command to validate
 	 * @throws IOException if any path is outside root-plan-folder
 	 */
@@ -188,13 +186,14 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 			try {
 				Path absPath = Paths.get(absolutePath).normalize();
 				Path rootPlanPath = rootPlanDirectory.toAbsolutePath().normalize();
-				
+
 				// Check if absolute path is within root-plan-folder
 				if (!absPath.startsWith(rootPlanPath)) {
-					// Check if it's a common system path that might be safe (like /usr, /bin, etc.)
+					// Check if it's a common system path that might be safe (like /usr,
+					// /bin, etc.)
 					// But we should still restrict access
 					if (!isSystemPath(absolutePath)) {
-						throw new IOException("Access denied: Absolute path '" + absolutePath 
+						throw new IOException("Access denied: Absolute path '" + absolutePath
 								+ "' is outside root-plan-folder. Use relative paths from root-plan-folder instead.");
 					}
 				}
@@ -215,7 +214,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 			String targetPath = cdMatcher.group(1).trim();
 			// Remove quotes if present
 			targetPath = targetPath.replaceAll("^[\"']|[\"']$", "");
-			
+
 			// Skip if it's a special cd command (cd -, cd ~, etc.)
 			if (targetPath.equals("-") || targetPath.equals("~") || targetPath.startsWith("~")) {
 				continue;
@@ -229,7 +228,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				log.debug("cd command path validated: {} -> {}", targetPath, normalizedPath);
 			}
 			catch (IOException e) {
-				throw new IOException("Access denied: cd command target '" + targetPath 
+				throw new IOException("Access denied: cd command target '" + targetPath
 						+ "' is outside root-plan-folder. " + e.getMessage());
 			}
 		}
@@ -250,7 +249,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 						unifiedDirectoryManager.resolveAndValidatePath(rootPlanDirectory, normalizedPath);
 					}
 					catch (IOException e) {
-						throw new IOException("Access denied: Path with '..' '" + pathWithDotDot 
+						throw new IOException("Access denied: Path with '..' '" + pathWithDotDot
 								+ "' would escape root-plan-folder. " + e.getMessage());
 					}
 				}
@@ -259,8 +258,8 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 	}
 
 	/**
-	 * Normalize a path by removing leading slashes and relative indicators
-	 * Similar to normalizeFilePath in GlobalFileReadOperator
+	 * Normalize a path by removing leading slashes and relative indicators Similar to
+	 * normalizeFilePath in GlobalFileReadOperator
 	 */
 	private String normalizePath(String path) {
 		if (path == null || path.isEmpty()) {
@@ -281,8 +280,8 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 	}
 
 	/**
-	 * Check if a path is a system path that might be safe to access
-	 * (e.g., /usr/bin, /bin, /etc - but we still restrict these)
+	 * Check if a path is a system path that might be safe to access (e.g., /usr/bin,
+	 * /bin, /etc - but we still restrict these)
 	 */
 	private boolean isSystemPath(String path) {
 		// For now, we don't allow any system paths
@@ -324,7 +323,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 		else {
 			workingDir = unifiedDirectoryManager.getWorkingDirectoryPath();
 		}
-		
+
 		return String.format("""
 				            Current File Operation State:
 				            - Working Directory:
@@ -336,8 +335,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				            - Last Operation Result:
 				%s
 
-				            """, workingDir,
-				lastCommand.isEmpty() ? "No command executed yet" : lastCommand,
+				            """, workingDir, lastCommand.isEmpty() ? "No command executed yet" : lastCommand,
 				lastResult.isEmpty() ? "No result yet" : lastResult);
 	}
 

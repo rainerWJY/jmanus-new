@@ -517,13 +517,15 @@ public class PlanFinalizer {
 							UserMessage userMessage = new UserMessage(stepRequirement);
 							llmService.addToConversationMemoryWithLimit(lynxeProperties.getMaxMemory(),
 									context.getConversationId(), userMessage);
-							log.debug("Saved user message (first step requirement) to conversation memory for conversationId: {}",
+							log.debug(
+									"Saved user message (first step requirement) to conversation memory for conversationId: {}",
 									context.getConversationId());
 						}
 						catch (Exception e) {
 							log.warn("Failed to save user message to conversation memory for conversationId: {}",
 									context.getConversationId(), e);
-							// Continue to save AssistantMessage even if UserMessage save fails
+							// Continue to save AssistantMessage even if UserMessage save
+							// fails
 						}
 					}
 				}

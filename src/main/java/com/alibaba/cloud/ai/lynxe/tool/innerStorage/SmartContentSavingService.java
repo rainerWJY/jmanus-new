@@ -77,7 +77,8 @@ public class SmartContentSavingService implements ISmartContentSavingService {
 		}
 
 		/**
-		 * Get comprehensive result that combines summary and file name into a single string
+		 * Get comprehensive result that combines summary and file name into a single
+		 * string
 		 * @return Comprehensive result with summary and file reference if file was saved
 		 */
 		public String getComprehensiveResult() {

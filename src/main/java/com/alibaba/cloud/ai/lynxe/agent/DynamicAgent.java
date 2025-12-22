@@ -295,7 +295,8 @@ public class DynamicAgent extends ReActAgent {
 
 				// Add conversation history from MemoryService if conversationId is
 				// available and conversation memory is enabled
-				// Only add conversationHistory in the first think-act round to avoid duplicate messages in subsequent rounds
+				// Only add conversationHistory in the first think-act round to avoid
+				// duplicate messages in subsequent rounds
 				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
 						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
 					if (getCurrentStep() == 1) {
@@ -304,9 +305,11 @@ public class DynamicAgent extends ReActAgent {
 								.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
 							List<Message> conversationHistory = conversationMemory.get(getConversationId());
 							if (conversationHistory != null && !conversationHistory.isEmpty()) {
-								log.debug("Adding {} conversation history messages for conversationId: {} (first round only)",
+								log.debug(
+										"Adding {} conversation history messages for conversationId: {} (first round only)",
 										conversationHistory.size(), getConversationId());
-								// Insert conversation history before current step env message
+								// Insert conversation history before current step env
+								// message
 								// to maintain chronological order
 								messages.addAll(conversationHistory);
 							}
@@ -318,7 +321,8 @@ public class DynamicAgent extends ReActAgent {
 						}
 					}
 					else {
-						log.debug("Skipping conversationHistory for round {} (only added in first round)", getCurrentStep());
+						log.debug("Skipping conversationHistory for round {} (only added in first round)",
+								getCurrentStep());
 					}
 				}
 				else if (!lynxeProperties.getEnableConversationMemory()) {
@@ -327,9 +331,9 @@ public class DynamicAgent extends ReActAgent {
 				messages.addAll(Collections.singletonList(systemMessage));
 				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
-				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(), getCurrentStep());
+				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
+						getCurrentStep());
 				messages.add(currentStepEnvMessage);
-
 
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
@@ -351,7 +355,8 @@ public class DynamicAgent extends ReActAgent {
 				else {
 					chatClient = llmService.getDynamicAgentChatClient(modelName);
 				}
-				// Calculate input character count from all messages by serializing to JSON
+				// Calculate input character count from all messages by serializing to
+				// JSON
 				// This gives a more accurate count of the actual data sent to LLM
 				int inputCharCount = (int) calculateTotalLength(messages);
 				log.info("User prompt character count: {}", inputCharCount);
@@ -828,7 +833,8 @@ public class DynamicAgent extends ReActAgent {
 			ToolContext parentToolContext = new ToolContext(toolContextMap);
 
 			// Validate that actToolInfoList size matches toolCalls size
-			// This ensures order consistency between actToolInfoList and execution results
+			// This ensures order consistency between actToolInfoList and execution
+			// results
 			if (actToolInfoList.size() != toolCalls.size()) {
 				String errorMessage = String.format(
 						"Size mismatch: actToolInfoList has %d items but toolCalls has %d items. "
@@ -853,7 +859,8 @@ public class DynamicAgent extends ReActAgent {
 				executions.add(new ParallelExecutionService.ParallelExecutionRequest(toolCall.name(), params,
 						param.getToolCallId()));
 
-				// Store metadata for result processing (order guaranteed: metadata[i] = executions[i])
+				// Store metadata for result processing (order guaranteed: metadata[i] =
+				// executions[i])
 				toolMetadata[i] = new ToolExecutionMetadata(toolCall, param, toolCall.name());
 			}
 
@@ -873,8 +880,10 @@ public class DynamicAgent extends ReActAgent {
 				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
 			}
 
-			// Process all results in a single loop: update actToolInfoList, build resultList and toolResponses
-			// Order is guaranteed: parallelResults[i] corresponds to executions[i] and toolMetadata[i]
+			// Process all results in a single loop: update actToolInfoList, build
+			// resultList and toolResponses
+			// Order is guaranteed: parallelResults[i] corresponds to executions[i] and
+			// toolMetadata[i]
 			List<String> resultList = new ArrayList<>();
 			List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
 			for (int i = 0; i < toolCalls.size(); i++) {
@@ -899,8 +908,8 @@ public class DynamicAgent extends ReActAgent {
 
 				// Build result list and tool responses
 				resultList.add(processedResult);
-				toolResponses.add(new ToolResponseMessage.ToolResponse(metadata.toolCall.id(),
-						metadata.toolCall.name(), processedResult));
+				toolResponses.add(new ToolResponseMessage.ToolResponse(metadata.toolCall.id(), metadata.toolCall.name(),
+						processedResult));
 			}
 
 			// Record the results
@@ -941,8 +950,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Internal class to store tool execution metadata
-	 * Used to maintain order consistency between execution requests and results
+	 * Internal class to store tool execution metadata Used to maintain order consistency
+	 * between execution requests and results
 	 */
 	private static class ToolExecutionMetadata {
 
@@ -967,7 +976,8 @@ public class DynamicAgent extends ReActAgent {
 	 */
 	private AssistantMessage extractAssistantMessageFromResponse(ChatResponse response) {
 		// Find the generation with tool calls
-		Generation generation = response.getResults().stream()
+		Generation generation = response.getResults()
+			.stream()
 			.filter(g -> !CollectionUtils.isEmpty(g.getOutput().getToolCalls()))
 			.findFirst()
 			.orElseThrow(() -> new IllegalStateException("No tool calls found in response"));
@@ -1614,7 +1624,6 @@ public class DynamicAgent extends ReActAgent {
 		return envDataStringBuilder.toString();
 	}
 
-
 	private void waitForUserInputOrTimeout(FormInputTool formInputTool) {
 		log.info("Waiting for user input for planId: {}...", getCurrentPlanId());
 		long startTime = System.currentTimeMillis();
@@ -1666,9 +1675,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Calculate the total escaped string length for all messages in a Prompt.
-	 * Directly serializes the messages list to JSON and returns the length.
-	 * 
+	 * Calculate the total escaped string length for all messages in a Prompt. Directly
+	 * serializes the messages list to JSON and returns the length.
 	 * @param prompt the Prompt containing messages
 	 * @return the total length of all messages when serialized to JSON
 	 */
@@ -1680,9 +1688,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Calculate the total escaped string length for a list of messages.
-	 * Directly serializes the messages list to JSON and returns the length.
-	 * 
+	 * Calculate the total escaped string length for a list of messages. Directly
+	 * serializes the messages list to JSON and returns the length.
 	 * @param messages the list of messages
 	 * @return the total length of all messages when serialized to JSON
 	 */
