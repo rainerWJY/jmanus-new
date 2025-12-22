@@ -20,14 +20,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.InterruptedIOException;
 import java.io.OutputStreamWriter;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -35,684 +31,113 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Mac command executor implementation using persistent interactive shell session
+ * Mac command executor implementation
  */
 public class MacShellExecutor implements ShellCommandExecutor {
 
 	private static final Logger log = LoggerFactory.getLogger(MacShellExecutor.class);
 
-	// Simplified marker for serialized command execution
-	// Since commands are executed serially, we only need an end marker
-	// to know when a command has completed
-	private static final String CMD_END_MARKER = "__CMD_DONE__";
+	private Process currentProcess;
 
-	private static final int COMMAND_TIMEOUT_SECONDS = 60;
+	private static final int DEFAULT_TIMEOUT = 60; // Default timeout in seconds
 
-	// Persistent shell process
-	private Process shellProcess;
+	@SuppressWarnings("unused")
+	private BufferedWriter processInput;
 
-	private BufferedWriter shellInput;
-
-	private BufferedReader shellOutput;
-
-	private BufferedReader shellError;
-
-	// Working directory tracking
-	private String currentWorkingDir;
-
-	// Output reading
-	private Thread outputReaderThread;
-
-	private final AtomicBoolean readerRunning = new AtomicBoolean(false);
-
-	private final Map<String, CommandOutput> commandOutputs = new ConcurrentHashMap<>();
-
-	private final StringBuilder allOutput = new StringBuilder();
-
-
-	// Cache for shell path
+	// Cache for shell path to avoid repeated detection
 	private static String shellPath = null;
 
 	@Override
-	public void initialize(String workingDir) throws Exception {
-		if (shellProcess != null && shellProcess.isAlive()) {
-			log.warn("Shell process already initialized, terminating existing process");
-			terminate();
-		}
-
-		log.info("Initializing persistent shell session with working directory: {}", workingDir);
-		currentWorkingDir = workingDir;
-
-		// Get shell path
-		String shell = getShellPath();
-
-		// Start interactive shell process using 'script' to create a PTY
-		// Interactive shells (zsh -i) require a TTY to produce output properly
-		// The 'script' command creates a pseudo-terminal (PTY) that allows
-		// interactive shells to work correctly in non-TTY environments
-		// -q: quiet mode (suppress script startup message)
-		// /dev/null: don't create a typescript file
-		// Then run the interactive shell within the PTY
-		ProcessBuilder pb = new ProcessBuilder("script", "-q", "/dev/null", shell, "-i");
-		if (!StringUtils.isEmpty(workingDir)) {
-			pb.directory(new File(workingDir));
-		}
-
-		// Redirect stderr to stdout to capture all output
-		// Interactive shells often send prompts to stderr
-		pb.redirectErrorStream(false); // Keep stderr separate so we can read both
-
-		// Set environment variables
-		pb.environment().put("LANG", "en_US.UTF-8");
-		pb.environment().put("PATH", System.getenv("PATH") + ":/usr/local/bin");
-		// Force unbuffered output for better marker detection
-		pb.environment().put("PYTHONUNBUFFERED", "1"); // For Python scripts
-		// Disable zsh prompt to avoid interference
-		pb.environment().put("PROMPT", "");
-		pb.environment().put("PS1", "");
-		// Disable all pagers by setting them to cat
-		pb.environment().put("PAGER", "cat");
-		pb.environment().put("GIT_PAGER", "cat");
-		pb.environment().put("MANPAGER", "cat");
-		pb.environment().put("LESS", "-R");
-
-		shellProcess = pb.start();
-		shellInput = new BufferedWriter(new OutputStreamWriter(shellProcess.getOutputStream(), "UTF-8"));
-		shellOutput = new BufferedReader(new InputStreamReader(shellProcess.getInputStream(), "UTF-8"));
-		shellError = new BufferedReader(new InputStreamReader(shellProcess.getErrorStream(), "UTF-8"));
-
-		log.info("Started shell process using 'script' PTY: PID={}, command={}", shellProcess.pid(),
-				String.join(" ", pb.command()));
-
-		// Start background output reader thread
-		startOutputReader();
-
-		// Wait a bit for shell to initialize and consume initial prompt
-		// When using 'script', there may be some initial output we need to consume
-		Thread.sleep(1500);
-
-		// Check if output reader is actually reading
-		log.info("Checking output reader status - process alive: {}, reader running: {}",
-				shellProcess != null && shellProcess.isAlive(), readerRunning.get());
-
-		// Disable prompt and set up shell for better output capture
-		try {
-			log.info("Configuring shell for output capture");
-			// Disable prompt to avoid interference
-			shellInput.write("export PROMPT=''\n");
-			shellInput.write("export PS1=''\n");
-			shellInput.flush();
-			Thread.sleep(200);
-		}
-		catch (Exception e) {
-			log.warn("Error configuring shell: {}", e.getMessage(), e);
-		}
-
-		// Change to working directory if specified
-		if (!StringUtils.isEmpty(workingDir)) {
-			ensureWorkingDir(workingDir);
-		}
-
-		log.info("Persistent shell session initialized successfully");
-	}
-
-	@Override
 	public List<String> execute(List<String> commands, String workingDir) {
-		// Ensure shell is initialized
-		if (shellProcess == null || !shellProcess.isAlive()) {
-			try {
-				initialize(workingDir != null ? workingDir : System.getProperty("user.dir"));
-			}
-			catch (Exception e) {
-				log.error("Failed to initialize shell process", e);
-				return commands.stream()
-					.map(cmd -> "Error: Failed to initialize shell - " + e.getMessage())
-					.collect(Collectors.toList());
-			}
-		}
-
 		return commands.stream().map(command -> {
 			try {
-				// Handle empty command
-				if (command.trim().isEmpty()) {
-					return getCurrentState();
+				// If empty command, return additional logs from current process
+				if (command.trim().isEmpty() && currentProcess != null) {
+					return processOutput(currentProcess);
 				}
 
-				// Handle ctrl+c
-				if ("ctrl+c".equalsIgnoreCase(command.trim())) {
-					try {
-						shellInput.write("\u0003"); // Ctrl+C character
-						shellInput.flush();
+				// If ctrl+c command, send interrupt signal
+				if ("ctrl+c".equalsIgnoreCase(command.trim()) && currentProcess != null) {
+					terminate();
+					return "Process terminated by ctrl+c";
+				}
+
+				// Use dynamic shell path detection
+				String shell = getShellPath();
+				ProcessBuilder pb = new ProcessBuilder(shell, "-c", command);
+				if (!StringUtils.isEmpty(workingDir)) {
+					pb.directory(new File(workingDir));
+				}
+
+				// Set environment variables
+				pb.environment().put("LANG", "en_US.UTF-8");
+				pb.environment().put("PATH", System.getenv("PATH") + ":/usr/local/bin");
+
+				currentProcess = pb.start();
+				processInput = new BufferedWriter(new OutputStreamWriter(currentProcess.getOutputStream()));
+
+				// Set timeout handling
+				try {
+					if (!command.endsWith("&")) { // Only set timeout for non-background
+													// commands
+						if (!currentProcess.waitFor(DEFAULT_TIMEOUT, TimeUnit.SECONDS)) {
+							log.warn("Command timed out. Sending SIGINT to the process");
+							terminate();
+							// Retry command in background
+							if (!command.endsWith("&")) {
+								command += " &";
+							}
+							return execute(Collections.singletonList(command), workingDir).get(0);
+						}
 					}
-					catch (IOException e) {
-						log.error("Error sending Ctrl+C", e);
-					}
-					return "Ctrl+C sent";
+					return processOutput(currentProcess);
 				}
-
-				// Ensure working directory
-				if (workingDir != null && !workingDir.isEmpty() && !workingDir.equals(currentWorkingDir)) {
-					ensureWorkingDir(workingDir);
-				}
-
-				// Execute command with markers
-				return executeCommand(command);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				log.warn("Command execution interrupted: {}", command);
-				return "Error: Command execution was interrupted";
-			}
-			catch (Exception e) {
-				// Check if exception was caused by thread interrupt
-				if (Thread.currentThread().isInterrupted()) {
+				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
-					log.warn("Thread interrupted during command execution: {}", command);
-					return "Error: Command execution was interrupted";
+					return "Error: Process interrupted - " + e.getMessage();
 				}
-				log.error("Error executing command: {}", command, e);
+			}
+			catch (Throwable e) {
+				log.error("Exception executing Mac command", e);
 				return "Error: " + e.getClass().getSimpleName() + " - " + e.getMessage();
 			}
 		}).collect(Collectors.toList());
 	}
 
-	private String executeCommand(String command) throws Exception {
-		// For serialized execution, we use a single output buffer
-		// No need for unique command IDs since only one command runs at a time
-		CommandOutput cmdOutput = new CommandOutput();
-		// Use a simple key for serialized execution
-		String commandKey = "current";
-		commandOutputs.put(commandKey, cmdOutput);
-
-		try {
-			// Activate output collection immediately (serialized execution)
-			cmdOutput.active = true;
-
-			log.info("Sending command: {}", command);
-			shellInput.write(command + "\n");
-			shellInput.flush();
-			Thread.sleep(50);
-
-			// Send simple end marker to signal command completion
-			// This marker will be printed after the command finishes
-			String endMarker = "printf '%s\\n' '" + CMD_END_MARKER + "'\n";
-			log.debug("Sending END marker command: {}", endMarker.trim());
-			shellInput.write(endMarker);
-			shellInput.flush();
-
-			log.info("Command sent: {} (waiting for completion marker)", command);
-
-			// Wait for command to complete (with timeout)
-			// This await can be interrupted, which we handle below
-			boolean completed = false;
-			try {
-				completed = cmdOutput.latch.await(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				log.warn("Command execution interrupted: {}", command);
-				// Send Ctrl+C to cancel the command in the shell
-				try {
-					shellInput.write("\u0003"); // Ctrl+C
-					shellInput.flush();
-				}
-				catch (IOException ioEx) {
-					log.debug("Failed to send Ctrl+C after interrupt: {}", ioEx.getMessage());
-				}
-				// Remove from tracking and throw to propagate interrupt
-				commandOutputs.remove(commandKey);
-				throw new InterruptedException("Command execution was interrupted: " + command);
-			}
-
-			// Check if thread was interrupted even if await didn't throw
-			if (Thread.currentThread().isInterrupted()) {
-				log.warn("Thread interrupted detected after command wait: {}", command);
-				Thread.currentThread().interrupt();
-				// Send Ctrl+C to cancel
-				try {
-					shellInput.write("\u0003"); // Ctrl+C
-					shellInput.flush();
-				}
-				catch (IOException ioEx) {
-					log.debug("Failed to send Ctrl+C after interrupt: {}", ioEx.getMessage());
-				}
-				commandOutputs.remove(commandKey);
-				throw new InterruptedException("Command execution was interrupted: " + command);
-			}
-
-			if (!completed) {
-				log.warn("Command timed out: {}", command);
-				// If we have some output, return it even though we didn't get the end
-				// marker
-				if (cmdOutput.output.length() > 0 || cmdOutput.error.length() > 0) {
-					String partialOutput = cmdOutput.output.toString().trim();
-					if (partialOutput.isEmpty() && cmdOutput.error.length() > 0) {
-						return "Error: " + cmdOutput.error.toString().trim();
-					}
-					log.info("Returning partial output for timed out command: {}", command);
-					return partialOutput;
-				}
-				return "Error: Command timed out after " + COMMAND_TIMEOUT_SECONDS + " seconds";
-			}
-
-			// Return output (excluding the end marker line)
-			String output = cmdOutput.output.toString().trim();
-			// Remove the end marker line if present
-			if (output.endsWith(CMD_END_MARKER)) {
-				output = output.substring(0, output.length() - CMD_END_MARKER.length()).trim();
-			}
-			if (output.isEmpty() && !cmdOutput.error.toString().isEmpty()) {
-				return "Error: " + cmdOutput.error.toString().trim();
-			}
-			return output;
-		}
-		finally {
-			// Clean up for serialized execution
-			commandOutputs.remove(commandKey);
-		}
-	}
-
-	private void ensureWorkingDir(String targetDir) throws IOException, InterruptedException {
-		if (targetDir == null || targetDir.equals(currentWorkingDir)) {
-			return;
-		}
-
-		log.debug("Changing working directory from {} to {}", currentWorkingDir, targetDir);
-
-		// Send cd command with simplified marker for serialized execution
-		CommandOutput cmdOutput = new CommandOutput();
-		cmdOutput.active = true;
-		String commandKey = "cd";
-		commandOutputs.put(commandKey, cmdOutput);
-
-		try {
-			shellInput.write("cd \"" + targetDir.replace("\"", "\\\"") + "\"\n");
-			shellInput.flush();
-
-			shellInput.write("printf '%s\\n' '" + CMD_END_MARKER + "'\n");
-			shellInput.flush();
-
-			// Wait for cd to complete
-			try {
-				if (cmdOutput.latch.await(5, TimeUnit.SECONDS)) {
-					// Check if cd was successful (no error output)
-					if (cmdOutput.error.toString().trim().isEmpty()) {
-						currentWorkingDir = targetDir;
-						log.debug("Successfully changed working directory to: {}", targetDir);
-					}
-					else {
-						log.warn("Failed to change directory: {}", cmdOutput.error.toString().trim());
-					}
-				}
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				log.warn("Interrupted while changing working directory");
-				throw e;
-			}
-		}
-		finally {
-			commandOutputs.remove(commandKey);
-		}
-	}
-
-	private void startOutputReader() {
-		if (readerRunning.get()) {
-			return;
-		}
-
-		readerRunning.set(true);
-		outputReaderThread = new Thread(() -> {
-			log.info("Output reader thread started");
-			log.info("Output reader: shellProcess={}, isAlive={}, readerRunning={}", shellProcess != null,
-					shellProcess != null && shellProcess.isAlive(), readerRunning.get());
-			try {
-				// Read from stdout (blocking readLine).
-				// For interactive shells, readLine() will block until a line is
-				// available.
-				// This is the correct approach - we need to wait for output.
-				String line;
-				int lineCount = 0;
-				long startTime = System.currentTimeMillis();
-				long lastReadTime = startTime;
-				long lastLogTime = startTime;
-
-				while (readerRunning.get() && shellProcess != null && shellProcess.isAlive()
-						&& !Thread.currentThread().isInterrupted()) {
-					try {
-						// Log periodically if we're waiting for output
-						long now = System.currentTimeMillis();
-						if (lineCount == 0 && now - lastLogTime > 5000) {
-							log.warn(
-									"Output reader: Still waiting for first line (waited {}ms, process alive: {}, ready: {})",
-									now - startTime, shellProcess != null && shellProcess.isAlive(),
-									shellOutput.ready());
-							lastLogTime = now;
-						}
-
-						// Blocking readLine - this will wait for output
-						// Note: This will block indefinitely if no output is produced
-						line = shellOutput.readLine();
-
-						if (line == null) {
-							// EOF reached - process might have terminated
-							log.warn("Output reader: EOF reached (read {} lines, process alive: {})", lineCount,
-									shellProcess != null && shellProcess.isAlive());
-							if (shellProcess == null || !shellProcess.isAlive()) {
-								break;
-							}
-							// If process is still alive but we got null, wait a bit and
-							// retry
-							Thread.sleep(100);
-							continue;
-						}
-
-						lineCount++;
-						lastReadTime = System.currentTimeMillis();
-
-						// Log first 20 lines and then every 50th line
-						if (lineCount <= 20 || lineCount % 50 == 0) {
-							log.info("Output reader: read line #{} ({}ms since start): {}", lineCount,
-									lastReadTime - startTime,
-									line.length() > 80 ? line.substring(0, 80) + "..." : line);
-						}
-						else {
-							log.debug("Output reader: read line #{}: {}", lineCount,
-									line.length() > 80 ? line.substring(0, 80) + "..." : line);
-						}
-
-						processOutputLine(line);
-					}
-					catch (InterruptedIOException e) {
-						Thread.currentThread().interrupt();
-						log.info("Output reader thread interrupted during read");
-						break;
-					}
-					catch (IOException e) {
-						if (readerRunning.get()) {
-							log.error("IO error in output reader thread (read {} lines so far)", lineCount, e);
-						}
-						// If process died, break
-						if (shellProcess == null || !shellProcess.isAlive()) {
-							break;
-						}
-						// Otherwise, wait and retry
-						try {
-							Thread.sleep(100);
-						}
-						catch (InterruptedException ie) {
-							Thread.currentThread().interrupt();
-							break;
-						}
-					}
-				}
-				log.info("Output reader thread exiting (read {} lines total, ran for {}ms)", lineCount,
-						System.currentTimeMillis() - startTime);
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				log.info("Output reader thread interrupted");
-			}
-			catch (Exception e) {
-				if (readerRunning.get()) {
-					log.error("Unexpected error in output reader thread", e);
-				}
-			}
-		}, "ShellOutputReader");
-
-		// Start error reader thread
-		Thread errorReaderThread = new Thread(() -> {
-			log.info("Error reader thread started");
-			int errorLineCount = 0;
-			try {
-				// Read from stderr (blocking). See stdout reader note above.
-				// Interactive shells often send prompts to stderr
-				String line;
-				while (readerRunning.get() && shellProcess != null && shellProcess.isAlive()
-						&& !Thread.currentThread().isInterrupted() && (line = shellError.readLine()) != null) {
-					errorLineCount++;
-					if (errorLineCount <= 20 || errorLineCount % 50 == 0) {
-						log.info("Error reader: read line #{}: {}", errorLineCount,
-								line.length() > 80 ? line.substring(0, 80) + "..." : line);
-					}
-					else {
-						log.debug("Error reader: read line #{}: {}", errorLineCount,
-								line.length() > 80 ? line.substring(0, 80) + "..." : line);
-					}
-					processErrorLine(line);
-				}
-				log.info("Error reader thread exiting (read {} lines)", errorLineCount);
-			}
-			catch (InterruptedIOException e) {
-				Thread.currentThread().interrupt();
-				log.info("Error reader thread interrupted");
-			}
-			catch (Exception e) {
-				if (readerRunning.get()) {
-					log.error("Error in error reader thread (read {} lines)", errorLineCount, e);
-				}
-			}
-		}, "ShellErrorReader");
-
-		outputReaderThread.setDaemon(true);
-		errorReaderThread.setDaemon(true);
-		outputReaderThread.start();
-		errorReaderThread.start();
-	}
-
-	/**
-	 * Clean ANSI escape codes and terminal control sequences from output
-	 * @param text The text to clean
-	 * @return Cleaned text without ANSI codes and control sequences
-	 */
-	private static String cleanAnsiCodes(String text) {
-		if (text == null || text.isEmpty()) {
-			return text;
-		}
-		// Remove ANSI escape sequences: \u001B[ or \033[ followed by parameters and command letter
-		// Pattern matches: ESC[ followed by optional parameters (digits, semicolons) and a command letter
-		text = text.replaceAll("\u001B\\[[\\d;]*[a-zA-Z]", "");
-		text = text.replaceAll("\033\\[[\\d;]*[a-zA-Z]", "");
-		// Remove terminal control sequences like [?2004h, [?2004l, [J, [K, [H, etc.
-		text = text.replaceAll("\\[\\?[\\d;]*[a-zA-Z]", "");
-		text = text.replaceAll("\\[[\\d;]*[HJKl]", "");
-		// Remove other common control characters
-		text = text.replaceAll("\\[\\d+[;\\d]*[mH]", "");
-		// Remove carriage returns that might interfere
-		text = text.replace("\r", "");
-		// Remove backspace characters
-		text = text.replace("\b", "");
-		// Remove pager control sequences and prompts more aggressively
-		// Remove bell character
-		text = text.replace("\u0007", "");
-		return text;
-	}
-	
-
-	private void processOutputLine(String line) {
-		if (line == null) {
-			return;
-		}
-
-		// Clean ANSI escape codes and terminal control sequences
-		line = cleanAnsiCodes(line);
-
-		// Debug: log all lines being read (first 100 chars to avoid spam)
-		log.debug("Read line (length={}): {}", line.length(),
-				line.length() > 100 ? line.substring(0, 100) + "..." : line);
-
-		// Check for command end marker (simplified for serialized execution)
-		if (line.trim().equals(CMD_END_MARKER)) {
-			// For serialized execution, we only have one active command
-			CommandOutput cmdOutput = commandOutputs.get("current");
-			if (cmdOutput != null) {
-				cmdOutput.active = false;
-				cmdOutput.latch.countDown();
-				log.info("Command completed (output length: {}, error length: {})", cmdOutput.output.length(),
-						cmdOutput.error.length());
-			}
-			else {
-				log.warn("Received END marker but no active command found");
-			}
-			return; // Don't add marker line to output
-		}
-		// Also check if marker is embedded in the line (fallback)
-		else if (line.contains(CMD_END_MARKER)) {
-			// Extract the marker and signal completion
-			CommandOutput cmdOutput = commandOutputs.get("current");
-			if (cmdOutput != null) {
-				cmdOutput.active = false;
-				cmdOutput.latch.countDown();
-				log.debug("Command completed (embedded marker)");
-			}
-			// Remove the marker from the line before adding to output
-			line = line.replace(CMD_END_MARKER, "").trim();
-			if (line.isEmpty()) {
-				return; // Don't add empty line
-			}
-		}
-
-		// Add line to all active command outputs
-		allOutput.append(line).append("\n");
-		for (CommandOutput cmdOutput : commandOutputs.values()) {
-			if (cmdOutput.active) {
-				cmdOutput.output.append(line).append("\n");
-			}
-		}
-	}
-
-	private void processErrorLine(String line) {
-		if (line == null) {
-			return;
-		}
-		// Clean ANSI escape codes and terminal control sequences
-		line = cleanAnsiCodes(line);
-		
-		// Add error line to all active command outputs
-		allOutput.append(line).append("\n");
-		for (CommandOutput cmdOutput : commandOutputs.values()) {
-			if (cmdOutput.active) {
-				cmdOutput.error.append(line).append("\n");
-			}
-		}
-	}
-
 	@Override
 	public void terminate() {
-		readerRunning.set(false);
-
-		if (outputReaderThread != null) {
+		if (currentProcess != null && currentProcess.isAlive()) {
+			// First try to send SIGINT (ctrl+c)
+			currentProcess.destroy();
 			try {
-				outputReaderThread.interrupt();
-			}
-			catch (Exception e) {
-				log.debug("Error interrupting output reader thread", e);
-			}
-		}
-
-		if (shellProcess != null && shellProcess.isAlive()) {
-			try {
-				shellProcess.destroy();
-				if (!shellProcess.waitFor(5, TimeUnit.SECONDS)) {
-					shellProcess.destroyForcibly();
+				// Wait for process to respond to SIGINT
+				if (!currentProcess.waitFor(5, TimeUnit.SECONDS)) {
+					// If process doesn't respond to SIGINT, force terminate
+					currentProcess.destroyForcibly();
 				}
 			}
 			catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				shellProcess.destroyForcibly();
+				currentProcess.destroyForcibly();
 			}
-			log.info("Shell process terminated");
+			log.info("Mac process terminated");
 		}
-
-		// Clean up resources
-		shellProcess = null;
-		shellInput = null;
-		shellOutput = null;
-		shellError = null;
-		currentWorkingDir = null;
-		commandOutputs.clear();
-		allOutput.setLength(0);
-	}
-
-	@Override
-	public void sendInput(String input) throws Exception {
-		if (shellProcess == null || !shellProcess.isAlive()) {
-			throw new IllegalStateException("Shell process is not running");
-		}
-		if (shellInput == null) {
-			throw new IllegalStateException("Shell input stream is not available");
-		}
-
-		try {
-			// Replace special sequences
-			String processedInput = input;
-			if ("\\n".equals(input) || "Enter".equalsIgnoreCase(input)) {
-				processedInput = "\n";
-			}
-			else if ("\\t".equals(input)) {
-				processedInput = "\t";
-			}
-			else if (" ".equals(input) || "space".equalsIgnoreCase(input)) {
-				processedInput = " ";
-			}
-			// For password-like input, auto-append newline if not present
-			else if (!processedInput.contains("\n") && !processedInput.contains("\r")) {
-				processedInput = processedInput + "\n";
-				log.debug("Auto-appended newline to input");
-			}
-
-			shellInput.write(processedInput);
-			shellInput.flush();
-
-			// Mask password in logs
-			String logInput = processedInput;
-			if (processedInput.length() > 4 && processedInput.length() < 100 && !processedInput.contains(" ")
-					&& !processedInput.contains("\n")) {
-				logInput = "[PASSWORD_MASKED]";
-			}
-			log.info("Sent input to shell: {} (length: {})", logInput.replace("\n", "\\n").replace(" ", "[SPACE]"),
-					processedInput.length());
-		}
-		catch (IOException e) {
-			log.error("Error sending input to shell", e);
-			throw new Exception("Failed to send input: " + e.getMessage(), e);
-		}
-	}
-
-	@Override
-	public String getCurrentState() throws Exception {
-		if (shellProcess == null) {
-			return "No active shell process";
-		}
-		if (!shellProcess.isAlive()) {
-			return "Shell process has terminated";
-		}
-
-		// Return recent output (last 100 lines)
-		String[] lines = allOutput.toString().split("\n");
-		int start = Math.max(0, lines.length - 100);
-		StringBuilder recent = new StringBuilder();
-		for (int i = start; i < lines.length; i++) {
-			recent.append(lines[i]).append("\n");
-		}
-		return recent.toString();
-	}
-
-	@Override
-	public boolean isProcessAlive() {
-		return shellProcess != null && shellProcess.isAlive();
 	}
 
 	/**
-	 * Get shell path (zsh preferred, bash as fallback)
+	 * Dynamically detect the best available shell path Priority: zsh -> bash (as
+	 * fallback)
+	 * @return The path to the shell executable
 	 */
 	private String getShellPath() {
+		// Return cached path if already detected
 		if (shellPath != null) {
 			return shellPath;
 		}
 
-		// Try zsh first
+		// Try to find zsh in common locations
 		String[] zshPaths = { "/bin/zsh", "/usr/bin/zsh", "/usr/local/bin/zsh", "/opt/homebrew/bin/zsh" };
+
 		for (String path : zshPaths) {
 			if (new File(path).exists() && new File(path).canExecute()) {
 				log.info("Found zsh at: {}", path);
@@ -721,7 +146,7 @@ public class MacShellExecutor implements ShellCommandExecutor {
 			}
 		}
 
-		// Try which zsh
+		// If zsh not found, use 'which' command to find it
 		try {
 			Process whichProcess = new ProcessBuilder("which", "zsh").start();
 			whichProcess.waitFor(5, TimeUnit.SECONDS);
@@ -731,7 +156,7 @@ public class MacShellExecutor implements ShellCommandExecutor {
 					if (path != null && !path.trim().isEmpty()) {
 						File zshFile = new File(path.trim());
 						if (zshFile.exists() && zshFile.canExecute()) {
-							log.info("Found zsh via 'which' at: {}", path.trim());
+							log.info("Found zsh via 'which' command at: {}", path.trim());
 							shellPath = path.trim();
 							return shellPath;
 						}
@@ -740,38 +165,60 @@ public class MacShellExecutor implements ShellCommandExecutor {
 			}
 		}
 		catch (Exception e) {
-			log.debug("Failed to find zsh via 'which': {}", e.getMessage());
+			log.warn("Failed to find zsh using 'which' command: {}", e.getMessage());
 		}
 
-		// Fallback to bash
+		// Fall back to bash if zsh is not available
 		String[] bashPaths = { "/bin/bash", "/usr/bin/bash", "/usr/local/bin/bash" };
+
 		for (String path : bashPaths) {
 			if (new File(path).exists() && new File(path).canExecute()) {
-				log.warn("zsh not found, using bash at: {}", path);
+				log.warn("zsh not found, falling back to bash at: {}", path);
 				shellPath = path;
 				return shellPath;
 			}
 		}
 
-		// Final fallback
-		log.error("Neither zsh nor bash found, using /bin/bash as fallback");
+		// Final fallback - use system default
+		log.error("Neither zsh nor bash found in standard locations, using /bin/bash as final fallback");
 		shellPath = "/bin/bash";
 		return shellPath;
 	}
 
-	/**
-	 * Internal class to track command output
-	 */
-	private static class CommandOutput {
+	private String processOutput(Process process) throws IOException, InterruptedException {
+		StringBuilder outputBuilder = new StringBuilder();
+		StringBuilder errorBuilder = new StringBuilder();
 
-		final StringBuilder output = new StringBuilder();
+		// Read standard output
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), "UTF-8"))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				log.info(line);
+				outputBuilder.append(line).append("\n");
+			}
+		}
 
-		final StringBuilder error = new StringBuilder();
+		// Read error output
+		try (BufferedReader errorReader = new BufferedReader(
+				new InputStreamReader(process.getErrorStream(), "UTF-8"))) {
+			String line;
+			while ((line = errorReader.readLine()) != null) {
+				log.error(line);
+				errorBuilder.append(line).append("\n");
+			}
+		}
 
-		final CountDownLatch latch = new CountDownLatch(1);
-
-		volatile boolean active = false;
-
+		int exitCode = process.isAlive() ? -1 : process.exitValue();
+		if (exitCode == 0) {
+			return outputBuilder.toString();
+		}
+		else if (exitCode == -1) {
+			return "Process is still running. Use empty command to get more logs, or 'ctrl+c' to terminate.";
+		}
+		else {
+			return "Error (Exit Code " + exitCode + "): "
+					+ (errorBuilder.length() > 0 ? errorBuilder.toString() : outputBuilder.toString());
+		}
 	}
 
 }
