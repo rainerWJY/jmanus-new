@@ -320,7 +320,14 @@ public class DynamicAgent extends ReActAgent {
 					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
 				}
 				messages.addAll(Collections.singletonList(systemMessage));
-				messages.addAll(historyMem);
+				// Only add historyMem in the first think-act round to avoid duplicate messages in subsequent rounds
+				if (getCurrentStep() == 1) {
+					messages.addAll(historyMem);
+					log.debug("Added {} history messages from agent memory (first round only)", historyMem.size());
+				}
+				else {
+					log.debug("Skipping historyMem for round {} (only added in first round)", getCurrentStep());
+				}
 				messages.add(currentStepEnvMessage);
 
 

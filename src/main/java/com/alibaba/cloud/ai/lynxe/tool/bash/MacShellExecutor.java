@@ -143,28 +143,6 @@ public class MacShellExecutor implements ShellCommandExecutor {
 			shellInput.write("export PS1=''\n");
 			shellInput.flush();
 			Thread.sleep(200);
-
-			// Send a test command to verify shell is working and producing output
-			// Use a unique marker to identify the test output
-			String testMarker = "SHELL_READY_TEST_" + System.currentTimeMillis();
-			String testCommand = "echo '" + testMarker + "'\n";
-			log.info("Sending test command: {}", testCommand.trim());
-			shellInput.write(testCommand);
-			shellInput.flush();
-			Thread.sleep(1000); // Give more time for PTY to process
-
-			// Check if we got any output
-			String state = getCurrentState();
-			log.info("Shell state after test command (length: {}): {}", state.length(),
-					state.length() > 200 ? state.substring(0, 200) + "..." : state);
-
-			// Check if test marker appears in output
-			if (state.contains(testMarker)) {
-				log.info("Test command output detected - shell is working correctly");
-			}
-			else {
-				log.warn("Test command output not detected - shell may not be producing output");
-			}
 		}
 		catch (Exception e) {
 			log.warn("Error configuring shell: {}", e.getMessage(), e);

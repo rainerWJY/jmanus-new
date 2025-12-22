@@ -98,6 +98,14 @@ public abstract class BaseAgent {
 	private int currentStep = 0;
 
 	/**
+	 * Get the current execution step/round number
+	 * @return The current step number (1-based, first round is 1)
+	 */
+	protected int getCurrentStep() {
+		return currentStep;
+	}
+
+	/**
 	 * Set the maximum execution steps for this agent. This allows overriding the default
 	 * value from lynxeProperties.
 	 * @param maxSteps The maximum execution steps
