@@ -295,39 +295,39 @@ public class DynamicAgent extends ReActAgent {
 
 				// Add conversation history from MemoryService if conversationId is
 				// available and conversation memory is enabled
+				// Only add conversationHistory in the first think-act round to avoid duplicate messages in subsequent rounds
 				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
 						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
-					try {
-						ChatMemory conversationMemory = llmService
-							.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
-						List<Message> conversationHistory = conversationMemory.get(getConversationId());
-						if (conversationHistory != null && !conversationHistory.isEmpty()) {
-							log.debug("Adding {} conversation history messages for conversationId: {}",
-									conversationHistory.size(), getConversationId());
-							// Insert conversation history before current step env message
-							// to maintain chronological order
-							messages.addAll(conversationHistory);
+					if (getCurrentStep() == 1) {
+						try {
+							ChatMemory conversationMemory = llmService
+								.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
+							List<Message> conversationHistory = conversationMemory.get(getConversationId());
+							if (conversationHistory != null && !conversationHistory.isEmpty()) {
+								log.debug("Adding {} conversation history messages for conversationId: {} (first round only)",
+										conversationHistory.size(), getConversationId());
+								// Insert conversation history before current step env message
+								// to maintain chronological order
+								messages.addAll(conversationHistory);
+							}
+						}
+						catch (Exception e) {
+							log.warn(
+									"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
+									getConversationId(), e);
 						}
 					}
-
-					catch (Exception e) {
-						log.warn(
-								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
-								getConversationId(), e);
+					else {
+						log.debug("Skipping conversationHistory for round {} (only added in first round)", getCurrentStep());
 					}
 				}
 				else if (!lynxeProperties.getEnableConversationMemory()) {
 					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
 				}
 				messages.addAll(Collections.singletonList(systemMessage));
-				// Only add historyMem in the first think-act round to avoid duplicate messages in subsequent rounds
-				if (getCurrentStep() == 1) {
-					messages.addAll(historyMem);
-					log.debug("Added {} history messages from agent memory (first round only)", historyMem.size());
-				}
-				else {
-					log.debug("Skipping historyMem for round {} (only added in first round)", getCurrentStep());
-				}
+				// Add historyMem (agent memory) in every round
+				messages.addAll(historyMem);
+				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(), getCurrentStep());
 				messages.add(currentStepEnvMessage);
 
 
