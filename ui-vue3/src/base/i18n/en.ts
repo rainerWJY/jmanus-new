@@ -108,7 +108,8 @@ const words: I18nType = {
     download: 'Download',
     downloadToView: 'Download to View',
     binaryFile: 'This is a binary file that cannot be displayed in the viewer.',
-    downloadOnlyFile: 'This file type requires download to view (e.g., Office documents, PDFs, etc.).',
+    downloadOnlyFile:
+      'This file type requires download to view (e.g., Office documents, PDFs, etc.).',
     markdownRaw: 'Switch to formatted view',
     markdownFormatted: 'Switch to raw view',
     open: 'Open',
