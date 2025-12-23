@@ -387,6 +387,14 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			// This is a safety net for exceptions that occur outside the try-catch blocks
 			logger.error("Uncaught exception in CompletableFuture for planId: {}", context.getCurrentPlanId(),
 					throwable);
+			// Ensure cleanup happens even if exception occurred before finally block
+			try {
+				performCleanup(context, null);
+			}
+			catch (Exception e) {
+				logger.error("Error during cleanup in exceptionally handler for planId: {}", context.getCurrentPlanId(),
+						e);
+			}
 			PlanExecutionResult errorResult = new PlanExecutionResult();
 			errorResult.setSuccess(false);
 			String errorMessage = throwable.getMessage();
@@ -412,10 +420,26 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		String rootPlanId = context.getRootPlanId();
 		if (unifiedDirectoryManager != null && rootPlanId != null && rootPlanId.equals(planId)) {
 			try {
+				logger.info("Attempting to remove external folder link for rootPlanId: {}, currentPlanId: {}",
+						rootPlanId, planId);
 				unifiedDirectoryManager.removeExternalFolderLink(rootPlanId);
+				logger.info("Successfully removed external folder link for rootPlanId: {}", rootPlanId);
 			}
 			catch (Exception e) {
-				logger.warn("Failed to remove external folder symbolic link for rootPlanId: {}", rootPlanId, e);
+				logger.error("Failed to remove external folder symbolic link for rootPlanId: {}", rootPlanId, e);
+			}
+		}
+		else {
+			if (unifiedDirectoryManager == null) {
+				logger.info("Skipping linked_external cleanup: unifiedDirectoryManager is null");
+			}
+			else if (rootPlanId == null) {
+				logger.info("Skipping linked_external cleanup: rootPlanId is null, currentPlanId: {}", planId);
+			}
+			else if (!rootPlanId.equals(planId)) {
+				logger.info(
+						"Skipping linked_external cleanup: currentPlanId ({}) != rootPlanId ({}) - this is a sub-plan",
+						planId, rootPlanId);
 			}
 		}
 	}

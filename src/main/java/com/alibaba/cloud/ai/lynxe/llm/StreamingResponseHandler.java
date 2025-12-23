@@ -325,11 +325,12 @@ public class StreamingResponseHandler {
 				// Store it in AtomicReference for later retrieval
 				outputCharCountRef.set(outputCharCount);
 
-				finalChatResponseRef.set(
-						new ChatResponse(List.of(new Generation(
-								new AssistantMessage(messageTextContentRef.get().toString(),
-										messageMetadataMapRef.get(), messageToolCallRef.get()),
-								generationMetadataRef.get())), chatResponseMetadata));
+				finalChatResponseRef.set(new ChatResponse(List.of(new Generation(AssistantMessage.builder()
+					.content(messageTextContentRef.get().toString())
+					.properties(messageMetadataMapRef.get())
+					.toolCalls(messageToolCallRef.get())
+					.media(List.of())
+					.build(), generationMetadataRef.get())), chatResponseMetadata));
 				logCompletion(contextName, messageTextContentRef.get().toString(), messageToolCallRef.get().size(),
 						responseCounter.get(), startTime, usage);
 
@@ -389,10 +390,12 @@ public class StreamingResponseHandler {
 						outputCharCountRef.set(outputCharCount);
 
 						// Create ChatResponse with accumulated text and empty tool calls
-						finalChatResponseRef.set(new ChatResponse(List.of(new Generation(
-								new AssistantMessage(messageTextContentRef.get().toString(),
-										messageMetadataMapRef.get(), messageToolCallRef.get()),
-								generationMetadataRef.get())), chatResponseMetadata));
+						finalChatResponseRef.set(new ChatResponse(List.of(new Generation(AssistantMessage.builder()
+							.content(messageTextContentRef.get().toString())
+							.properties(messageMetadataMapRef.get())
+							.toolCalls(messageToolCallRef.get())
+							.media(List.of())
+							.build(), generationMetadataRef.get())), chatResponseMetadata));
 
 						log.info("Constructed ChatResponse from early termination: {} characters, {} tool calls",
 								outputCharCount, messageToolCallRef.get().size());

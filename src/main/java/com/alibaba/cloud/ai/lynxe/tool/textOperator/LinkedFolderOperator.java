@@ -547,7 +547,7 @@ public class LinkedFolderOperator extends AbstractBaseTool<LinkedFolderOperator.
 			if (this.rootPlanId != null && !this.rootPlanId.isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(this.rootPlanId, content, "get_all_text_linked");
-				return new ToolExecuteResult(processedResult.getSummary());
+				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 			else {
 				return new ToolExecuteResult(content);

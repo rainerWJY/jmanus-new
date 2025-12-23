@@ -188,7 +188,6 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 
 		// Use unified ChatOptions creation
 		OpenAiChatOptions defaultOptions = OpenAiChatOptions.builder().build();
-		defaultOptions.setInternalToolExecutionEnabled(false);
 
 		// Use unified ChatClient builder
 		ChatClient client = buildUnifiedChatClient(modelName, defaultModel, defaultOptions);

@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -35,6 +36,7 @@ import com.alibaba.cloud.ai.lynxe.llm.LlmService;
 import com.alibaba.cloud.ai.lynxe.llm.StreamingResponseHandler;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionContext;
+import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionStep;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanExecutionResult;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
@@ -502,6 +504,34 @@ public class PlanFinalizer {
 		}
 
 		try {
+			// Save UserMessage for root plans only
+			if (context.getRootPlanId() != null && context.getRootPlanId().equals(context.getCurrentPlanId())
+					&& context.getPlan() != null) {
+				List<ExecutionStep> steps = context.getPlan().getAllSteps();
+				if (steps != null && !steps.isEmpty()) {
+					ExecutionStep firstStep = steps.get(0);
+					String stepRequirement = firstStep.getStepRequirement();
+
+					if (stepRequirement != null && !stepRequirement.trim().isEmpty()) {
+						try {
+							UserMessage userMessage = new UserMessage(stepRequirement);
+							llmService.addToConversationMemoryWithLimit(lynxeProperties.getMaxMemory(),
+									context.getConversationId(), userMessage);
+							log.debug(
+									"Saved user message (first step requirement) to conversation memory for conversationId: {}",
+									context.getConversationId());
+						}
+						catch (Exception e) {
+							log.warn("Failed to save user message to conversation memory for conversationId: {}",
+									context.getConversationId(), e);
+							// Continue to save AssistantMessage even if UserMessage save
+							// fails
+						}
+					}
+				}
+			}
+
+			// Save AssistantMessage
 			AssistantMessage assistantMessage = new AssistantMessage(result);
 			llmService.addToConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), context.getConversationId(),
 					assistantMessage);

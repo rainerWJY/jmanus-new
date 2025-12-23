@@ -76,6 +76,20 @@ public class SmartContentSavingService implements ISmartContentSavingService {
 			return summary;
 		}
 
+		/**
+		 * Get comprehensive result that combines summary and file name into a single
+		 * string
+		 * @return Comprehensive result with summary and file reference if file was saved
+		 */
+		public String getComprehensiveResult() {
+			if (fileName != null && !fileName.isEmpty()) {
+				// Content was saved to file, return summary with file reference
+				return summary + "\n\n[Full output saved to: " + fileName + "]";
+			}
+			// Content was returned directly
+			return summary;
+		}
+
 		@Override
 		public String toString() {
 			return String.format("SmartProcessResult{fileName='%s', summary='%s'}", fileName, summary);

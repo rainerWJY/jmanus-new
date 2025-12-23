@@ -85,6 +85,7 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationProvider;
 import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationTool;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.jsxGenerator.JsxGeneratorOperator;
@@ -92,6 +93,7 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileBasedParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileSplitterTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
@@ -206,6 +208,9 @@ public class PlanningFactory {
 	@Autowired
 	private ObjectProvider<RestClient.Builder> restClientBuilderProvider;
 
+	@Autowired(required = false)
+	private List<ImageGenerationProvider> imageGenerationProviders;
+
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
 			SmartContentSavingService innerStorageService, UnifiedDirectoryManager unifiedDirectoryManager,
@@ -280,7 +285,7 @@ public class PlanningFactory {
 			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
-			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService));
+			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 
 			toolDefinitions.add(new GlobalFileReadOperator(textFileService, innerStorageService, objectMapper,
@@ -313,8 +318,9 @@ public class PlanningFactory {
 					new ImageOcrProcessor(unifiedDirectoryManager, llmService, lynxeProperties,
 							new ImageRecognitionExecutorPool(lynxeProperties)),
 					excelProcessingService, objectMapper, toolI18nService));
+			toolDefinitions.add(new MarkdownToDocxTool(textFileService, unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new ImageGenerationTool(dynamicModelRepository, restClientBuilderProvider, objectMapper,
-					toolI18nService));
+					toolI18nService, lynxeProperties, imageGenerationProviders));
 			// toolDefinitions.add(new ExcelProcessorTool(excelProcessingService));
 		}
 		else {

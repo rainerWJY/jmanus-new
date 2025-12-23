@@ -30,12 +30,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
@@ -44,6 +46,7 @@ import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.util.CollectionUtils;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.event.LynxeEventPublisher;
@@ -292,37 +295,45 @@ public class DynamicAgent extends ReActAgent {
 
 				// Add conversation history from MemoryService if conversationId is
 				// available and conversation memory is enabled
+				// Only add conversationHistory in the first think-act round to avoid
+				// duplicate messages in subsequent rounds
 				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
 						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
-					try {
-						ChatMemory conversationMemory = llmService
-							.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
-						List<Message> conversationHistory = conversationMemory.get(getConversationId());
-						if (conversationHistory != null && !conversationHistory.isEmpty()) {
-							log.debug("Adding {} conversation history messages for conversationId: {}",
-									conversationHistory.size(), getConversationId());
-							// Insert conversation history before current step env message
-							// to maintain chronological order
-							messages.addAll(conversationHistory);
+					if (getCurrentStep() == 1) {
+						try {
+							ChatMemory conversationMemory = llmService
+								.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
+							List<Message> conversationHistory = conversationMemory.get(getConversationId());
+							if (conversationHistory != null && !conversationHistory.isEmpty()) {
+								log.debug(
+										"Adding {} conversation history messages for conversationId: {} (first round only)",
+										conversationHistory.size(), getConversationId());
+								// Insert conversation history before current step env
+								// message
+								// to maintain chronological order
+								messages.addAll(conversationHistory);
+							}
+						}
+						catch (Exception e) {
+							log.warn(
+									"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
+									getConversationId(), e);
 						}
 					}
-					catch (Exception e) {
-						log.warn(
-								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
-								getConversationId(), e);
+					else {
+						log.debug("Skipping conversationHistory for round {} (only added in first round)",
+								getCurrentStep());
 					}
 				}
 				else if (!lynxeProperties.getEnableConversationMemory()) {
 					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
 				}
 				messages.addAll(Collections.singletonList(systemMessage));
+				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
+				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
+						getCurrentStep());
 				messages.add(currentStepEnvMessage);
-
-				// Save user request (stepText) to conversation memory after building
-				// messages
-				// This prevents duplicate messages in the conversation history
-				saveUserRequestToConversationMemory();
 
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
@@ -344,14 +355,10 @@ public class DynamicAgent extends ReActAgent {
 				else {
 					chatClient = llmService.getDynamicAgentChatClient(modelName);
 				}
-				// Calculate input character count from all messages before calling LLM
-				int inputCharCount = messages.stream().mapToInt(message -> {
-					String text = message.getText();
-					if (text == null || text.trim().isEmpty()) {
-						return 0;
-					}
-					return text.length();
-				}).sum();
+				// Calculate input character count from all messages by serializing to
+				// JSON
+				// This gives a more accurate count of the actual data sent to LLM
+				int inputCharCount = (int) calculateTotalLength(messages);
 				log.info("User prompt character count: {}", inputCharCount);
 
 				// Use streaming response handler for better user experience and content
@@ -825,17 +832,36 @@ public class DynamicAgent extends ReActAgent {
 			toolContextMap.put("planDepth", getPlanDepth());
 			ToolContext parentToolContext = new ToolContext(toolContextMap);
 
-			// Create execution requests for each tool with their corresponding toolCallId
-			// This ensures the toolCallId used during execution matches the one in
-			// ActToolParam
+			// Validate that actToolInfoList size matches toolCalls size
+			// This ensures order consistency between actToolInfoList and execution
+			// results
+			if (actToolInfoList.size() != toolCalls.size()) {
+				String errorMessage = String.format(
+						"Size mismatch: actToolInfoList has %d items but toolCalls has %d items. "
+								+ "This indicates an inconsistency in tool call tracking.",
+						actToolInfoList.size(), toolCalls.size());
+				log.error(errorMessage);
+				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
+			}
+
+			// Prepare execution data and metadata in a single pass
+			// This ensures all related data is collected together for consistency
 			List<ParallelExecutionService.ParallelExecutionRequest> executions = new ArrayList<>();
-			for (int i = 0; i < toolCalls.size() && i < actToolInfoList.size(); i++) {
+			// Store tool metadata for result processing (order matches executions)
+			ToolExecutionMetadata[] toolMetadata = new ToolExecutionMetadata[toolCalls.size()];
+
+			for (int i = 0; i < toolCalls.size(); i++) {
 				ToolCall toolCall = toolCalls.get(i);
 				ActToolParam param = actToolInfoList.get(i);
 				Map<String, Object> params = parseToolArguments(toolCall.arguments());
-				// Pass the toolCallId from ActToolParam to ensure consistency
+
+				// Create execution request
 				executions.add(new ParallelExecutionService.ParallelExecutionRequest(toolCall.name(), params,
 						param.getToolCallId()));
+
+				// Store metadata for result processing (order guaranteed: metadata[i] =
+				// executions[i])
+				toolMetadata[i] = new ToolExecutionMetadata(toolCall, param, toolCall.name());
 			}
 
 			// Execute tools in parallel
@@ -844,16 +870,27 @@ public class DynamicAgent extends ReActAgent {
 			List<Map<String, Object>> parallelResults = executionFuture.join();
 			log.info("Executed {} tools in parallel", parallelResults.size());
 
-			// Process results and update actToolInfoList
-			// Results are sorted by index, so they match the order of toolCalls
+			// Validate result size matches expectations
+			if (parallelResults.size() != toolCalls.size()) {
+				String errorMessage = String.format(
+						"Size mismatch: parallelResults has %d items but toolCalls has %d items. "
+								+ "Expected %d results from %d executions.",
+						parallelResults.size(), toolCalls.size(), executions.size(), executions.size());
+				log.error(errorMessage);
+				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
+			}
+
+			// Process all results in a single loop: update actToolInfoList, build
+			// resultList and toolResponses
+			// Order is guaranteed: parallelResults[i] corresponds to executions[i] and
+			// toolMetadata[i]
 			List<String> resultList = new ArrayList<>();
-			for (int i = 0; i < toolCalls.size() && i < actToolInfoList.size() && i < parallelResults.size(); i++) {
-				ToolCall toolCall = toolCalls.get(i);
-				String toolName = toolCall.name();
-				ActToolParam param = actToolInfoList.get(i);
+			List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
+			for (int i = 0; i < toolCalls.size(); i++) {
+				ToolExecutionMetadata metadata = toolMetadata[i];
 				Map<String, Object> result = parallelResults.get(i);
 
-				// Extract result from ParallelExecutionService format
+				// Extract and process result
 				String status = (String) result.get("status");
 				String processedResult;
 				if ("SUCCESS".equals(status)) {
@@ -865,22 +902,43 @@ public class DynamicAgent extends ReActAgent {
 					processedResult = "Error: " + (errorObj != null ? errorObj.toString() : "Unknown error");
 				}
 
-				param.setResult(processedResult);
+				// Update actToolInfoList
+				metadata.param.setResult(processedResult);
+				log.info("Tool {} executed successfully for planId: {}", metadata.toolName, getCurrentPlanId());
+
+				// Build result list and tool responses
 				resultList.add(processedResult);
-				log.info("Tool {} executed successfully for planId: {}", toolName, getCurrentPlanId());
+				toolResponses.add(new ToolResponseMessage.ToolResponse(metadata.toolCall.id(), metadata.toolCall.name(),
+						processedResult));
 			}
 
 			// Record the results
 			recordActionResult(actToolInfoList);
 
-			// Update memory using ToolCallingManager (for compatibility)
-			try {
-				ToolExecutionResult toolExecutionResult = toolCallingManager.executeToolCalls(userPrompt, response);
-				processMemory(toolExecutionResult);
+			ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder().responses(toolResponses).build();
+
+			// Get AssistantMessage from response (contains tool calls)
+			AssistantMessage assistantMessage = extractAssistantMessageFromResponse(response);
+
+			// Build conversation history
+			List<Message> conversationHistory = new ArrayList<>();
+			// Add previous messages from prompt
+			if (userPrompt != null && userPrompt.getInstructions() != null) {
+				conversationHistory.addAll(userPrompt.getInstructions());
 			}
-			catch (Exception e) {
-				log.warn("Error processing memory after parallel execution: {}", e.getMessage());
-			}
+			// Add assistant message with tool calls
+			conversationHistory.add(assistantMessage);
+			// Add tool response message
+			conversationHistory.add(toolResponseMessage);
+
+			// Build ToolExecutionResult
+			ToolExecutionResult toolExecutionResult = ToolExecutionResult.builder()
+				.conversationHistory(conversationHistory)
+				.returnDirect(false) // Multiple tools never return direct
+				.build();
+
+			// Update memory
+			processMemory(toolExecutionResult);
 
 			// Return result
 			return new AgentExecResult(resultList.toString(), AgentState.IN_PROGRESS);
@@ -889,6 +947,42 @@ public class DynamicAgent extends ReActAgent {
 			log.error("Error executing multiple tools: {}", e.getMessage(), e);
 			return new AgentExecResult("Error executing tools: " + e.getMessage(), AgentState.IN_PROGRESS);
 		}
+	}
+
+	/**
+	 * Internal class to store tool execution metadata Used to maintain order consistency
+	 * between execution requests and results
+	 */
+	private static class ToolExecutionMetadata {
+
+		final ToolCall toolCall;
+
+		final ActToolParam param;
+
+		final String toolName;
+
+		ToolExecutionMetadata(ToolCall toolCall, ActToolParam param, String toolName) {
+			this.toolCall = toolCall;
+			this.param = param;
+			this.toolName = toolName;
+		}
+
+	}
+
+	/**
+	 * Extract AssistantMessage from ChatResponse
+	 * @param response The ChatResponse containing the assistant message
+	 * @return AssistantMessage with tool calls
+	 */
+	private AssistantMessage extractAssistantMessageFromResponse(ChatResponse response) {
+		// Find the generation with tool calls
+		Generation generation = response.getResults()
+			.stream()
+			.filter(g -> !CollectionUtils.isEmpty(g.getOutput().getToolCalls()))
+			.findFirst()
+			.orElseThrow(() -> new IllegalStateException("No tool calls found in response"));
+
+		return generation.getOutput();
 	}
 
 	/**
@@ -1337,6 +1431,7 @@ public class DynamicAgent extends ReActAgent {
 		if (messages.isEmpty()) {
 			return;
 		}
+		List<Message> messagesToAdd = new ArrayList<>();
 		// clear current plan memory
 		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
 		for (Message message : messages) {
@@ -1345,13 +1440,13 @@ public class DynamicAgent extends ReActAgent {
 				continue;
 			}
 			// exclude env data message
-			if (message instanceof UserMessage userMessage
-					&& userMessage.getMetadata().containsKey(CURRENT_STEP_ENV_DATA_KEY)) {
+			if (message instanceof UserMessage) {
 				continue;
 			}
 			// only keep assistant message and tool_call message
-			llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), message);
+			messagesToAdd.add(message);
 		}
+		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), messagesToAdd);
 	}
 
 	@Override
@@ -1529,55 +1624,6 @@ public class DynamicAgent extends ReActAgent {
 		return envDataStringBuilder.toString();
 	}
 
-	// Add a method to wait for user input or handle timeout.
-	/**
-	 * Save user request (stepText) to conversation memory
-	 */
-	private void saveUserRequestToConversationMemory() {
-		// Skip if already saved (prevents duplicate saves during retries)
-		if (userRequestSavedToConversationMemory) {
-			log.debug("User request already saved to conversation memory, skipping");
-			return;
-		}
-
-		// Skip if conversation memory is disabled
-		if (!lynxeProperties.getEnableConversationMemory()) {
-			log.debug("Conversation memory is disabled, skipping user request save");
-			return;
-		}
-
-		if (getConversationId() == null || getConversationId().trim().isEmpty()) {
-			log.debug("No conversationId available, skipping user request save");
-			return;
-		}
-
-		// Get stepText from initSettingData
-		Object stepTextObj = getInitSettingData().get(AbstractPlanExecutor.STEP_TEXT_KEY);
-		if (stepTextObj == null) {
-			log.debug("No stepText found in initSettingData, skipping user request save");
-			return;
-		}
-
-		String stepText = stepTextObj.toString();
-		if (stepText == null || stepText.trim().isEmpty()) {
-			log.debug("stepText is empty, skipping user request save");
-			return;
-		}
-
-		try {
-			UserMessage userMessage = new UserMessage(stepText);
-			llmService.addToConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId(),
-					userMessage);
-			userRequestSavedToConversationMemory = true; // Mark as saved
-			log.info("Saved user request to conversation memory for conversationId: {}, request length: {}",
-					getConversationId(), stepText.length());
-		}
-		catch (Exception e) {
-			log.warn("Failed to save user request to conversation memory for conversationId: {}", getConversationId(),
-					e);
-		}
-	}
-
 	private void waitForUserInputOrTimeout(FormInputTool formInputTool) {
 		log.info("Waiting for user input for planId: {}...", getCurrentPlanId());
 		long startTime = System.currentTimeMillis();
@@ -1625,6 +1671,45 @@ public class DynamicAgent extends ReActAgent {
 		}
 		else if (formInputTool.getInputState() == FormInputTool.InputState.INPUT_TIMEOUT) {
 			log.warn("User input timed out for planId: {}", getCurrentPlanId());
+		}
+	}
+
+	/**
+	 * Calculate the total escaped string length for all messages in a Prompt. Directly
+	 * serializes the messages list to JSON and returns the length.
+	 * @param prompt the Prompt containing messages
+	 * @return the total length of all messages when serialized to JSON
+	 */
+	private long calculateTotalLength(Prompt prompt) {
+		if (prompt == null || prompt.getInstructions() == null) {
+			return 0;
+		}
+		return calculateTotalLength(prompt.getInstructions());
+	}
+
+	/**
+	 * Calculate the total escaped string length for a list of messages. Directly
+	 * serializes the messages list to JSON and returns the length.
+	 * @param messages the list of messages
+	 * @return the total length of all messages when serialized to JSON
+	 */
+	private long calculateTotalLength(List<Message> messages) {
+		if (messages == null || messages.isEmpty()) {
+			return 0;
+		}
+
+		try {
+			// Directly serialize the entire messages list to JSON
+			String json = objectMapper.writeValueAsString(messages);
+			return json.length();
+		}
+		catch (Exception e) {
+			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+			// Fallback to simple text length calculation
+			return messages.stream().mapToLong(message -> {
+				String text = message.getText();
+				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
+			}).sum();
 		}
 	}
 

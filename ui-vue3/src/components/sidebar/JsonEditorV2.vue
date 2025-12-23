@@ -748,9 +748,21 @@ const getFilteredModelsForStep = (stepIndex: number) => {
 const getModelDisplayValue = (stepIndex: number): string => {
   const step = displayData.steps[stepIndex]
   const filter = getSearchFilter(stepIndex)
-  if (openDropdownSteps.value.has(stepIndex) && filter !== '') {
+  // If dropdown is open, always show the filter (what user is typing)
+  if (openDropdownSteps.value.has(stepIndex)) {
     return filter
   }
+  // If dropdown is closed, show the filter value
+  // The filter should match modelName, but if user cleared it, filter will be empty
+  // and we want to show empty, not restore from step.modelName
+  if (filter === '' && step.modelName === '') {
+    return ''
+  }
+  // If filter exists, use it (it should match modelName when dropdown is closed)
+  if (filter !== '') {
+    return filter
+  }
+  // Fallback to modelName if filter is not set
   return step.modelName ?? ''
 }
 
@@ -791,9 +803,12 @@ const closeModelDropdown = (stepIndex: number) => {
   // If user cleared the input (empty filter), keep it empty and clear modelName
   if (currentFilter === '' && step) {
     step.modelName = ''
+    // Clear the filter to ensure it stays empty
+    setSearchFilter(stepIndex, '')
+  } else {
+    // Only reset filter if there's a model name to show
+    setSearchFilter(stepIndex, step.modelName ?? '')
   }
-  // Only reset filter if there's a model name to show
-  setSearchFilter(stepIndex, step.modelName ?? '')
 }
 
 const toggleModelDropdown = (stepIndex: number) => {
@@ -914,16 +929,19 @@ const handleClickOutside = (event: MouseEvent) => {
 }
 
 // Initialize search filters when steps change
+// Only initialize filters for new steps, don't override user input
 watch(
-  () => displayData.steps,
-  newSteps => {
-    newSteps.forEach((step, index) => {
+  () => displayData.steps.length,
+  (_newLength, _oldLength) => {
+    // Initialize filters for all steps on first load or when steps are added
+    displayData.steps.forEach((step, index) => {
+      // Only set filter if it doesn't exist (new step or first load)
       if (!modelSearchFilters.value.has(index)) {
         setSearchFilter(index, step.modelName ?? '')
       }
     })
   },
-  { deep: true, immediate: true }
+  { immediate: true }
 )
 
 // Tool selection state
