@@ -27,11 +27,7 @@
           :disabled="loading"
           :title="$t('fileBrowser.refresh')"
         >
-          <Icon
-            icon="carbon:refresh"
-            :class="{ rotating: loading }"
-            :style="{ color: '#ffffff', fontSize: '18px', width: '18px', height: '18px' }"
-          />
+          <Icon icon="carbon:renew" />
         </button>
       </div>
     </div>
@@ -366,7 +362,6 @@ onUnmounted(() => {
   flex-direction: column;
   height: 100%;
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
@@ -396,43 +391,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  width: 16px; /* Same as download-btn */
+  height: 16px; /* Same as download-btn */
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px; /* Same as download-btn */
   color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 18px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 0;
 }
 
 .refresh-btn .iconify {
-  color: #ffffff !important;
-  font-size: 18px !important;
-  width: 18px !important;
-  height: 18px !important;
-}
-
-.refresh-btn svg {
-  fill: #ffffff !important;
-  color: #ffffff !important;
-  width: 18px !important;
-  height: 18px !important;
+  width: 10px; /* Same as download-btn icon */
+  height: 10px; /* Same as download-btn icon */
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.refresh-btn:hover:not(:disabled) .iconify,
-.refresh-btn:hover:not(:disabled) svg {
-  color: #ffffff !important;
-  fill: #ffffff !important;
 }
 
 .refresh-btn:active:not(:disabled) {
@@ -444,12 +421,6 @@ onUnmounted(() => {
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
-}
-
-.refresh-btn:disabled .iconify,
-.refresh-btn:disabled svg {
-  color: rgba(255, 255, 255, 0.4) !important;
-  fill: rgba(255, 255, 255, 0.4) !important;
 }
 
 .file-browser-content {
