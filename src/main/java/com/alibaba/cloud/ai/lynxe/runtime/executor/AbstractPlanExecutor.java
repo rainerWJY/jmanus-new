@@ -194,7 +194,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	}
 
 	/**
-	 * Initialize plan execution environment, including symbolic link creation for root plans
+	 * Initialize plan execution environment, including symbolic link creation for root
+	 * plans
 	 * @param context The execution context containing plan information
 	 */
 	protected void initializePlanExecution(ExecutionContext context) {
@@ -204,8 +205,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			try {
 				Path rootPlanDir = unifiedDirectoryManager.getRootPlanDirectory(context.getRootPlanId());
 				unifiedDirectoryManager.ensureExternalFolderLink(rootPlanDir, context.getRootPlanId());
-				logger.debug("Initialized external folder symbolic link for rootPlanId: {}",
-						context.getRootPlanId());
+				logger.debug("Initialized external folder symbolic link for rootPlanId: {}", context.getRootPlanId());
 			}
 			catch (Exception e) {
 				logger.warn("Failed to initialize external folder symbolic link for rootPlanId: {}",
@@ -300,10 +300,10 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				plan.setCurrentPlanId(context.getCurrentPlanId());
 				plan.setRootPlanId(context.getRootPlanId());
 				plan.updateStepIndices();
-				
+
 				// Initialize plan execution environment
 				initializePlanExecution(context);
-				
+
 				// Synchronize uploaded files to plan directory at the beginning of
 				// execution
 				syncUploadedFilesToPlan(context);

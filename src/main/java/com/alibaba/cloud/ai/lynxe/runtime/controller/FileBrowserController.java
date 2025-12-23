@@ -195,11 +195,9 @@ public class FileBrowserController {
 			catch (Exception e) {
 				logger.debug("Failed to probe content type for file: {}, will determine from extension", targetFile);
 			}
-			
-			String fileName = targetFile.getFileName() != null 
-				? targetFile.getFileName().toString().toLowerCase() 
-				: "";
-			
+
+			String fileName = targetFile.getFileName() != null ? targetFile.getFileName().toString().toLowerCase() : "";
+
 			if (mimeType == null) {
 				// Try to determine MIME type from file extension
 				if (fileName.endsWith(".png")) {
@@ -243,32 +241,31 @@ public class FileBrowserController {
 			}
 
 			// Check if it's a binary file that should be downloaded instead of displayed
-			// This includes: images, videos, audio, Office documents, PDFs, archives, etc.
+			// This includes: images, videos, audio, Office documents, PDFs, archives,
+			// etc.
 			boolean isBinaryFile = mimeType.startsWith("image/") || mimeType.startsWith("video/")
 					|| mimeType.startsWith("audio/") || mimeType.equals("application/octet-stream")
 					|| mimeType.equals("application/pdf") || mimeType.equals("application/zip")
 					|| mimeType.equals("application/x-zip-compressed")
 					|| mimeType.startsWith("application/vnd.openxmlformats-officedocument")
-					|| mimeType.startsWith("application/vnd.ms-")
-					|| mimeType.startsWith("application/msword")
+					|| mimeType.startsWith("application/vnd.ms-") || mimeType.startsWith("application/msword")
 					|| mimeType.startsWith("application/vnd.ms-excel")
 					|| mimeType.startsWith("application/vnd.ms-powerpoint");
 
 			// Check if it's a downloadable-only file (Office docs, PDFs, archives)
 			// These should not be Base64 encoded for display, but should be downloaded
 			boolean isDownloadOnly = mimeType.startsWith("application/vnd.openxmlformats-officedocument")
-					|| mimeType.startsWith("application/vnd.ms-")
-					|| mimeType.startsWith("application/msword")
+					|| mimeType.startsWith("application/vnd.ms-") || mimeType.startsWith("application/msword")
 					|| mimeType.startsWith("application/vnd.ms-excel")
-					|| mimeType.startsWith("application/vnd.ms-powerpoint")
-					|| mimeType.equals("application/pdf")
-					|| mimeType.equals("application/zip")
-					|| mimeType.equals("application/x-zip-compressed");
+					|| mimeType.startsWith("application/vnd.ms-powerpoint") || mimeType.equals("application/pdf")
+					|| mimeType.equals("application/zip") || mimeType.equals("application/x-zip-compressed");
 
 			Object content;
 			if (isDownloadOnly) {
-				// For download-only files (Office docs, PDFs, archives), return a special flag
-				// Frontend should handle these by triggering a download instead of displaying
+				// For download-only files (Office docs, PDFs, archives), return a special
+				// flag
+				// Frontend should handle these by triggering a download instead of
+				// displaying
 				content = null; // No content, frontend should download
 			}
 			else if (isBinaryFile) {
@@ -297,17 +294,15 @@ public class FileBrowserController {
 				logger.warn("Failed to get file size for: {}, using 0", targetFile);
 			}
 
-			return ResponseEntity.ok(Map.of("success", true,
-					"data",
+			return ResponseEntity.ok(Map.of("success", true, "data",
 					Map.of("content", content != null ? content : "", "mimeType",
-							mimeType != null ? mimeType : "text/plain", "size", fileSize, "isBinary",
-							isBinaryFile, "downloadOnly", isDownloadOnly)));
+							mimeType != null ? mimeType : "text/plain", "size", fileSize, "isBinary", isBinaryFile,
+							"downloadOnly", isDownloadOnly)));
 
 		}
 		catch (java.nio.file.NoSuchFileException e) {
 			logger.warn("File not found: planId={}, path={}", planId, filePath);
-			return ResponseEntity.status(404)
-				.body(Map.of("success", false, "message", "File not found: " + filePath));
+			return ResponseEntity.status(404).body(Map.of("success", false, "message", "File not found: " + filePath));
 		}
 		catch (java.nio.file.AccessDeniedException e) {
 			logger.warn("Access denied: planId={}, path={}", planId, filePath);
@@ -316,21 +311,20 @@ public class FileBrowserController {
 		}
 		catch (Exception e) {
 			logger.error("Error reading file content for planId: {}, path: {}", planId, filePath, e);
-			// For download-only files, if there's an error reading content, still return success
+			// For download-only files, if there's an error reading content, still return
+			// success
 			// but mark as download-only so frontend can download it
 			String fileName = filePath.toLowerCase();
 			boolean isLikelyDownloadOnly = fileName.endsWith(".docx") || fileName.endsWith(".doc")
 					|| fileName.endsWith(".xlsx") || fileName.endsWith(".xls") || fileName.endsWith(".pptx")
 					|| fileName.endsWith(".ppt") || fileName.endsWith(".pdf") || fileName.endsWith(".zip");
-			
+
 			if (isLikelyDownloadOnly) {
 				logger.info("Treating file as download-only due to read error: {}", filePath);
-				return ResponseEntity.ok(Map.of("success", true,
-						"data",
-						Map.of("content", "", "mimeType", "application/octet-stream", "size", 0L, "isBinary",
-								true, "downloadOnly", true)));
+				return ResponseEntity.ok(Map.of("success", true, "data", Map.of("content", "", "mimeType",
+						"application/octet-stream", "size", 0L, "isBinary", true, "downloadOnly", true)));
 			}
-			
+
 			return ResponseEntity.internalServerError()
 				.body(Map.of("success", false, "message", "Error reading file: " + e.getMessage()));
 		}
@@ -416,7 +410,8 @@ public class FileBrowserController {
 				return a.getFileName().toString().compareToIgnoreCase(b.getFileName().toString());
 			}).forEach(child -> {
 				try {
-					// Check if child still exists (may have been deleted during traversal)
+					// Check if child still exists (may have been deleted during
+					// traversal)
 					if (!Files.exists(child)) {
 						logger.debug("Skipping deleted file/directory: {}", child);
 						return;
@@ -433,11 +428,14 @@ public class FileBrowserController {
 					}
 
 					if (isSymlink) {
-						// Special handling for linked_external: show it but don't traverse it
-						// This prevents infinite loops while still allowing users to see the link
+						// Special handling for linked_external: show it but don't
+						// traverse it
+						// This prevents infinite loops while still allowing users to see
+						// the link
 						String fileName = child.getFileName().toString();
 						if ("linked_external".equals(fileName)) {
-							// Show linked_external as a directory node but don't traverse it
+							// Show linked_external as a directory node but don't traverse
+							// it
 							String childRelativePath = planDir.relativize(child).toString();
 							FileNode symlinkNode = new FileNode(fileName, childRelativePath, "directory", 0,
 									Files.getLastModifiedTime(child).toString());
@@ -449,8 +447,10 @@ public class FileBrowserController {
 							return;
 						}
 
-						// Check for circular reference for other symlinks (may fail if symlink was deleted)
-						// Note: isCircularReference catches IOException internally, so we don't need to catch it here
+						// Check for circular reference for other symlinks (may fail if
+						// symlink was deleted)
+						// Note: isCircularReference catches IOException internally, so we
+						// don't need to catch it here
 						if (symlinkDetector.isCircularReference(child, planDir)) {
 							String symlinkInfo = "unknown";
 							try {
@@ -462,7 +462,8 @@ public class FileBrowserController {
 							logger.warn("Skipping circular symlink in file tree: {}", symlinkInfo);
 							return;
 						}
-						// Log symlink info for debugging (may fail if symlink was deleted)
+						// Log symlink info for debugging (may fail if symlink was
+						// deleted)
 						try {
 							logger.debug("Following safe symlink: {}", symlinkDetector.getSymlinkInfo(child));
 						}

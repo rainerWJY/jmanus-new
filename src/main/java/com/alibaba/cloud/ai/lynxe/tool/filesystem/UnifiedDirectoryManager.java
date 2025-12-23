@@ -383,7 +383,7 @@ public class UnifiedDirectoryManager {
 			log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up", rootPlanId);
 			return;
 		}
-		
+
 		String externalFolder = lynxeProperties.getExternalLinkedFolder();
 		if (externalFolder == null || externalFolder.trim().isEmpty()) {
 			// No external folder configured, nothing to do
@@ -519,8 +519,10 @@ public class UnifiedDirectoryManager {
 			}
 		}
 
-		// Verify that linkPath does not exist before creating (double-check after deletion)
-		// This handles race conditions where the file might have been recreated between deletion and creation
+		// Verify that linkPath does not exist before creating (double-check after
+		// deletion)
+		// This handles race conditions where the file might have been recreated between
+		// deletion and creation
 		if (Files.exists(linkPath)) {
 			log.warn("Link path still exists after deletion attempt, retrying deletion: {}", linkPath);
 			try {
@@ -537,8 +539,8 @@ public class UnifiedDirectoryManager {
 			}
 			catch (IOException deleteException) {
 				log.error("Failed to remove existing link path on retry: {}", linkPath, deleteException);
-				throw new IOException(
-						"Unable to remove existing path before creating symbolic link: " + linkPath, deleteException);
+				throw new IOException("Unable to remove existing path before creating symbolic link: " + linkPath,
+						deleteException);
 			}
 		}
 
@@ -548,7 +550,8 @@ public class UnifiedDirectoryManager {
 			log.info("Created external folder symbolic link: {} -> {}", linkPath, externalPath);
 		}
 		catch (java.nio.file.FileAlreadyExistsException e) {
-			// Handle race condition: file was created between our check and createSymbolicLink call
+			// Handle race condition: file was created between our check and
+			// createSymbolicLink call
 			log.warn("Symbolic link already exists (race condition): {}, will verify and reuse if valid", linkPath);
 			// Verify if it's a valid link pointing to the correct target
 			try {
@@ -566,9 +569,10 @@ public class UnifiedDirectoryManager {
 						return;
 					}
 					else {
-						log.warn("Symbolic link exists but points to wrong target: {} -> {} (expected: {}), "
-								+ "this may indicate a race condition", linkPath, existingTargetAbsolute,
-								expectedTargetAbsolute);
+						log.warn(
+								"Symbolic link exists but points to wrong target: {} -> {} (expected: {}), "
+										+ "this may indicate a race condition",
+								linkPath, existingTargetAbsolute, expectedTargetAbsolute);
 						throw new IOException("Symbolic link exists but points to wrong target: " + linkPath, e);
 					}
 				}

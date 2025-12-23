@@ -135,7 +135,8 @@ public class ClickByElementAction extends BrowserAction {
 					throw new RuntimeException("Element is not visible");
 				}
 
-				// Wait for any loading indicators in overlays to disappear before clicking
+				// Wait for any loading indicators in overlays to disappear before
+				// clicking
 				// This handles cases where dialogs/overlays are still loading
 				try {
 					page.waitForFunction(
@@ -168,7 +169,8 @@ public class ClickByElementAction extends BrowserAction {
 					locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(false));
 				}
 				catch (com.microsoft.playwright.TimeoutError overlayError) {
-					// If click fails due to overlay intercepting pointer events, try JavaScript click as fallback
+					// If click fails due to overlay intercepting pointer events, try
+					// JavaScript click as fallback
 					String errorMessage = overlayError.getMessage();
 					if (errorMessage != null && (errorMessage.contains("intercepts pointer events")
 							|| errorMessage.contains("element is not actionable"))) {
@@ -186,7 +188,8 @@ public class ClickByElementAction extends BrowserAction {
 							catch (Exception scrollEx) {
 								log.debug("Scroll failed, continuing with click: {}", scrollEx.getMessage());
 							}
-							// Use JavaScript to directly trigger click event, bypassing Playwright's clickability checks
+							// Use JavaScript to directly trigger click event, bypassing
+							// Playwright's clickability checks
 							// Try multiple methods to ensure click works
 							try {
 								// Method 1: Direct click
@@ -197,17 +200,16 @@ public class ClickByElementAction extends BrowserAction {
 								log.debug("Direct click failed, trying MouseEvent dispatch: {}",
 										directClickError.getMessage());
 								// Method 2: Dispatch MouseEvent
-								locator.evaluate(
-										"""
-												(el) => {
-													const event = new MouseEvent('click', {
-														bubbles: true,
-														cancelable: true,
-														view: window
-													});
-													el.dispatchEvent(event);
-												}
-												""");
+								locator.evaluate("""
+										(el) => {
+											const event = new MouseEvent('click', {
+												bubbles: true,
+												cancelable: true,
+												view: window
+											});
+											el.dispatchEvent(event);
+										}
+										""");
 								log.debug("Successfully clicked element using MouseEvent dispatch");
 							}
 						}
@@ -218,7 +220,8 @@ public class ClickByElementAction extends BrowserAction {
 								locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(true));
 							}
 							catch (Exception forceError) {
-								// If force click also fails, try JavaScript one more time with simpler approach
+								// If force click also fails, try JavaScript one more time
+								// with simpler approach
 								log.warn("Force click also failed, trying simple JavaScript click: {}",
 										forceError.getMessage());
 								locator.evaluate("el => { el.click(); }");
