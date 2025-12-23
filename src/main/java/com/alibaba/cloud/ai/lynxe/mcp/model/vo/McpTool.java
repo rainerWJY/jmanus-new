@@ -89,7 +89,7 @@ public class McpTool extends AbstractBaseTool<Map<String, Object>> {
 
 		SmartContentSavingService.SmartProcessResult smartProcessResult = smartContentSavingService
 			.processContent(currentPlanId, result, getName());
-		result = smartProcessResult.getSummary();
+		result = smartProcessResult.getComprehensiveResult();
 
 		return new ToolExecuteResult(result);
 	}
