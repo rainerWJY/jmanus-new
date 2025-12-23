@@ -521,10 +521,68 @@ public class UnifiedDirectoryManager {
 			}
 		}
 
+		// Verify that linkPath does not exist before creating (double-check after deletion)
+		// This handles race conditions where the file might have been recreated between deletion and creation
+		if (Files.exists(linkPath)) {
+			log.warn("Link path still exists after deletion attempt, retrying deletion: {}", linkPath);
+			try {
+				if (Files.isSymbolicLink(linkPath)) {
+					Files.delete(linkPath);
+				}
+				else if (Files.isDirectory(linkPath)) {
+					deleteDirectoryRecursively(linkPath);
+				}
+				else {
+					Files.delete(linkPath);
+				}
+				log.debug("Successfully removed existing path on retry: {}", linkPath);
+			}
+			catch (IOException deleteException) {
+				log.error("Failed to remove existing link path on retry: {}", linkPath, deleteException);
+				throw new IOException(
+						"Unable to remove existing path before creating symbolic link: " + linkPath, deleteException);
+			}
+		}
+
 		// Create symbolic link
 		try {
 			Files.createSymbolicLink(linkPath, externalPath);
 			log.info("Created external folder symbolic link: {} -> {}", linkPath, externalPath);
+		}
+		catch (java.nio.file.FileAlreadyExistsException e) {
+			// Handle race condition: file was created between our check and createSymbolicLink call
+			log.warn("Symbolic link already exists (race condition): {}, will verify and reuse if valid", linkPath);
+			// Verify if it's a valid link pointing to the correct target
+			try {
+				if (Files.isSymbolicLink(linkPath)) {
+					Path existingTarget = Files.readSymbolicLink(linkPath);
+					Path existingTargetAbsolute = linkPath.getParent()
+						.resolve(existingTarget)
+						.toAbsolutePath()
+						.normalize();
+					Path expectedTargetAbsolute = externalPath.toAbsolutePath().normalize();
+
+					if (existingTargetAbsolute.equals(expectedTargetAbsolute)) {
+						log.debug("Symbolic link already exists and points to correct target: {} -> {}", linkPath,
+								externalPath);
+						return;
+					}
+					else {
+						log.warn("Symbolic link exists but points to wrong target: {} -> {} (expected: {}), "
+								+ "this may indicate a race condition", linkPath, existingTargetAbsolute,
+								expectedTargetAbsolute);
+						throw new IOException("Symbolic link exists but points to wrong target: " + linkPath, e);
+					}
+				}
+				else {
+					log.error("Path exists but is not a symbolic link: {}", linkPath);
+					throw new IOException("Path exists but is not a symbolic link: " + linkPath, e);
+				}
+			}
+			catch (IOException verifyException) {
+				log.error("Failed to verify existing symbolic link: {}", linkPath, verifyException);
+				throw verifyException;
+			}
 		}
 		catch (UnsupportedOperationException e) {
 			// Symbolic links not supported on this platform, log warning

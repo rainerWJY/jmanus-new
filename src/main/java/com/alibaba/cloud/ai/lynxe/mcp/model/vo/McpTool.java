@@ -87,8 +87,11 @@ public class McpTool extends AbstractBaseTool<Map<String, Object>> {
 			result = "";
 		}
 
+		// Use rootPlanId if available, otherwise fall back to currentPlanId
+		// This ensures files are saved to root plan directory, not subplan directory
+		String planIdForStorage = (rootPlanId != null && !rootPlanId.trim().isEmpty()) ? rootPlanId : currentPlanId;
 		SmartContentSavingService.SmartProcessResult smartProcessResult = smartContentSavingService
-			.processContent(currentPlanId, result, getName());
+			.processContent(planIdForStorage, result, getName());
 		result = smartProcessResult.getComprehensiveResult();
 
 		return new ToolExecuteResult(result);
