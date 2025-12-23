@@ -558,7 +558,7 @@ onUnmounted(() => {
 .file-name {
   font-weight: 600;
   font-size: 13px;
-  white-space: nowrap; /* 不折行 */
+  white-space: nowrap; /* no wrap */
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: fit-content;
