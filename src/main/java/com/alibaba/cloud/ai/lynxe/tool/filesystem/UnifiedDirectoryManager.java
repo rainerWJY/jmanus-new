@@ -122,21 +122,13 @@ public class UnifiedDirectoryManager {
 			throw new IllegalArgumentException("rootPlanId cannot be null or empty");
 		}
 		Path rootPlanDir = getWorkingDirectory().resolve(INNER_STORAGE_DIR).resolve(rootPlanId);
-		// Ensure directory exists and create external folder link if configured
-		// Skip link creation if this plan has been cleaned up
+		// Ensure directory exists (no lazy loading of symbolic link here)
 		try {
 			ensureDirectoryExists(rootPlanDir);
-			if (!cleanedUpRootPlanIds.contains(rootPlanId)) {
-				ensureExternalFolderLink(rootPlanDir, rootPlanId);
-			}
-			else {
-				log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up",
-						rootPlanId);
-			}
 		}
 		catch (IOException e) {
-			log.warn("Failed to ensure root plan directory or external folder link for rootPlanId={}, path={}: {}",
-					rootPlanId, rootPlanDir, e.getMessage(), e);
+			log.warn("Failed to ensure root plan directory for rootPlanId={}, path={}: {}", rootPlanId, rootPlanDir,
+					e.getMessage(), e);
 		}
 		return rootPlanDir;
 	}
@@ -385,7 +377,13 @@ public class UnifiedDirectoryManager {
 	 * @param rootPlanId The root plan ID (for logging and circular reference check)
 	 * @throws IOException if link creation fails
 	 */
-	private void ensureExternalFolderLink(Path rootPlanDir, String rootPlanId) throws IOException {
+	public void ensureExternalFolderLink(Path rootPlanDir, String rootPlanId) throws IOException {
+		// Skip if this plan has been cleaned up (prevents recreation after cleanup)
+		if (cleanedUpRootPlanIds.contains(rootPlanId)) {
+			log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up", rootPlanId);
+			return;
+		}
+		
 		String externalFolder = lynxeProperties.getExternalLinkedFolder();
 		if (externalFolder == null || externalFolder.trim().isEmpty()) {
 			// No external folder configured, nothing to do
