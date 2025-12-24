@@ -318,12 +318,14 @@ public class DynamicAgent extends ReActAgent {
 				else if (!lynxeProperties.getEnableConversationMemory()) {
 					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
 				}
-				messages.addAll(Collections.singletonList(systemMessage));
+		
 				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
 				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
 						getCurrentStep());
+				
 				messages.add(currentStepEnvMessage);
+				messages.addAll(Collections.singletonList(systemMessage));
 
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
@@ -1549,7 +1551,7 @@ public class DynamicAgent extends ReActAgent {
 	protected Message getThinkMessage() {
 		Message baseThinkPrompt = super.getThinkMessage();
 		Message nextStepWithEnvMessage = getNextStepWithEnvMessage();
-		SystemMessage thinkMessage = new SystemMessage("""
+		UserMessage thinkMessage = new UserMessage("""
 				<SystemInfo>
 				%s
 				</SystemInfo>
