@@ -19,16 +19,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -49,25 +48,6 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 	 * Number of pieces to split file into
 	 */
 	private static final int SPLIT_COUNT = 10;
-
-	/**
-	 * Set of supported text file extensions
-	 */
-	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
-																												// text
-																												// and
-																												// Markdown
-			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
-			".sql", ".sh", ".bat", ".cmd", // Scripts and database
-			".log", ".conf", ".ini", // Logs and configuration
-			".gradle", ".pom", ".mvn", // Build tools
-			".csv", ".rst", ".adoc", // Documentation and data
-			".cpp", ".c", ".h", ".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala" // Additional
-																						// programming
-																						// languages
-	));
 
 	/**
 	 * Input class for file splitter operations
@@ -273,7 +253,7 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 		}
 
 		String extension = getFileExtension(filePath);
-		return SUPPORTED_EXTENSIONS.contains(extension.toLowerCase());
+		return UnifiedDirectoryManager.SUPPORTED_TEXT_FILE_EXTENSIONS.contains(extension.toLowerCase());
 	}
 
 	/**

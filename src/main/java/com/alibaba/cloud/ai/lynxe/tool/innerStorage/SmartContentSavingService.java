@@ -112,6 +112,13 @@ public class SmartContentSavingService implements ISmartContentSavingService {
 			return new SmartProcessResult(null, content != null ? content : "No content available");
 		}
 
+		// Check if smart content saving is enabled
+		Boolean enabled = lynxeProperties.getEnableSmartContentSaving();
+		if (enabled == null || !enabled) {
+			log.debug("Smart content saving is disabled, returning content directly");
+			return new SmartProcessResult(null, content);
+		}
+
 		// Check if content is empty
 		if (content.trim().isEmpty()) {
 			log.warn("processContent called with empty content: planId={}, callingMethod={}", planId, callingMethod);

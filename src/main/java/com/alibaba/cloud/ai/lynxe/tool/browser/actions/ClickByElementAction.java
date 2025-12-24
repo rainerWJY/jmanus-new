@@ -135,15 +135,104 @@ public class ClickByElementAction extends BrowserAction {
 					throw new RuntimeException("Element is not visible");
 				}
 
-				// Click with explicit timeout and force option
-				locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(false)); // Keep
-																										// force=false
-																										// to
-																										// ensure
-																										// element
-																										// is
-																										// truly
-																										// clickable
+				// Wait for any loading indicators in overlays to disappear before
+				// clicking
+				// This handles cases where dialogs/overlays are still loading
+				try {
+					page.waitForFunction(
+							"""
+									() => {
+										// Check if there are any visible loading indicators in overlays
+										const loadingElements = document.querySelectorAll('.next-loading, .deep-loading, [class*="loading"]');
+										for (const el of loadingElements) {
+											const style = window.getComputedStyle(el);
+											if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+												// Check if it's inside an overlay
+												const overlay = el.closest('.next-overlay-wrapper, .next-overlay-inner, [class*="overlay"]');
+												if (overlay) {
+													return false; // Still loading
+												}
+											}
+										}
+										return true; // No loading indicators found
+									}
+									""");
+					log.debug("Waited for overlay loading to complete");
+				}
+				catch (Exception waitError) {
+					log.debug("No loading indicators found or timeout waiting for loading: {}", waitError.getMessage());
+					// Continue anyway, as this is not critical
+				}
+
+				// Try to click with standard method first
+				try {
+					locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(false));
+				}
+				catch (com.microsoft.playwright.TimeoutError overlayError) {
+					// If click fails due to overlay intercepting pointer events, try
+					// JavaScript click as fallback
+					String errorMessage = overlayError.getMessage();
+					if (errorMessage != null && (errorMessage.contains("intercepts pointer events")
+							|| errorMessage.contains("element is not actionable"))) {
+						log.warn(
+								"Click intercepted by overlay or element not actionable, attempting JavaScript click as fallback for element at index {}",
+								index);
+						try {
+							// Wait a bit for the overlay to stabilize
+							Thread.sleep(300);
+							// Scroll element into view first
+							try {
+								locator.scrollIntoViewIfNeeded();
+								Thread.sleep(100);
+							}
+							catch (Exception scrollEx) {
+								log.debug("Scroll failed, continuing with click: {}", scrollEx.getMessage());
+							}
+							// Use JavaScript to directly trigger click event, bypassing
+							// Playwright's clickability checks
+							// Try multiple methods to ensure click works
+							try {
+								// Method 1: Direct click
+								locator.evaluate("el => el.click()");
+								log.debug("Successfully clicked element using JavaScript direct click");
+							}
+							catch (Exception directClickError) {
+								log.debug("Direct click failed, trying MouseEvent dispatch: {}",
+										directClickError.getMessage());
+								// Method 2: Dispatch MouseEvent
+								locator.evaluate("""
+										(el) => {
+											const event = new MouseEvent('click', {
+												bubbles: true,
+												cancelable: true,
+												view: window
+											});
+											el.dispatchEvent(event);
+										}
+										""");
+								log.debug("Successfully clicked element using MouseEvent dispatch");
+							}
+						}
+						catch (Exception jsError) {
+							log.warn("JavaScript click also failed, trying force click: {}", jsError.getMessage());
+							// Last resort: use force click
+							try {
+								locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(true));
+							}
+							catch (Exception forceError) {
+								// If force click also fails, try JavaScript one more time
+								// with simpler approach
+								log.warn("Force click also failed, trying simple JavaScript click: {}",
+										forceError.getMessage());
+								locator.evaluate("el => { el.click(); }");
+							}
+						}
+					}
+					else {
+						// Re-throw if it's not an overlay interception error
+						throw overlayError;
+					}
+				}
 
 				// Add small delay to ensure the action is processed
 				Thread.sleep(500);

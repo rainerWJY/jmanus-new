@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -51,6 +52,38 @@ public class UnifiedDirectoryManager {
 	 * Fixed directory name for external linked folder mapping
 	 */
 	private static final String LINKED_EXTERNAL_DIR = "linked_external";
+
+	/**
+	 * Unified set of supported text file extensions. This is the maximal set combining
+	 * all extensions from various file operators. All text file operators should use this
+	 * set to ensure consistency.
+	 */
+	public static final Set<String> SUPPORTED_TEXT_FILE_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
+																														// text
+																														// and
+																														// Markdown
+			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
+			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", ".vue", // Web-related
+			".xml", ".json", ".yaml", ".yml", ".properties", ".toml", ".cfg", ".env", // Configuration
+																						// files
+			".sql", ".sh", ".bat", ".cmd", ".ps1", ".pl", // Scripts and database
+			".log", ".conf", ".ini", // Logs and configuration
+			".gradle", ".pom", ".mvn", // Build tools
+			".csv", ".rst", ".adoc", ".tex", ".srt", ".vtt", // Documentation, data, and
+																// subtitles
+			".cpp", ".c", ".h", ".hpp", ".hxx", ".cc", ".cxx", // C/C++ variants
+			".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala", // Additional
+																	// programming
+																	// languages
+			".groovy", ".dart", ".lua", ".r", ".jl", ".clj", ".hs", ".elm", // More
+																			// programming
+																			// languages
+			".ex", ".exs", ".erl", ".hrl", ".fs", ".fsx", ".ml", ".mli", ".nim", ".zig", // Functional
+																							// and
+																							// other
+																							// languages
+			".m", ".mm", ".tcl", ".awk", ".sed" // Objective-C, TCL, AWK, sed
+	));
 
 	/**
 	 * Track root plan IDs that have been cleaned up to prevent recreating the link
@@ -122,21 +155,13 @@ public class UnifiedDirectoryManager {
 			throw new IllegalArgumentException("rootPlanId cannot be null or empty");
 		}
 		Path rootPlanDir = getWorkingDirectory().resolve(INNER_STORAGE_DIR).resolve(rootPlanId);
-		// Ensure directory exists and create external folder link if configured
-		// Skip link creation if this plan has been cleaned up
+		// Ensure directory exists (no lazy loading of symbolic link here)
 		try {
 			ensureDirectoryExists(rootPlanDir);
-			if (!cleanedUpRootPlanIds.contains(rootPlanId)) {
-				ensureExternalFolderLink(rootPlanDir, rootPlanId);
-			}
-			else {
-				log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up",
-						rootPlanId);
-			}
 		}
 		catch (IOException e) {
-			log.warn("Failed to ensure root plan directory or external folder link for rootPlanId={}, path={}: {}",
-					rootPlanId, rootPlanDir, e.getMessage(), e);
+			log.warn("Failed to ensure root plan directory for rootPlanId={}, path={}: {}", rootPlanId, rootPlanDir,
+					e.getMessage(), e);
 		}
 		return rootPlanDir;
 	}
@@ -385,7 +410,13 @@ public class UnifiedDirectoryManager {
 	 * @param rootPlanId The root plan ID (for logging and circular reference check)
 	 * @throws IOException if link creation fails
 	 */
-	private void ensureExternalFolderLink(Path rootPlanDir, String rootPlanId) throws IOException {
+	public void ensureExternalFolderLink(Path rootPlanDir, String rootPlanId) throws IOException {
+		// Skip if this plan has been cleaned up (prevents recreation after cleanup)
+		if (cleanedUpRootPlanIds.contains(rootPlanId)) {
+			log.debug("Skipping external folder link creation for rootPlanId={} as it has been cleaned up", rootPlanId);
+			return;
+		}
+
 		String externalFolder = lynxeProperties.getExternalLinkedFolder();
 		if (externalFolder == null || externalFolder.trim().isEmpty()) {
 			// No external folder configured, nothing to do
@@ -521,10 +552,72 @@ public class UnifiedDirectoryManager {
 			}
 		}
 
+		// Verify that linkPath does not exist before creating (double-check after
+		// deletion)
+		// This handles race conditions where the file might have been recreated between
+		// deletion and creation
+		if (Files.exists(linkPath)) {
+			log.warn("Link path still exists after deletion attempt, retrying deletion: {}", linkPath);
+			try {
+				if (Files.isSymbolicLink(linkPath)) {
+					Files.delete(linkPath);
+				}
+				else if (Files.isDirectory(linkPath)) {
+					deleteDirectoryRecursively(linkPath);
+				}
+				else {
+					Files.delete(linkPath);
+				}
+				log.debug("Successfully removed existing path on retry: {}", linkPath);
+			}
+			catch (IOException deleteException) {
+				log.error("Failed to remove existing link path on retry: {}", linkPath, deleteException);
+				throw new IOException("Unable to remove existing path before creating symbolic link: " + linkPath,
+						deleteException);
+			}
+		}
+
 		// Create symbolic link
 		try {
 			Files.createSymbolicLink(linkPath, externalPath);
 			log.info("Created external folder symbolic link: {} -> {}", linkPath, externalPath);
+		}
+		catch (java.nio.file.FileAlreadyExistsException e) {
+			// Handle race condition: file was created between our check and
+			// createSymbolicLink call
+			log.warn("Symbolic link already exists (race condition): {}, will verify and reuse if valid", linkPath);
+			// Verify if it's a valid link pointing to the correct target
+			try {
+				if (Files.isSymbolicLink(linkPath)) {
+					Path existingTarget = Files.readSymbolicLink(linkPath);
+					Path existingTargetAbsolute = linkPath.getParent()
+						.resolve(existingTarget)
+						.toAbsolutePath()
+						.normalize();
+					Path expectedTargetAbsolute = externalPath.toAbsolutePath().normalize();
+
+					if (existingTargetAbsolute.equals(expectedTargetAbsolute)) {
+						log.debug("Symbolic link already exists and points to correct target: {} -> {}", linkPath,
+								externalPath);
+						return;
+					}
+					else {
+						log.warn(
+								"Symbolic link exists but points to wrong target: {} -> {} (expected: {}), "
+										+ "this may indicate a race condition",
+								linkPath, existingTargetAbsolute, expectedTargetAbsolute);
+						throw new IOException("Symbolic link exists but points to wrong target: " + linkPath, e);
+					}
+				}
+				else {
+					log.error("Path exists but is not a symbolic link: {}", linkPath);
+					throw new IOException("Path exists but is not a symbolic link: " + linkPath, e);
+				}
+			}
+			catch (IOException verifyException) {
+				log.error("Failed to verify existing symbolic link: {}", linkPath, verifyException);
+				throw verifyException;
+			}
 		}
 		catch (UnsupportedOperationException e) {
 			// Symbolic links not supported on this platform, log warning

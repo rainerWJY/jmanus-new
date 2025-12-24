@@ -15,6 +15,7 @@
  */
 package com.alibaba.cloud.ai.lynxe.runtime.executor;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -193,6 +194,28 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	}
 
 	/**
+	 * Initialize plan execution environment, including symbolic link creation for root
+	 * plans
+	 * @param context The execution context containing plan information
+	 */
+	protected void initializePlanExecution(ExecutionContext context) {
+		// Initialize symbolic link for root plan (only for root plans, not sub-plans)
+		if (unifiedDirectoryManager != null && context.getRootPlanId() != null
+				&& context.getRootPlanId().equals(context.getCurrentPlanId())) {
+			try {
+				Path rootPlanDir = unifiedDirectoryManager.getRootPlanDirectory(context.getRootPlanId());
+				unifiedDirectoryManager.ensureExternalFolderLink(rootPlanDir, context.getRootPlanId());
+				logger.debug("Initialized external folder symbolic link for rootPlanId: {}", context.getRootPlanId());
+			}
+			catch (Exception e) {
+				logger.warn("Failed to initialize external folder symbolic link for rootPlanId: {}",
+						context.getRootPlanId(), e);
+				// Continue execution even if symbolic link creation fails
+			}
+		}
+	}
+
+	/**
 	 * Synchronize uploaded files to plan directory if uploadKey is provided
 	 * @param context The execution context containing uploadKey and rootPlanId
 	 */
@@ -277,6 +300,10 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				plan.setCurrentPlanId(context.getCurrentPlanId());
 				plan.setRootPlanId(context.getRootPlanId());
 				plan.updateStepIndices();
+
+				// Initialize plan execution environment
+				initializePlanExecution(context);
+
 				// Synchronize uploaded files to plan directory at the beginning of
 				// execution
 				syncUploadedFilesToPlan(context);

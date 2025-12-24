@@ -239,6 +239,31 @@ public class LynxeProperties {
 		this.enableConversationMemory = enableConversationMemory;
 	}
 
+	@ConfigProperty(group = "lynxe", subGroup = "general", key = "enableSmartContentSaving",
+			path = "lynxe.general.enableSmartContentSaving",
+			description = "lynxe.general.enableSmartContentSaving.description", defaultValue = "false",
+			inputType = ConfigInputType.CHECKBOX,
+			options = { @ConfigOption(value = "true", label = "lynxe.general.enableSmartContentSaving.option.true"),
+					@ConfigOption(value = "false", label = "lynxe.general.enableSmartContentSaving.option.false") })
+	private volatile Boolean enableSmartContentSaving;
+
+	public Boolean getEnableSmartContentSaving() {
+		String configPath = "lynxe.general.enableSmartContentSaving";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			enableSmartContentSaving = Boolean.valueOf(value);
+		}
+		// Default to false if not configured
+		if (enableSmartContentSaving == null) {
+			enableSmartContentSaving = false;
+		}
+		return enableSmartContentSaving;
+	}
+
+	public void setEnableSmartContentSaving(Boolean enableSmartContentSaving) {
+		this.enableSmartContentSaving = enableSmartContentSaving;
+	}
+
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "conversationMemoryMaxChars",
 			path = "lynxe.agent.conversationMemoryMaxChars",
 			description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue = "30000",
@@ -602,7 +627,7 @@ public class LynxeProperties {
 
 	@ConfigProperty(group = "lynxe", subGroup = "imageGeneration", key = "modelName",
 			path = "lynxe.imageGeneration.modelName", description = "lynxe.imageGeneration.modelName.description",
-			defaultValue = "", inputType = ConfigInputType.TEXT)
+			defaultValue = "wan2.6-t2i", inputType = ConfigInputType.TEXT)
 	private volatile String imageGenerationModelName;
 
 	public String getImageGenerationModelName() {
@@ -610,6 +635,10 @@ public class LynxeProperties {
 		String value = configService.getConfigValue(configPath);
 		if (value != null) {
 			imageGenerationModelName = value;
+		}
+		// Default to "wan2.6-t2i" if not configured
+		if (imageGenerationModelName == null || imageGenerationModelName.trim().isEmpty()) {
+			imageGenerationModelName = "wan2.6-t2i";
 		}
 		return imageGenerationModelName;
 	}

@@ -108,6 +108,10 @@ const words: I18nType = {
     download: 'Download',
     downloadToView: 'Download to View',
     binaryFile: 'This is a binary file that cannot be displayed in the viewer.',
+    downloadOnlyFile:
+      'This file type requires download to view (e.g., Office documents, PDFs, etc.).',
+    markdownRaw: 'Switch to formatted view',
+    markdownFormatted: 'Switch to raw view',
     open: 'Open',
     copyPath: 'Copy Path',
     noPlanSelected: 'No plan selected. Please execute a task to view files.',
@@ -467,8 +471,12 @@ const words: I18nType = {
         externalLinkedFolder:
           "External Directory Mapping: You can specify an external directory, and the system will map this directory to a subdirectory under each task, so you don't need to import the content. You can use an absolute directory path with or without a trailing slash. The mapped directory can be accessed through the linked_external subdirectory.",
         enableConversationMemory: 'Enable Conversation Memory',
+        enableSmartContentSaving:
+          'When enabled, the system will automatically save all overly long content to files to protect memory from exceeding limits. However, you will need to use file reading tools for subsequent processing.',
+        respectGitIgnore:
+          'Whether to respect .gitignore rules: When enabled, file search (grep) and other operations will automatically ignore files and directories specified in .gitignore files, avoiding searching files that should not be processed (such as node_modules, .git, etc.). It is recommended to keep this enabled.',
         bashSecurityProtection:
-          'Bash security protection will block all rm commands because rm is extremely difficult to recover. If set to false, this protection will be disabled.',
+          'Bash security protection: When enabled, all rm commands will be blocked because files deleted by rm are extremely difficult to recover. If set to false, rm commands will not be blocked. Use with caution. It is recommended to keep this enabled to protect data security.',
       },
       interactionSettings: {
         openBrowser: 'Automatically open the browser on startup',

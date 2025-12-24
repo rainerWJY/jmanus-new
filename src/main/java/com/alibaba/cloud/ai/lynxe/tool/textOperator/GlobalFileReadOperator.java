@@ -18,9 +18,7 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,25 +55,6 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 	 * Maximum number of lines allowed for full file reads without offset/limit
 	 */
 	private static final int MAX_LINES_FOR_FULL_READ = 300;
-
-	/**
-	 * Set of supported text file extensions
-	 */
-	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
-																												// text
-																												// and
-																												// Markdown
-			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", ".vue", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
-			".sql", ".sh", ".bat", ".cmd", // Scripts and database
-			".log", ".conf", ".ini", // Logs and configuration
-			".gradle", ".pom", ".mvn", // Build tools
-			".csv", ".rst", ".adoc", // Documentation and data
-			".cpp", ".c", ".h", ".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala" // Additional
-																						// programming
-																						// languages
-	));
 
 	/**
 	 * Input class for read file operations
@@ -375,7 +354,7 @@ public class GlobalFileReadOperator extends AbstractBaseTool<GlobalFileReadOpera
 		}
 
 		String extension = getFileExtension(filePath);
-		return SUPPORTED_EXTENSIONS.contains(extension.toLowerCase());
+		return UnifiedDirectoryManager.SUPPORTED_TEXT_FILE_EXTENSIONS.contains(extension.toLowerCase());
 	}
 
 	/**

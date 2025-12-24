@@ -18,8 +18,6 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -54,21 +52,6 @@ public class TextFileService implements ApplicationRunner, ITextFileService {
 	@Autowired
 	private UnifiedDirectoryManager unifiedDirectoryManager;
 
-	/**
-	 * Set of supported text file extensions
-	 */
-	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
-																												// text
-																												// and
-																												// Markdown
-			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
-			".sql", ".sh", ".bat", ".cmd", // Scripts and database
-			".log", ".conf", ".ini", // Logs and configuration
-			".gradle", ".pom", ".mvn", // Build tools
-			".csv"));
-
 	private final ConcurrentHashMap<String, FileState> fileStates = new ConcurrentHashMap<>();
 
 	@Override
@@ -101,7 +84,7 @@ public class TextFileService implements ApplicationRunner, ITextFileService {
 
 	public boolean isSupportedFileType(String filePath) {
 		String fileExtension = getFileExtension(filePath);
-		return SUPPORTED_EXTENSIONS.contains(fileExtension.toLowerCase());
+		return UnifiedDirectoryManager.SUPPORTED_TEXT_FILE_EXTENSIONS.contains(fileExtension.toLowerCase());
 	}
 
 	public String getFileExtension(String filePath) {

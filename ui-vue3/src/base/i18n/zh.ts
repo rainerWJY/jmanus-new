@@ -106,6 +106,9 @@ const words: I18nType = {
     download: '下载',
     downloadToView: '下载查看',
     binaryFile: '这是一个二进制文件，无法在查看器中显示。',
+    downloadOnlyFile: '此文件类型需要下载后才能查看（如 Office 文档、PDF 等）。',
+    markdownRaw: '切换到格式化视图',
+    markdownFormatted: '切换到原始视图',
     open: '打开',
     copyPath: '复制路径',
     noPlanSelected: '未选择计划。请执行任务以查看文件。',
@@ -453,8 +456,12 @@ const words: I18nType = {
         externalLinkedFolder:
           '外部目录映射 : 你可以指定一个外部的目录，系统会把这个目录映射到每个任务的一个子目录下面，这样就可以不需要将内容导入。 你可以用 带/或者不带/的绝对目录。映射后的目录可以通过 linked_external 子目录访问。',
         enableConversationMemory: '开启对话记忆',
+        enableSmartContentSaving:
+          '打开则系统会自动将所有超长的内容转存文件，以保护记忆不会超长，但需要你引入文件读取工具，来做后续处理。',
+        respectGitIgnore:
+          '是否遵循 .gitignore 规则：开启后，文件搜索（grep）等操作会自动忽略 .gitignore 文件中指定的文件和目录，避免搜索到不应该处理的文件（如 node_modules、.git 等）。建议保持开启状态。',
         bashSecurityProtection:
-          'bash 安全保护 会阻止所有的 rm的发生 ， 因为rm 极难恢复。如果为false则不会有此保护。',
+          'bash 安全保护：开启后会阻止所有 rm 命令的执行，因为 rm 删除的文件极难恢复。如果设置为 false，则不会阻止 rm 命令，请谨慎使用。建议保持开启状态以保护数据安全。',
       },
       interactionSettings: {
         openBrowser: '启动时自动打开浏览器',

@@ -416,6 +416,9 @@ const CONFIG_DISPLAY_NAMES: Record<string, string> = {
   debugDetail: 'config.basicConfig.general.debugDetail',
   externalLinkedFolder: 'config.basicConfig.general.externalLinkedFolder',
   enableConversationMemory: 'config.basicConfig.general.enableConversationMemory',
+  enableSmartContentSaving: 'config.basicConfig.general.enableSmartContentSaving',
+  respectGitIgnore: 'config.basicConfig.general.respectGitIgnore',
+  bashSecurityProtection: 'config.basicConfig.general.bashSecurityProtection',
 
   // Interaction Settings
   openBrowser: 'config.basicConfig.interactionSettings.openBrowser',
