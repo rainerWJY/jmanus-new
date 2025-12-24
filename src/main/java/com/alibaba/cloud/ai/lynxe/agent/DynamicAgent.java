@@ -285,20 +285,20 @@ public class DynamicAgent extends ReActAgent {
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
 				String thinkInput = thinkMessages.toString();
 
+				// Check and compress memory if needed before building prompt
+				// This also returns the conversation memory to avoid duplicate retrieval
+				ChatMemory conversationMemory = checkAndCompressMemoryIfNeeded();
+
 				// log.debug("Messages prepared for the prompt: {}", thinkMessages);
 				// Build current prompt. System message is the first message
 				List<Message> messages = new ArrayList<>();
 				// Add history message from agent memory
 				List<Message> historyMem = agentMessages;
 
-				// Add conversation history from MemoryService if conversationId is
-				// available and conversation memory is enabled
-				// Add conversationHistory in every round of the think-act turn
-				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
-						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
+				// Add conversation history from conversation memory if available
+				// Reuse the conversation memory retrieved in checkAndCompressMemoryIfNeeded()
+				if (conversationMemory != null) {
 					try {
-						ChatMemory conversationMemory = llmService
-							.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
 						List<Message> conversationHistory = conversationMemory.get(getConversationId());
 						if (conversationHistory != null && !conversationHistory.isEmpty()) {
 							log.debug("Adding {} conversation history messages for conversationId: {} (round {})",
@@ -1413,10 +1413,37 @@ public class DynamicAgent extends ReActAgent {
 		}
 	}
 
+	/**
+	 * Check and compress memory if needed before calling LLM. This ensures memory is
+	 * within limits before building the prompt.
+	 * @return The conversation memory instance, or null if not available
+	 */
+	private ChatMemory checkAndCompressMemoryIfNeeded() {
+		ChatMemory conversationMemory = null;
+		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
+				&& !getConversationId().trim().isEmpty()) {
+			try {
+				conversationMemory = llmService.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(),
+						getConversationId());
+			}
+			catch (Exception e) {
+				log.warn("Failed to get conversation memory for compression check: {}", e.getMessage());
+			}
+		}
+
+		if (conversationMemoryLimitService != null) {
+			agentMessages = conversationMemoryLimitService.checkAndCompressIfNeeded(conversationMemory,
+					getConversationId(), agentMessages);
+		}
+
+		return conversationMemory;
+	}
+
 	private void processMemory(ToolExecutionResult toolExecutionResult) {
 		if (toolExecutionResult == null) {
 			return;
 		}
+
 		// Process the tool execution result messages to update memory
 		List<Message> messages = toolExecutionResult.conversationHistory();
 		if (messages.isEmpty()) {
@@ -1440,6 +1467,7 @@ public class DynamicAgent extends ReActAgent {
 						getConversationId(), e);
 			}
 		}
+
 
 		// Step 2: Filter messages to keep only assistant message and tool_call message
 		List<Message> messagesToAdd = new ArrayList<>();

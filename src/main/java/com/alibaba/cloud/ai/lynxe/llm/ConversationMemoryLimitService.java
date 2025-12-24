@@ -600,6 +600,77 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
+	 * Check if messages exceed the limit and compress both conversation and agent memory if needed.
+	 * This method checks the total character count of all messages (conversation + agent) and
+	 * compresses them if they exceed the limit.
+	 * @param conversationMemory The conversation memory instance
+	 * @param conversationId The conversation ID
+	 * @param agentMessages The agent memory messages
+	 * @return Compressed agent messages if compression occurred, original messages otherwise
+	 */
+	public List<Message> checkAndCompressIfNeeded(ChatMemory conversationMemory, String conversationId,
+			List<Message> agentMessages) {
+		if (agentMessages == null) {
+			agentMessages = new ArrayList<>();
+		}
+
+		try {
+			// Get conversation messages
+			List<Message> conversationMessages = new ArrayList<>();
+			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()) {
+				List<Message> convMsgs = conversationMemory.get(conversationId);
+				if (convMsgs != null) {
+					conversationMessages = convMsgs;
+				}
+			}
+
+			// Combine all messages to check total size
+			List<Message> allMessages = new ArrayList<>();
+			allMessages.addAll(conversationMessages);
+			allMessages.addAll(agentMessages);
+
+			// Calculate total character count
+			int totalChars = calculateTotalCharacters(allMessages);
+			int maxChars = getMaxCharacterCount();
+
+			if (totalChars <= maxChars) {
+				log.debug("Total memory size ({}) is within limit ({}), no compression needed", totalChars, maxChars);
+				return agentMessages;
+			}
+
+			log.info(
+					"Total memory size ({}) exceeds limit ({}). Force compressing conversation and agent memory...",
+					totalChars, maxChars);
+
+			// Step 1: Force compress conversation memory first
+			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()
+					&& !conversationMessages.isEmpty()) {
+				try {
+					checkAndLimitMemory(conversationMemory, conversationId);
+					log.info("Force compressed conversation memory for conversationId: {}", conversationId);
+				}
+				catch (Exception e) {
+					log.warn("Failed to compress conversation memory for conversationId: {}", conversationId, e);
+				}
+			}
+
+			// Step 2: Force compress agent memory
+			if (!agentMessages.isEmpty()) {
+				List<Message> compressedAgentMessages = forceCompressAgentMemory(agentMessages);
+				log.info("Force compressed agent memory. Original: {} messages, Compressed: {} messages",
+						agentMessages.size(), compressedAgentMessages.size());
+				return compressedAgentMessages;
+			}
+
+			return agentMessages;
+		}
+		catch (Exception e) {
+			log.warn("Failed to check and compress memory", e);
+			return agentMessages;
+		}
+	}
+
+	/**
 	 * Get the configured maximum character count from LynxeProperties.
 	 * @return Maximum character count
 	 */
