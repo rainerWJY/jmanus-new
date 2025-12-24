@@ -290,34 +290,26 @@ public class DynamicAgent extends ReActAgent {
 
 				// Add conversation history from MemoryService if conversationId is
 				// available and conversation memory is enabled
-				// Only add conversationHistory in the first think-act round to avoid
-				// duplicate messages in subsequent rounds
+				// Add conversationHistory in every round of the think-act turn
 				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
 						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
-					if (getCurrentStep() == 1) {
-						try {
-							ChatMemory conversationMemory = llmService
-								.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
-							List<Message> conversationHistory = conversationMemory.get(getConversationId());
-							if (conversationHistory != null && !conversationHistory.isEmpty()) {
-								log.debug(
-										"Adding {} conversation history messages for conversationId: {} (first round only)",
-										conversationHistory.size(), getConversationId());
-								// Insert conversation history before current step env
-								// message
-								// to maintain chronological order
-								messages.addAll(conversationHistory);
-							}
-						}
-						catch (Exception e) {
-							log.warn(
-									"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
-									getConversationId(), e);
+					try {
+						ChatMemory conversationMemory = llmService
+							.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
+						List<Message> conversationHistory = conversationMemory.get(getConversationId());
+						if (conversationHistory != null && !conversationHistory.isEmpty()) {
+							log.debug("Adding {} conversation history messages for conversationId: {} (round {})",
+									conversationHistory.size(), getConversationId(), getCurrentStep());
+							// Insert conversation history before current step env
+							// message
+							// to maintain chronological order
+							messages.addAll(conversationHistory);
 						}
 					}
-					else {
-						log.debug("Skipping conversationHistory for round {} (only added in first round)",
-								getCurrentStep());
+					catch (Exception e) {
+						log.warn(
+								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
+								getConversationId(), e);
 					}
 				}
 				else if (!lynxeProperties.getEnableConversationMemory()) {
@@ -1423,14 +1415,32 @@ public class DynamicAgent extends ReActAgent {
 		if (toolExecutionResult == null) {
 			return;
 		}
-		// Process the conversation history to update memory
+		// Process the tool execution result messages to update memory
 		List<Message> messages = toolExecutionResult.conversationHistory();
 		if (messages.isEmpty()) {
 			return;
 		}
+
+		// Step 1: Remove all conversationHistory from conversation memory first
+		// These messages will be added to Agent Memory, so remove them from conversation memory to avoid duplicates
+		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
+				&& !getConversationId().trim().isEmpty()) {
+			try {
+				ChatMemory conversationMemory = llmService
+					.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
+				List<Message> conversationHistory = conversationMemory.get(getConversationId());
+				if (conversationHistory != null && !conversationHistory.isEmpty()) {
+					messages.removeAll(conversationHistory);
+				}
+			}
+			catch (Exception e) {
+				log.warn("Failed to remove duplicate messages from conversation memory for conversationId: {}",
+						getConversationId(), e);
+			}
+		}
+
+		// Step 2: Filter messages to keep only assistant message and tool_call message
 		List<Message> messagesToAdd = new ArrayList<>();
-		// clear current plan memory
-		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
 		for (Message message : messages) {
 			// exclude all system message
 			if (message instanceof SystemMessage) {
@@ -1443,6 +1453,9 @@ public class DynamicAgent extends ReActAgent {
 			// only keep assistant message and tool_call message
 			messagesToAdd.add(message);
 		}
+
+		// Step 3: Clear current plan memory and add filtered messages to Agent Memory
+		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
 		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), messagesToAdd);
 	}
 
