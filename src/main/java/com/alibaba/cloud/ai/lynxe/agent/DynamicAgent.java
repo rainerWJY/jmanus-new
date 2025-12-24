@@ -782,9 +782,10 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Process multiple tools execution using parallel execution service Multiple tools
-	 * execution does not support TerminableTool and FormInputTool. If these tools are
-	 * present, return error message asking LLM to retry without them.
+	 * Process multiple tools execution using parallel execution service
+	 * TerminateTool is now supported in parallel execution with happen-before relationship
+	 * (it will execute after all other parallel tools complete).
+	 * FormInputTool is still restricted from parallel execution as it requires user interaction.
 	 * @param toolCalls List of tool calls to execute
 	 * @return AgentExecResult containing the execution results
 	 */
@@ -797,14 +798,15 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		try {
-			// Check for TerminableTool and FormInputTool in multiple tools
+			// Check for FormInputTool in multiple tools (TerminateTool is now supported)
 			List<String> restrictedToolNames = new ArrayList<>();
 			for (ToolCall toolCall : toolCalls) {
 				String toolName = toolCall.name();
 				ToolCallBackContext context = getToolCallBackContext(toolName);
 				if (context != null) {
 					ToolCallBiFunctionDef<?> toolInstance = context.getFunctionInstance();
-					if (toolInstance instanceof TerminableTool || toolInstance instanceof FormInputTool) {
+					// Only block FormInputTool - TerminateTool is now supported with happen-before
+					if (toolInstance instanceof FormInputTool) {
 						restrictedToolNames.add(toolName);
 					}
 				}
@@ -813,9 +815,9 @@ public class DynamicAgent extends ReActAgent {
 			// If restricted tools found, return error asking LLM to retry without them
 			if (!restrictedToolNames.isEmpty()) {
 				String errorMessage = String.format(
-						"Multiple tools execution does not support TerminableTool and FormInputTool. "
+						"Multiple tools execution does not support FormInputTool (requires user interaction). "
 								+ "Found restricted tools: %s. Please retry by calling tools separately, "
-								+ "excluding TerminableTool and FormInputTool from multiple tool calls.",
+								+ "excluding FormInputTool from multiple tool calls.",
 						String.join(", ", restrictedToolNames));
 				log.warn("Multiple tools execution rejected: {}", errorMessage);
 				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
