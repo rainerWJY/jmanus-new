@@ -295,9 +295,12 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Group messages into dialog rounds (AssistantMessage + ToolResponseMessage pairs).
-	 * For agent memory, the pattern is: AssistantMessage (with tool calls) followed by
-	 * ToolResponseMessage (tool execution results)
+	 * Group messages into dialog rounds. Supports three grouping scenarios:
+	 * <ol>
+	 * <li>UserMessage -> AssistantMessage -> ToolResponseMessage (complete round with tool call)</li>
+	 * <li>UserMessage -> AssistantMessage (round without tool call)</li>
+	 * <li>AssistantMessage -> ToolResponseMessage (agent memory scenario)</li>
+	 * </ol>
 	 * @param messages List of messages
 	 * @return List of dialog rounds
 	 */
@@ -307,29 +310,53 @@ public class ConversationMemoryLimitService {
 
 		for (Message message : messages) {
 			if (message instanceof UserMessage) {
-				// User messages start a new round (for conversation memory scenarios)
+				// Scenario: UserMessage starts a new round
+				// Can be followed by AssistantMessage (with or without ToolResponseMessage)
+				// Complete previous round if exists
 				if (currentRound != null) {
 					rounds.add(currentRound);
 				}
+				// Start new round with UserMessage
 				currentRound = new DialogRound();
 				currentRound.addMessage(message);
 			}
 			else if (message instanceof AssistantMessage) {
-				// Assistant messages start a new round (for agent memory scenarios)
+				// Check if current round has UserMessage (Scenario 2: UserMessage -> AssistantMessage)
+				// or if it's a standalone AssistantMessage (Scenario 3: AssistantMessage -> ToolResponseMessage)
 				if (currentRound != null) {
-					rounds.add(currentRound);
+					// Check if current round already has a UserMessage
+					boolean hasUserMessage = currentRound.getMessages().stream()
+						.anyMatch(msg -> msg instanceof UserMessage);
+					if (hasUserMessage) {
+						// Scenario 2: UserMessage -> AssistantMessage
+						// Add AssistantMessage to current round (round may complete here or wait for ToolResponseMessage)
+						currentRound.addMessage(message);
+					}
+					else {
+						// Current round doesn't have UserMessage, complete it and start new round
+						rounds.add(currentRound);
+						currentRound = new DialogRound();
+						currentRound.addMessage(message);
+					}
 				}
-				currentRound = new DialogRound();
-				currentRound.addMessage(message);
+				else {
+					// Scenario 3: AssistantMessage -> ToolResponseMessage (agent memory scenario)
+					// Start new round with AssistantMessage
+					currentRound = new DialogRound();
+					currentRound.addMessage(message);
+				}
 			}
 			else if (message instanceof ToolResponseMessage) {
-				// Add tool response to current round
+				// ToolResponseMessage completes a round
+				// Can be part of:
+				// - Scenario 1: UserMessage -> AssistantMessage -> ToolResponseMessage
+				// - Scenario 3: AssistantMessage -> ToolResponseMessage
 				if (currentRound == null) {
-					// If no assistant message before, create a new round
+					// No current round, create one (edge case)
 					currentRound = new DialogRound();
 				}
 				currentRound.addMessage(message);
-				// Round is complete (Assistant + ToolResponse), add it
+				// Round is complete, add it to rounds
 				rounds.add(currentRound);
 				currentRound = null;
 			}
@@ -342,6 +369,7 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Add the last round if it exists and wasn't completed
+		// This handles incomplete rounds like UserMessage -> AssistantMessage (Scenario 2)
 		if (currentRound != null) {
 			rounds.add(currentRound);
 		}
