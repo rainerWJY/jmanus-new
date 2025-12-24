@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -51,6 +52,27 @@ public class UnifiedDirectoryManager {
 	 * Fixed directory name for external linked folder mapping
 	 */
 	private static final String LINKED_EXTERNAL_DIR = "linked_external";
+
+	/**
+	 * Unified set of supported text file extensions. This is the maximal set combining
+	 * all extensions from various file operators. All text file operators should use this
+	 * set to ensure consistency.
+	 */
+	public static final Set<String> SUPPORTED_TEXT_FILE_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
+																														// text
+																														// and
+																														// Markdown
+			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
+			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", ".vue", // Web-related
+			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
+			".sql", ".sh", ".bat", ".cmd", // Scripts and database
+			".log", ".conf", ".ini", // Logs and configuration
+			".gradle", ".pom", ".mvn", // Build tools
+			".csv", ".rst", ".adoc", // Documentation and data
+			".cpp", ".c", ".h", ".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala" // Additional
+																						// programming
+																						// languages
+	));
 
 	/**
 	 * Track root plan IDs that have been cleaned up to prevent recreating the link

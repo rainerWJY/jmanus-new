@@ -20,9 +20,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,25 +45,6 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 	private static final Logger log = LoggerFactory.getLogger(LocalFileOperator.class);
 
 	private static final String TOOL_NAME = "local_file_operator";
-
-	/**
-	 * Set of supported text file extensions
-	 */
-	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
-																												// text
-																												// and
-																												// Markdown
-			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
-			".sql", ".sh", ".bat", ".cmd", // Scripts and database
-			".log", ".conf", ".ini", // Logs and configuration
-			".gradle", ".pom", ".mvn", // Build tools
-			".csv", ".rst", ".adoc", // Documentation and data
-			".cpp", ".c", ".h", ".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala" // Additional
-																						// programming
-																						// languages
-	));
 
 	/**
 	 * Input class for local file operations
@@ -458,7 +437,7 @@ public class LocalFileOperator extends AbstractBaseTool<LocalFileOperator.LocalF
 		}
 
 		String extension = getFileExtension(filePath);
-		return SUPPORTED_EXTENSIONS.contains(extension.toLowerCase());
+		return UnifiedDirectoryManager.SUPPORTED_TEXT_FILE_EXTENSIONS.contains(extension.toLowerCase());
 	}
 
 	/**

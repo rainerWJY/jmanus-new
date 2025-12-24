@@ -18,9 +18,7 @@ package com.alibaba.cloud.ai.lynxe.tool.textOperator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,25 +47,6 @@ public class LinkedFolderOperator extends AbstractBaseTool<LinkedFolderOperator.
 	private static final Logger log = LoggerFactory.getLogger(LinkedFolderOperator.class);
 
 	private static final String TOOL_NAME = "linked_folder_operator";
-
-	/**
-	 * Set of supported text file extensions
-	 */
-	private static final Set<String> SUPPORTED_EXTENSIONS = new HashSet<>(Set.of(".txt", ".md", ".markdown", // Plain
-																												// text
-																												// and
-																												// Markdown
-			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
-			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", // Configuration files
-			".sql", ".sh", ".bat", ".cmd", // Scripts and database
-			".log", ".conf", ".ini", // Logs and configuration
-			".gradle", ".pom", ".mvn", // Build tools
-			".csv", ".rst", ".adoc", // Documentation and data
-			".cpp", ".c", ".h", ".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala" // Additional
-																						// programming
-																						// languages
-	));
 
 	/**
 	 * Input class for linked folder operations
@@ -359,7 +338,7 @@ public class LinkedFolderOperator extends AbstractBaseTool<LinkedFolderOperator.
 		}
 
 		String extension = getFileExtension(filePath);
-		return SUPPORTED_EXTENSIONS.contains(extension.toLowerCase());
+		return UnifiedDirectoryManager.SUPPORTED_TEXT_FILE_EXTENSIONS.contains(extension.toLowerCase());
 	}
 
 	/**
