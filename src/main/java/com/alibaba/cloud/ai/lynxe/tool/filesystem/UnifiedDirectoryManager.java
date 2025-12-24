@@ -64,15 +64,24 @@ public class UnifiedDirectoryManager {
 																														// Markdown
 			".java", ".py", ".js", ".ts", ".jsx", ".tsx", // Common programming languages
 			".html", ".htm", ".mhtml", ".css", ".scss", ".sass", ".less", ".vue", // Web-related
-			".xml", ".json", ".yaml", ".yml", ".properties", ".toml", ".cfg", ".env", // Configuration files
+			".xml", ".json", ".yaml", ".yml", ".properties", ".toml", ".cfg", ".env", // Configuration
+																						// files
 			".sql", ".sh", ".bat", ".cmd", ".ps1", ".pl", // Scripts and database
 			".log", ".conf", ".ini", // Logs and configuration
 			".gradle", ".pom", ".mvn", // Build tools
-			".csv", ".rst", ".adoc", ".tex", ".srt", ".vtt", // Documentation, data, and subtitles
+			".csv", ".rst", ".adoc", ".tex", ".srt", ".vtt", // Documentation, data, and
+																// subtitles
 			".cpp", ".c", ".h", ".hpp", ".hxx", ".cc", ".cxx", // C/C++ variants
-			".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala", // Additional programming languages
-			".groovy", ".dart", ".lua", ".r", ".jl", ".clj", ".hs", ".elm", // More programming languages
-			".ex", ".exs", ".erl", ".hrl", ".fs", ".fsx", ".ml", ".mli", ".nim", ".zig", // Functional and other languages
+			".go", ".rs", ".php", ".rb", ".swift", ".kt", ".scala", // Additional
+																	// programming
+																	// languages
+			".groovy", ".dart", ".lua", ".r", ".jl", ".clj", ".hs", ".elm", // More
+																			// programming
+																			// languages
+			".ex", ".exs", ".erl", ".hrl", ".fs", ".fsx", ".ml", ".mli", ".nim", ".zig", // Functional
+																							// and
+																							// other
+																							// languages
 			".m", ".mm", ".tcl", ".awk", ".sed" // Objective-C, TCL, AWK, sed
 	));
 

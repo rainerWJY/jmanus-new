@@ -52,7 +52,6 @@ public class TextFileService implements ApplicationRunner, ITextFileService {
 	@Autowired
 	private UnifiedDirectoryManager unifiedDirectoryManager;
 
-
 	private final ConcurrentHashMap<String, FileState> fileStates = new ConcurrentHashMap<>();
 
 	@Override
