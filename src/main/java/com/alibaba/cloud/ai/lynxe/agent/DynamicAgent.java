@@ -143,11 +143,6 @@ public class DynamicAgent extends ReActAgent {
 
 	private final List<String> recentToolResults = new ArrayList<>();
 
-	/**
-	 * Flag to track if user request has been saved to conversation memory This prevents
-	 * duplicate saves during retry attempts
-	 */
-	private boolean userRequestSavedToConversationMemory = false;
 
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
@@ -1676,18 +1671,6 @@ public class DynamicAgent extends ReActAgent {
 		}
 	}
 
-	/**
-	 * Calculate the total escaped string length for all messages in a Prompt. Directly
-	 * serializes the messages list to JSON and returns the length.
-	 * @param prompt the Prompt containing messages
-	 * @return the total length of all messages when serialized to JSON
-	 */
-	private long calculateTotalLength(Prompt prompt) {
-		if (prompt == null || prompt.getInstructions() == null) {
-			return 0;
-		}
-		return calculateTotalLength(prompt.getInstructions());
-	}
 
 	/**
 	 * Calculate the total escaped string length for a list of messages. Directly
