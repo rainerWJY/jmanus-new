@@ -391,9 +391,10 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize multiple dialog rounds into a single UserMessage of 3000-4000 chars.
+	 * Summarize multiple dialog rounds into a single UserMessage in state_snapshot XML format.
+	 * The summary should be between 3000-4000 chars and structured as state_snapshot XML.
 	 * @param rounds Dialog rounds to summarize
-	 * @return Summarized UserMessage
+	 * @return Summarized UserMessage in state_snapshot XML format
 	 */
 	private UserMessage summarizeRounds(List<DialogRound> rounds) {
 		try {
@@ -416,37 +417,66 @@ public class ConversationMemoryLimitService {
 
 			String conversationHistory = conversationText.toString();
 
-			// Create summarization prompt
+			// Create summarization prompt with state_snapshot XML format requirement
 			String summaryPrompt = String.format("""
-					Please summarize the following conversation history into a concise summary.
-					The summary should be between %d and %d characters.
-					Preserve key information, decisions,url,file , and important details.
-					Format the summary as a clear narrative of what happened in the conversation.
-
+					First, reason in your scratchpad. Then, generate the <state_snapshot>.
+					
+					Analyze the following conversation history and create a structured state_snapshot XML.
+					The state_snapshot should be between %d and %d characters total.
+					
+					Required XML structure:
+					<state_snapshot>
+					<overall_goal>
+					[The main objective or goal of the conversation]
+					</overall_goal>
+					<key_knowledge>
+					[Important facts, commands, configurations, URLs, file paths, and key information discovered]
+					</key_knowledge>
+					<file_system_state>
+					[Files that were created, modified, deleted, or accessed (use prefixes: CREATED, MODIFIED, DELETED, ACCESSED)]
+					</file_system_state>
+					<recent_actions>
+					[Recent tool calls, commands executed, searches performed, and actions taken]
+					</recent_actions>
+					<current_plan>
+					[Current plan items with status: [DONE], [IN PROGRESS], [PENDING]]
+					</current_plan>
+					</state_snapshot>
+					
+					Guidelines:
+					- Preserve all critical information: URLs, file paths, commands, configurations
+					- Include tool names and their results when relevant
+					- Track file system changes accurately
+					- Maintain plan status and progress
+					- Keep the total length between %d and %d characters
+					- Output the XML content directly, no additional text before or after
+					
 					Conversation history:
 					%s
-					""", SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, conversationHistory);
+					""", SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS,
+					conversationHistory);
 
-			// Use LLM to generate summary
+			// Use LLM to generate summary in state_snapshot format
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
 			ChatResponse response = chatClient.prompt()
-				.system("You are a helpful assistant that summarizes conversations concisely and accurately.")
+				.system("You are a helpful assistant that creates structured state_snapshot summaries. "
+						+ "Always output valid XML in the exact format requested.")
 				.user(summaryPrompt)
 				.call()
 				.chatResponse();
 
 			String summary = response.getResult().getOutput().getText();
 
-			// Ensure summary is within target range
+			// Ensure summary is within target range (simple truncation if needed)
 			if (summary.length() < SUMMARY_MIN_CHARS) {
-				log.warn("Generated summary is too short ({} chars), expanding...", summary.length());
-				// Could add a follow-up prompt to expand, but for now just use as-is
+				log.warn("Generated summary is too short ({} chars), using as-is", summary.length());
 			}
 			else if (summary.length() > SUMMARY_MAX_CHARS) {
 				log.warn("Generated summary is too long ({} chars), truncating...", summary.length());
 				summary = summary.substring(0, SUMMARY_MAX_CHARS);
 			}
 
+			// Store as UserMessage regardless of format correctness (as requested)
 			return new UserMessage(summary);
 
 		}
