@@ -519,30 +519,24 @@ public class ConversationMemoryLimitService {
 	/**
 	 * Force compress agent memory to break potential loops caused by repeated tool call
 	 * results. This method compresses the memory regardless of character count limits.
-	 * @param chatMemory The chat memory instance
-	 * @param planId The plan ID to compress memory for (agent memory uses planId)
+	 * @param messages The list of messages to compress
+	 * @return Compressed list of messages containing summary and most recent round
 	 */
-	public void forceCompressAgentMemory(ChatMemory chatMemory, String planId) {
-		if (chatMemory == null || planId == null || planId.trim().isEmpty()) {
-			return;
+	public List<Message> forceCompressAgentMemory(List<Message> messages) {
+		if (messages == null || messages.isEmpty()) {
+			log.debug("No messages found, skipping forced compression");
+			return new ArrayList<>(messages);
 		}
 
 		try {
-			List<Message> messages = chatMemory.get(planId);
-			if (messages == null || messages.isEmpty()) {
-				log.debug("No messages found for planId: {}, skipping forced compression", planId);
-				return;
-			}
-
-			log.info("Force compressing agent memory for planId: {} to break potential loop. Message count: {}", planId,
-					messages.size());
+			log.info("Force compressing agent memory to break potential loop. Message count: {}", messages.size());
 
 			// Group messages into dialog rounds
 			List<DialogRound> dialogRounds = groupMessagesIntoRounds(messages);
 
 			if (dialogRounds.isEmpty()) {
-				log.warn("No dialog rounds found for planId: {}", planId);
-				return;
+				log.warn("No dialog rounds found, returning original messages");
+				return new ArrayList<>(messages);
 			}
 
 			// Force compression: keep only the most recent round, summarize all older
@@ -571,36 +565,37 @@ public class ConversationMemoryLimitService {
 				summaryMessage = summarizeRounds(roundsToSummarize);
 			}
 
-			// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
+			// Build compressed message list: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
 			// This maintains the user-assistant message pair pattern similar to state_snapshot storage
-			chatMemory.clear(planId);
+			List<Message> compressedMessages = new ArrayList<>();
 
 			if (summaryMessage != null) {
 				// Add summary as UserMessage (like state_snapshot)
-				chatMemory.add(planId, summaryMessage);
+				compressedMessages.add(summaryMessage);
 				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
 				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
-				chatMemory.add(planId, confirmationMessage);
-				log.info("Added forced summary message ({} chars) with confirmation for planId: {}",
-						summaryMessage.getText().length(), planId);
+				compressedMessages.add(confirmationMessage);
+				log.info("Added forced summary message ({} chars) with confirmation", summaryMessage.getText().length());
 			}
 
 			// Add most recent round
 			for (DialogRound round : roundsToKeep) {
-				for (Message message : round.getMessages()) {
-					chatMemory.add(planId, message);
-				}
+				compressedMessages.addAll(round.getMessages());
 			}
 
 			int keptChars = calculateTotalCharacters(
 					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
 			log.info(
-					"Forced compression completed for planId: {}. Kept {} recent round(s) ({} chars), summarized {} older rounds into {} chars",
-					planId, roundsToKeep.size(), keptChars, roundsToSummarize.size(),
+					"Forced compression completed. Kept {} recent round(s) ({} chars), summarized {} older rounds into {} chars",
+					roundsToKeep.size(), keptChars, roundsToSummarize.size(),
 					summaryMessage != null ? summaryMessage.getText().length() : 0);
+
+			return compressedMessages;
 		}
 		catch (Exception e) {
-			log.warn("Failed to force compress agent memory for planId: {}", planId, e);
+			log.warn("Failed to force compress agent memory", e);
+			// Return original messages on error
+			return new ArrayList<>(messages);
 		}
 	}
 

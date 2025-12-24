@@ -143,6 +143,11 @@ public class DynamicAgent extends ReActAgent {
 
 	private final List<String> recentToolResults = new ArrayList<>();
 
+	/**
+	 * Agent memory stored as a list of messages (replaces ChatMemory-based agentMemory)
+	 */
+	private List<Message> agentMessages = new ArrayList<>();
+
 
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
@@ -284,9 +289,7 @@ public class DynamicAgent extends ReActAgent {
 				// Build current prompt. System message is the first message
 				List<Message> messages = new ArrayList<>();
 				// Add history message from agent memory
-				ChatMemory chatMemory = llmService.getAgentMemory(lynxeProperties.getMaxMemory());
-				List<Message> historyMem = chatMemory.get(getCurrentPlanId());
-				// List<Message> subAgentMem = chatMemory.get(getCurrentPlanId());
+				List<Message> historyMem = agentMessages;
 
 				// Add conversation history from MemoryService if conversationId is
 				// available and conversation memory is enabled
@@ -1386,8 +1389,7 @@ public class DynamicAgent extends ReActAgent {
 
 				// Force compress agent memory to break the loop
 				if (conversationMemoryLimitService != null) {
-					conversationMemoryLimitService.forceCompressAgentMemory(
-							llmService.getAgentMemory(lynxeProperties.getMaxMemory()), getCurrentPlanId());
+					agentMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
 				}
 
 				// Clear the recent results after compression
@@ -1404,9 +1406,7 @@ public class DynamicAgent extends ReActAgent {
 
 			if (!StringUtils.isBlank(userInput)) {
 				// Add user input to memory
-
-				llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), userMessage);
-
+				agentMessages.add(userMessage);
 			}
 		}
 	}
@@ -1455,8 +1455,8 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		// Step 3: Clear current plan memory and add filtered messages to Agent Memory
-		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
-		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), messagesToAdd);
+		agentMessages.clear();
+		agentMessages.addAll(messagesToAdd);
 	}
 
 	@Override
@@ -1469,6 +1469,53 @@ public class DynamicAgent extends ReActAgent {
 		super.handleCompletedExecution(results);
 		// Note: Final result will be saved to conversation memory in
 		// PlanFinalizer.handlePostExecution()
+	}
+
+	@Override
+	protected String generateFinalSummary() {
+		try {
+			log.info("Generating final summary for agent execution");
+
+			// Get all memory entries from agentMessages
+			List<Message> memoryEntries = new ArrayList<>(agentMessages);
+
+			if (memoryEntries.isEmpty()) {
+				return "No memory entries found for final summary";
+			}
+
+			// Use LLM to generate a concise summary
+			String summaryPrompt = """
+					Based on the completed steps, try to answer the user's original request.
+					If the current steps are insufficient to support answering the original request,
+					simply describe that the step limit has been reached and please try again.
+
+					""";
+			// Create a simple prompt for summary generation
+			UserMessage summaryRequest = new UserMessage(summaryPrompt);
+			memoryEntries.add(getThinkMessage());
+			memoryEntries.add(getNextStepWithEnvMessage());
+			memoryEntries.add(summaryRequest);
+			Prompt prompt = new Prompt(memoryEntries);
+
+			// Get LLM response for summary
+			ChatClient chatClient;
+			if (modelName == null || modelName.isEmpty()) {
+				chatClient = llmService.getDefaultDynamicAgentChatClient();
+			}
+			else {
+				chatClient = llmService.getDynamicAgentChatClient(modelName);
+			}
+			ChatResponse response = chatClient.prompt(prompt).call().chatResponse();
+
+			String summary = response.getResult().getOutput().getText();
+			log.info("Generated final summary: {}", summary);
+			return summary;
+
+		}
+		catch (Exception e) {
+			log.error("Failed to generate final summary", e);
+			return "Summary generation failed: " + e.getMessage();
+		}
 	}
 
 	@Override
