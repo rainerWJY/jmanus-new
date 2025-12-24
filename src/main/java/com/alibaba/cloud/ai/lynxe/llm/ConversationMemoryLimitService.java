@@ -49,6 +49,8 @@ public class ConversationMemoryLimitService {
 
 	private static final int SUMMARY_MAX_CHARS = 4000;
 
+	private static final String COMPRESSION_CONFIRMATION_MESSAGE = "Got it. Thanks for the additional context!";
+
 	@Autowired
 	private LynxeProperties lynxeProperties;
 
@@ -216,9 +218,12 @@ public class ConversationMemoryLimitService {
 					UserMessage summarizedRound = summarizeRounds(List.of(round));
 					DialogRound summarizedRoundObj = new DialogRound();
 					summarizedRoundObj.addMessage(summarizedRound);
+					// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+					AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
+					summarizedRoundObj.addMessage(confirmationMessage);
 					roundsToKeep.add(0, summarizedRoundObj); // Add at beginning to
 																// maintain order
-					accumulatedChars += summarizedRound.getText().length();
+					accumulatedChars += summarizedRound.getText().length() + confirmationMessage.getText().length();
 				}
 				else {
 					roundsToKeep.add(0, round);
@@ -253,6 +258,9 @@ public class ConversationMemoryLimitService {
 				UserMessage summarizedRound = summarizeRounds(List.of(newestRound));
 				DialogRound summarizedRoundObj = new DialogRound();
 				summarizedRoundObj.addMessage(summarizedRound);
+				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
+				summarizedRoundObj.addMessage(confirmationMessage);
 				roundsToKeep.add(summarizedRoundObj);
 			}
 			else {
@@ -270,13 +278,18 @@ public class ConversationMemoryLimitService {
 			summaryMessage = summarizeRounds(roundsToSummarize);
 		}
 
-		// Rebuild memory: summary first, then recent rounds
+		// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then recent rounds
+		// This maintains the user-assistant message pair pattern similar to state_snapshot storage
 		chatMemory.clear(conversationId);
 
 		if (summaryMessage != null) {
+			// Add summary as UserMessage (like state_snapshot)
 			chatMemory.add(conversationId, summaryMessage);
-			log.info("Added summarized message ({} chars) for conversationId: {}", summaryMessage.getText().length(),
-					conversationId);
+			// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+			AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
+			chatMemory.add(conversationId, confirmationMessage);
+			log.info("Added summarized message ({} chars) with confirmation for conversationId: {}",
+					summaryMessage.getText().length(), conversationId);
 		}
 
 		// Add recent rounds
@@ -528,13 +541,18 @@ public class ConversationMemoryLimitService {
 				summaryMessage = summarizeRounds(roundsToSummarize);
 			}
 
-			// Rebuild memory: summary first, then most recent round
+			// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
+			// This maintains the user-assistant message pair pattern similar to state_snapshot storage
 			chatMemory.clear(planId);
 
 			if (summaryMessage != null) {
+				// Add summary as UserMessage (like state_snapshot)
 				chatMemory.add(planId, summaryMessage);
-				log.info("Added forced summary message ({} chars) for planId: {}", summaryMessage.getText().length(),
-						planId);
+				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
+				chatMemory.add(planId, confirmationMessage);
+				log.info("Added forced summary message ({} chars) with confirmation for planId: {}",
+						summaryMessage.getText().length(), planId);
 			}
 
 			// Add most recent round
