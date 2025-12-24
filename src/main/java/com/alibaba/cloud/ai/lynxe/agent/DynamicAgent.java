@@ -318,15 +318,14 @@ public class DynamicAgent extends ReActAgent {
 				else if (!lynxeProperties.getEnableConversationMemory()) {
 					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
 				}
-		
+				messages.addAll(Collections.singletonList(systemMessage));
 				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
 				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
 						getCurrentStep());
 				
 				messages.add(currentStepEnvMessage);
-				messages.addAll(Collections.singletonList(systemMessage));
-
+				
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
 				Map<String, Object> toolContextMap = new HashMap<>();
@@ -350,7 +349,11 @@ public class DynamicAgent extends ReActAgent {
 				// Calculate input character count from all messages by serializing to
 				// JSON
 				// This gives a more accurate count of the actual data sent to LLM
-				int inputCharCount = (int) calculateTotalLength(messages);
+				if (conversationMemoryLimitService == null) {
+					throw new IllegalStateException(
+							"ConversationMemoryLimitService is not available. Cannot calculate message character count.");
+				}
+				int inputCharCount = conversationMemoryLimitService.calculateTotalCharacters(messages);
 				log.info("User prompt character count: {}", inputCharCount);
 
 				// Use streaming response handler for better user experience and content
@@ -1762,30 +1765,5 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 
-	/**
-	 * Calculate the total escaped string length for a list of messages. Directly
-	 * serializes the messages list to JSON and returns the length.
-	 * @param messages the list of messages
-	 * @return the total length of all messages when serialized to JSON
-	 */
-	private long calculateTotalLength(List<Message> messages) {
-		if (messages == null || messages.isEmpty()) {
-			return 0;
-		}
-
-		try {
-			// Directly serialize the entire messages list to JSON
-			String json = objectMapper.writeValueAsString(messages);
-			return json.length();
-		}
-		catch (Exception e) {
-			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
-			// Fallback to simple text length calculation
-			return messages.stream().mapToLong(message -> {
-				String text = message.getText();
-				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
-			}).sum();
-		}
-	}
 
 }

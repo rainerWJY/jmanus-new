@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Service to automatically limit conversation memory size based on character count. Uses
@@ -56,6 +57,9 @@ public class ConversationMemoryLimitService {
 
 	@Autowired
 	private LlmService llmService;
+
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	/**
 	 * Check and limit conversation memory size for a given conversation ID. Maintains
@@ -97,19 +101,29 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Calculate total character count of all messages.
+	 * Calculate total character count of all messages by serializing to JSON.
+	 * This gives a more accurate count of the actual data that would be sent to LLM.
 	 * @param messages List of messages
 	 * @return Total character count
 	 */
-	private int calculateTotalCharacters(List<Message> messages) {
-		int totalChars = 0;
-		for (Message message : messages) {
-			String content = extractMessageContent(message);
-			if (content != null) {
-				totalChars += content.length();
-			}
+	public int calculateTotalCharacters(List<Message> messages) {
+		if (messages == null || messages.isEmpty()) {
+			return 0;
 		}
-		return totalChars;
+
+		try {
+			// Directly serialize the entire messages list to JSON
+			String json = objectMapper.writeValueAsString(messages);
+			return json.length();
+		}
+		catch (Exception e) {
+			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+			// Fallback to simple text length calculation
+			return messages.stream().mapToInt(message -> {
+				String text = message.getText();
+				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
+			}).sum();
+		}
 	}
 
 	/**
@@ -398,10 +412,22 @@ public class ConversationMemoryLimitService {
 	 */
 	private UserMessage summarizeRounds(List<DialogRound> rounds) {
 		try {
-			// Build conversation text from rounds
-			StringBuilder conversationText = new StringBuilder();
+			// Build list of all messages from rounds
+			List<Message> allMessages = new ArrayList<>();
 			for (DialogRound round : rounds) {
-				for (Message message : round.getMessages()) {
+				allMessages.addAll(round.getMessages());
+			}
+
+			// Convert entire message list to JSON as conversation text
+			String conversationHistory;
+			try {
+				conversationHistory = objectMapper.writeValueAsString(allMessages);
+			}
+			catch (Exception e) {
+				log.warn("Failed to serialize messages to JSON for summarization, using fallback", e);
+				// Fallback: build text representation
+				StringBuilder conversationText = new StringBuilder();
+				for (Message message : allMessages) {
 					String content = extractMessageContent(message);
 					if (message instanceof UserMessage) {
 						conversationText.append("User: ").append(content).append("\n\n");
@@ -413,9 +439,8 @@ public class ConversationMemoryLimitService {
 						conversationText.append("Tool Response: ").append(content).append("\n\n");
 					}
 				}
+				conversationHistory = conversationText.toString();
 			}
-
-			String conversationHistory = conversationText.toString();
 
 			// Create summarization prompt with state_snapshot XML format requirement
 			String summaryPrompt = String.format("""
@@ -514,6 +539,95 @@ public class ConversationMemoryLimitService {
 			}).sum();
 		}
 
+	}
+
+	/**
+	 * Force compress conversation memory to break potential loops. This method compresses
+	 * the memory regardless of character count limits, keeping only the most recent round
+	 * and summarizing all older rounds.
+	 * @param chatMemory The chat memory instance
+	 * @param conversationId The conversation ID to compress memory for
+	 */
+	public void forceCompressConversationMemory(ChatMemory chatMemory, String conversationId) {
+		if (chatMemory == null || conversationId == null || conversationId.trim().isEmpty()) {
+			return;
+		}
+
+		try {
+			List<Message> messages = chatMemory.get(conversationId);
+			if (messages == null || messages.isEmpty()) {
+				log.debug("No messages found for conversationId: {}, skipping forced compression", conversationId);
+				return;
+			}
+
+			log.info("Force compressing conversation memory for conversationId: {} to break potential loop. Message count: {}",
+					conversationId, messages.size());
+
+			// Group messages into dialog rounds
+			List<DialogRound> dialogRounds = groupMessagesIntoRounds(messages);
+
+			if (dialogRounds.isEmpty()) {
+				log.warn("No dialog rounds found for conversationId: {}", conversationId);
+				return;
+			}
+
+			// Force compression: keep only the most recent round, summarize all older
+			// rounds
+			List<DialogRound> roundsToKeep = new ArrayList<>();
+			List<DialogRound> roundsToSummarize = new ArrayList<>();
+
+			// Keep only the most recent round
+			if (dialogRounds.size() > 1) {
+				DialogRound newestRound = dialogRounds.get(dialogRounds.size() - 1);
+				roundsToKeep.add(newestRound);
+
+				// Summarize all older rounds
+				for (int i = 0; i < dialogRounds.size() - 1; i++) {
+					roundsToSummarize.add(dialogRounds.get(i));
+				}
+			}
+			else {
+				// If only one round, just keep it
+				roundsToKeep.add(dialogRounds.get(0));
+			}
+
+			// Summarize older rounds
+			UserMessage summaryMessage = null;
+			if (!roundsToSummarize.isEmpty()) {
+				summaryMessage = summarizeRounds(roundsToSummarize);
+			}
+
+			// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
+			// This maintains the user-assistant message pair pattern similar to state_snapshot storage
+			chatMemory.clear(conversationId);
+
+			if (summaryMessage != null) {
+				// Add summary as UserMessage (like state_snapshot)
+				chatMemory.add(conversationId, summaryMessage);
+				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
+				chatMemory.add(conversationId, confirmationMessage);
+				log.info("Added forced summary message ({} chars) with confirmation for conversationId: {}",
+						summaryMessage.getText().length(), conversationId);
+			}
+
+			// Add most recent round
+			for (DialogRound round : roundsToKeep) {
+				for (Message message : round.getMessages()) {
+					chatMemory.add(conversationId, message);
+				}
+			}
+
+			int keptChars = calculateTotalCharacters(
+					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
+			log.info(
+					"Forced compression completed for conversationId: {}. Kept {} recent round(s) ({} chars), summarized {} older rounds into {} chars",
+					conversationId, roundsToKeep.size(), keptChars, roundsToSummarize.size(),
+					summaryMessage != null ? summaryMessage.getText().length() : 0);
+		}
+		catch (Exception e) {
+			log.warn("Failed to force compress conversation memory for conversationId: {}", conversationId, e);
+		}
 	}
 
 	/**
@@ -646,7 +760,7 @@ public class ConversationMemoryLimitService {
 			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()
 					&& !conversationMessages.isEmpty()) {
 				try {
-					checkAndLimitMemory(conversationMemory, conversationId);
+					forceCompressConversationMemory(conversationMemory, conversationId);
 					log.info("Force compressed conversation memory for conversationId: {}", conversationId);
 				}
 				catch (Exception e) {
