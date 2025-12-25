@@ -157,7 +157,6 @@ public class PlanningFactory {
 	@Autowired
 	private StreamingResponseHandler streamingResponseHandler;
 
-
 	@Autowired
 	private SubplanToolService subplanToolService;
 
