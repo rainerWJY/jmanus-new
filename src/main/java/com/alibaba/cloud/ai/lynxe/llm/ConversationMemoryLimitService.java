@@ -44,8 +44,6 @@ public class ConversationMemoryLimitService {
 
 	private static final Logger log = LoggerFactory.getLogger(ConversationMemoryLimitService.class);
 
-	private static final int RECENT_CHARS_TO_KEEP = 5000;
-
 	private static final int SUMMARY_MIN_CHARS = 3000;
 
 	private static final int SUMMARY_MAX_CHARS = 4000;

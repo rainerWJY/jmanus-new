@@ -56,7 +56,6 @@ import com.alibaba.cloud.ai.lynxe.model.repository.DynamicModelRepository;
 import com.alibaba.cloud.ai.lynxe.planning.service.PlanFinalizer;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.ImageRecognitionExecutorPool;
-import com.alibaba.cloud.ai.lynxe.runtime.executor.LevelBasedExecutorPool;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
@@ -94,13 +93,13 @@ import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.GlobFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.ListFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationProvider;
 import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationTool;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.jsxGenerator.JsxGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileBasedParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FunctionRegistryService;
@@ -109,7 +108,6 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingE
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
-import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
@@ -173,8 +171,6 @@ public class PlanningFactory {
 	@Lazy
 	private TaskInterruptionManager taskInterruptionManager;
 
-	@Autowired
-	private PptGeneratorService pptGeneratorService;
 
 	@Autowired
 	private PlanIdDispatcher planIdDispatcher;
@@ -192,9 +188,6 @@ public class PlanningFactory {
 
 	@Autowired
 	private MemoryService memoryService;
-
-	@Autowired(required = false)
-	private LevelBasedExecutorPool levelBasedExecutorPool;
 
 	@Autowired
 	private com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService;

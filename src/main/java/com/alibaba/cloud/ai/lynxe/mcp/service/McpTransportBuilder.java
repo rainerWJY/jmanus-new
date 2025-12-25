@@ -324,16 +324,6 @@ public class McpTransportBuilder {
 	}
 
 	/**
-	 * Create WebClient builder (with baseUrl) using shared HttpClient instance
-	 * @param baseUrl Base URL
-	 * @param serverConfig Server configuration (may contain custom headers)
-	 * @return WebClient builder
-	 */
-	private WebClient.Builder createWebClientBuilder(String baseUrl, McpServerConfig serverConfig) {
-		return createWebClientBuilder(baseUrl, serverConfig, sharedConnector);
-	}
-
-	/**
 	 * Create WebClient builder (with baseUrl) using specified HttpClient connector
 	 * @param baseUrl Base URL
 	 * @param serverConfig Server configuration (may contain custom headers)

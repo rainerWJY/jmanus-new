@@ -73,7 +73,6 @@ import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
-import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -119,8 +118,6 @@ public class DynamicAgent extends ReActAgent {
 	private AgentInterruptionHelper agentInterruptionHelper;
 
 	private ParallelExecutionService parallelExecutionService;
-
-	private MemoryService memoryService;
 
 	private ConversationMemoryLimitService conversationMemoryLimitService;
 
@@ -173,7 +170,7 @@ public class DynamicAgent extends ReActAgent {
 			Map<String, Object> initialAgentSetting, UserInputService userInputService, String modelName,
 			StreamingResponseHandler streamingResponseHandler, ExecutionStep step, PlanIdDispatcher planIdDispatcher,
 			LynxeEventPublisher lynxeEventPublisher, AgentInterruptionHelper agentInterruptionHelper,
-			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService, MemoryService memoryService,
+			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
 			ServiceGroupIndexService serviceGroupIndexService) {
 		super(llmService, planExecutionRecorder, lynxeProperties, initialAgentSetting, step, planIdDispatcher);
@@ -195,7 +192,6 @@ public class DynamicAgent extends ReActAgent {
 		this.lynxeEventPublisher = lynxeEventPublisher;
 		this.agentInterruptionHelper = agentInterruptionHelper;
 		this.parallelExecutionService = parallelExecutionService;
-		this.memoryService = memoryService;
 		this.conversationMemoryLimitService = conversationMemoryLimitService;
 		this.serviceGroupIndexService = serviceGroupIndexService;
 	}

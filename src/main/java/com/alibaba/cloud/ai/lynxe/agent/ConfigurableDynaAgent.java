@@ -39,7 +39,6 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
 import com.alibaba.cloud.ai.lynxe.tool.TerminableTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
-import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -78,13 +77,13 @@ public class ConfigurableDynaAgent extends DynamicAgent {
 			Map<String, Object> initialAgentSetting, UserInputService userInputService, String modelName,
 			StreamingResponseHandler streamingResponseHandler, ExecutionStep step, PlanIdDispatcher planIdDispatcher,
 			LynxeEventPublisher lynxeEventPublisher, AgentInterruptionHelper agentInterruptionHelper,
-			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService, MemoryService memoryService,
+			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
 			ServiceGroupIndexService serviceGroupIndexService) {
 		super(llmService, planExecutionRecorder, lynxeProperties, name, description, nextStepPrompt, availableToolKeys,
 				toolCallingManager, initialAgentSetting, userInputService, modelName, streamingResponseHandler, step,
 				planIdDispatcher, lynxeEventPublisher, agentInterruptionHelper, objectMapper, parallelExecutionService,
-				memoryService, conversationMemoryLimitService, serviceGroupIndexService);
+				conversationMemoryLimitService, serviceGroupIndexService);
 		this.serviceGroupIndexService = serviceGroupIndexService;
 	}
 

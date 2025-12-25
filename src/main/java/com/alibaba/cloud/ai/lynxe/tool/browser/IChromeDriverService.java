@@ -16,8 +16,8 @@
 package com.alibaba.cloud.ai.lynxe.tool.browser;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 
 /**
  * Chrome driver service interface providing browser driver management functions

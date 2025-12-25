@@ -46,7 +46,6 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
-import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -83,8 +82,6 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 
 	private final ParallelExecutionService parallelExecutionService;
 
-	private final MemoryService memoryService;
-
 	private final ConversationMemoryLimitService conversationMemoryLimitService;
 
 	private final ServiceGroupIndexService serviceGroupIndexService;
@@ -96,7 +93,7 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 			ToolCallingManager toolCallingManager, UserInputService userInputService,
 			StreamingResponseHandler streamingResponseHandler, PlanIdDispatcher planIdDispatcher,
 			LynxeEventPublisher lynxeEventPublisher, ObjectMapper objectMapper,
-			ParallelExecutionService parallelExecutionService, MemoryService memoryService,
+			ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
 			ServiceGroupIndexService serviceGroupIndexService, UnifiedDirectoryManager unifiedDirectoryManager) {
 		super(agents, recorder, llmService, lynxeProperties, levelBasedExecutorPool, fileUploadService,
@@ -109,7 +106,6 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 		this.lynxeEventPublisher = lynxeEventPublisher;
 		this.objectMapper = objectMapper;
 		this.parallelExecutionService = parallelExecutionService;
-		this.memoryService = memoryService;
 		this.conversationMemoryLimitService = conversationMemoryLimitService;
 		this.serviceGroupIndexService = serviceGroupIndexService;
 	}
@@ -168,8 +164,8 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 		ConfigurableDynaAgent agent = new ConfigurableDynaAgent(llmService, getRecorder(), lynxeProperties, name,
 				description, nextStepPrompt, selectedToolKeys, toolCallingManager, initialAgentSetting,
 				userInputService, modelName, streamingResponseHandler, step, planIdDispatcher, lynxeEventPublisher,
-				agentInterruptionHelper, objectMapper, parallelExecutionService, memoryService,
-				conversationMemoryLimitService, serviceGroupIndexService);
+				agentInterruptionHelper, objectMapper, parallelExecutionService, conversationMemoryLimitService,
+				serviceGroupIndexService);
 
 		agent.setCurrentPlanId(planId);
 		agent.setRootPlanId(rootPlanId);

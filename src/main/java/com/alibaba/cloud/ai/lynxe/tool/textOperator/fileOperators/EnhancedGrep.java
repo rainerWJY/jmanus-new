@@ -42,10 +42,10 @@ import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

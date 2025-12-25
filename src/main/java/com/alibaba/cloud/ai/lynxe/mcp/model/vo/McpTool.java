@@ -21,8 +21,7 @@ import org.springframework.ai.tool.ToolCallback;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.ISmartContentSavingService;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -34,10 +33,10 @@ public class McpTool extends AbstractBaseTool<Map<String, Object>> {
 
 	private String serviceNameString;
 
-	private ISmartContentSavingService smartContentSavingService;
+	private SmartContentSavingService smartContentSavingService;
 
 	public McpTool(ToolCallback toolCallback, String serviceNameString, String planId,
-			ISmartContentSavingService smartContentSavingService, ObjectMapper objectMapper) {
+		SmartContentSavingService smartContentSavingService, ObjectMapper objectMapper) {
 		this.toolCallback = toolCallback;
 		this.objectMapper = objectMapper;
 		this.serviceNameString = serviceNameString;
