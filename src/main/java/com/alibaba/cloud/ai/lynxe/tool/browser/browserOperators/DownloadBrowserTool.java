@@ -138,7 +138,7 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

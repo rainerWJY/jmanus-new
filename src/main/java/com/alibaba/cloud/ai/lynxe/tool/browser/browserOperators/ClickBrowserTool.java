@@ -120,7 +120,7 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

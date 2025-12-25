@@ -135,7 +135,7 @@ public class InputTextBrowserTool extends AbstractBrowserTool<InputTextBrowserTo
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

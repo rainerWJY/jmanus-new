@@ -120,7 +120,7 @@ public class NavigateBrowserTool extends AbstractBrowserTool<NavigateBrowserTool
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

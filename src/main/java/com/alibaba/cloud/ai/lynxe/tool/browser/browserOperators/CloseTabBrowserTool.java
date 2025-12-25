@@ -118,7 +118,7 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

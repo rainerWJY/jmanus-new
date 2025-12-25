@@ -122,7 +122,7 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

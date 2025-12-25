@@ -106,7 +106,7 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

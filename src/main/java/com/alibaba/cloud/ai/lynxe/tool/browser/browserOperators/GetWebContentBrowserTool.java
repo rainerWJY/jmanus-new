@@ -111,7 +111,7 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override

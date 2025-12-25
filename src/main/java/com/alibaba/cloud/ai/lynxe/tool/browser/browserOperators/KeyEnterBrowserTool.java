@@ -120,7 +120,7 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "browser-service-group";
 	}
 
 	@Override
