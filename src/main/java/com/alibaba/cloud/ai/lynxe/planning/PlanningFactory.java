@@ -95,6 +95,10 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
+import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
+import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.CreatePptTool;
+import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.GetPptTemplateListTool;
+import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.GetPptTemplateTool;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.CreateTableTool;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.GetTableStructureTool;
@@ -172,6 +176,9 @@ public class PlanningFactory {
 	@SuppressWarnings("unused")
 	@Autowired
 	private PptGeneratorOperator pptGeneratorOperator;
+
+	@Autowired
+	private PptGeneratorService pptGeneratorService;
 
 	@Autowired
 	private PlanIdDispatcher planIdDispatcher;
@@ -327,6 +334,10 @@ public class PlanningFactory {
 			toolDefinitions.add(new DeleteRowFromTableTool(tableProcessingService, toolI18nService));
 			toolDefinitions.add(new QueryTableTool(tableProcessingService, toolI18nService));
 			// toolDefinitions.add(new TableProcessorTool(tableProcessingService));
+			// Refactored PPT operators (split from PptGeneratorOperator)
+			toolDefinitions.add(new CreatePptTool(pptGeneratorService, toolI18nService));
+			toolDefinitions.add(new GetPptTemplateListTool(pptGeneratorService, toolI18nService));
+			toolDefinitions.add(new GetPptTemplateTool(pptGeneratorService, toolI18nService));
 			// toolDefinitions.add(pptGeneratorOperator);
 			// toolDefinitions.add(jsxGeneratorOperator);
 			// toolDefinitions.add(new FileMergeTool(unifiedDirectoryManager));
