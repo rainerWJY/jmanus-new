@@ -81,11 +81,13 @@
 <script setup lang="ts">
 import { FileInfo } from '@/api/file-upload-api-service'
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
+import { useAvailableToolsSingleton, type useAvailableTools } from '@/composables/useAvailableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useTaskStop } from '@/composables/useTaskStop'
+import { useToast } from '@/plugins/useToast'
 import { useTaskStore } from '@/stores/task'
 import type { InputMessage } from '@/types/message-dialog'
 import { Icon } from '@iconify/vue'
@@ -99,6 +101,8 @@ const messageDialog = useMessageDialogSingleton()
 const planExecution = usePlanExecutionSingleton()
 const { stopTask } = useTaskStop()
 const fileUpload = useFileUploadSingleton()
+const availableToolsStore: ReturnType<typeof useAvailableTools> = useAvailableToolsSingleton()
+const toast = useToast()
 
 // Track if task is running
 const isTaskRunning = computed(() => taskStore.hasRunningTask())
@@ -520,20 +524,56 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
+// Validate that all selected tools exist in available tools
+const validateToolsExist = async (
+  planTemplateId: string
+): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
+  // Ensure available tools are loaded
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
+    await availableToolsStore.loadAvailableTools()
+  }
+
+  const nonExistentTools: string[] = []
+  const availableTools = availableToolsStore.availableTools.value
+  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+
+  // Find plan template by planTemplateId
+  const planTemplate = templateConfig.planTemplateList.value.find(
+    t => t.planTemplateId === planTemplateId
+  )
+
+  if (!planTemplate) {
+    // Template not found - this shouldn't happen, but handle gracefully
+    return { isValid: false, nonExistentTools: ['Plan template not found'] }
+  }
+
+  const steps = planTemplate.steps || []
+
+  // Check all steps for non-existent tools
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    const selectedToolKeys = step.selectedToolKeys || []
+
+    for (const toolKey of selectedToolKeys) {
+      if (!availableToolKeys.has(toolKey)) {
+        nonExistentTools.push(`Step ${i + 1}: ${toolKey}`)
+      }
+    }
+  }
+
+  return {
+    isValid: nonExistentTools.length === 0,
+    nonExistentTools,
+  }
+}
+
 const handleSend = async () => {
   if (!currentInput.value.trim() || isDisabled.value) return
 
   const finalInput = currentInput.value.trim()
-
-  // Save to history before sending
-  saveToHistory(finalInput)
-
-  // Reset history browsing state
-  historyIndex.value = -1
-  originalInputBeforeHistory.value = ''
-
-  // Clear the input immediately for instant feedback
-  clearInput()
 
   // Prepare query with tool information if selected
   const query: InputMessage = {
@@ -555,6 +595,26 @@ const handleSend = async () => {
     const selectedTool = innerToolOptions.value.find(tool => tool.value === selectedOption.value)
 
     if (selectedTool) {
+      // Validate tools before execution
+      const toolsValidation = await validateToolsExist(selectedTool.planTemplateId)
+      if (!toolsValidation.isValid) {
+        const toolList = toolsValidation.nonExistentTools
+          .map(tool => {
+            const match = tool.match(/^Step (\d+): (.+)$/)
+            if (match) {
+              return t('sidebar.nonExistentToolStep', {
+                stepNumber: match[1],
+                toolName: match[2],
+              })
+            }
+            return tool
+          })
+          .join('\n')
+        const errorMessage = `${t('sidebar.cannotExecuteNonExistentTools')}\n\n${t('sidebar.nonExistentToolsHeader')}\n${toolList}`
+        toast.error(errorMessage)
+        return // Prevent execution
+      }
+
       // Add tool information to query for backend processing
       const extendedQuery = query as InputMessage & {
         toolName?: string
@@ -578,6 +638,16 @@ const handleSend = async () => {
       )
     }
   }
+
+  // Save to history before sending (after validation passes)
+  saveToHistory(finalInput)
+
+  // Reset history browsing state
+  historyIndex.value = -1
+  originalInputBeforeHistory.value = ''
+
+  // Clear the input immediately for instant feedback (after validation passes)
+  clearInput()
 
   // Call sendMessage from useMessageDialog directly
   try {

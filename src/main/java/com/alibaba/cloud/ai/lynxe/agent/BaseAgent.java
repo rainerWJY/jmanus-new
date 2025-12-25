@@ -23,11 +23,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.tool.ToolCallback;
 
@@ -344,8 +340,6 @@ public abstract class BaseAgent {
 			lastStepResult = handleExceptionWithSystemErrorReport(e, results);
 		}
 		finally {
-			llmService.clearAgentMemory(currentPlanId);
-
 			// Record execution at the end
 			if (currentPlanId != null && planExecutionRecorder != null) {
 				planExecutionRecorder.recordCompleteAgentExecution(step);
@@ -566,46 +560,7 @@ public abstract class BaseAgent {
 	 * Generate a final summary of all agent memories when max rounds are reached
 	 * @return Summary string of all memories
 	 */
-	private String generateFinalSummary() {
-		try {
-			log.info("Generating final summary for agent execution");
-
-			// Get all memory entries for the current plan
-			List<Message> memoryEntries = llmService.getAgentMemory(lynxeProperties.getMaxMemory())
-				.get(getCurrentPlanId());
-
-			if (memoryEntries == null || memoryEntries.isEmpty()) {
-				return "No memory entries found for final summary";
-			}
-
-			// Use LLM to generate a concise summary
-			String summaryPrompt = """
-					Based on the completed steps, try to answer the user's original request.
-					If the current steps are insufficient to support answering the original request,
-					simply describe that the step limit has been reached and please try again.
-
-					""";
-			// Create a simple prompt for summary generation
-			UserMessage summaryRequest = new UserMessage(summaryPrompt);
-			memoryEntries.add(getThinkMessage());
-			memoryEntries.add(getNextStepWithEnvMessage());
-			memoryEntries.add(summaryRequest);
-			Prompt prompt = new Prompt(memoryEntries);
-
-			// Get LLM response for summary
-			ChatClient chatClient = llmService.getDiaChatClient();
-			ChatResponse response = chatClient.prompt(prompt).call().chatResponse();
-
-			String summary = response.getResult().getOutput().getText();
-			log.info("Generated final summary: {}", summary);
-			return summary;
-
-		}
-		catch (Exception e) {
-			log.error("Failed to generate final summary", e);
-			return "Summary generation failed: " + e.getMessage();
-		}
-	}
+	protected abstract String generateFinalSummary();
 
 	/**
 	 * Terminate the agent execution with a summary using TerminateTool

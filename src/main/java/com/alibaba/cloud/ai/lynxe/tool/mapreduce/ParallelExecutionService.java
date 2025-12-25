@@ -31,6 +31,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.executor.LevelBasedExecutorPool;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.tool.AsyncToolCallBiFunctionDef;
+import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -340,10 +341,41 @@ public class ParallelExecutionService {
 	public CompletableFuture<List<Map<String, Object>>> executeToolsInParallel(
 			List<ParallelExecutionRequest> executions, Map<String, ToolCallBackContext> toolCallbackMap,
 			ToolContext toolContext) {
-		List<CompletableFuture<Map<String, Object>>> futures = new ArrayList<>();
+		// Separate terminate tools from other tools to establish happen-before
+		// relationship
+		// Use instanceof check instead of string comparison for accurate detection
+		// Track original indices to maintain order
+		List<ParallelExecutionRequest> terminateRequests = new ArrayList<>();
+		List<ParallelExecutionRequest> otherRequests = new ArrayList<>();
+		Map<ParallelExecutionRequest, Integer> requestIndexMap = new HashMap<>();
 
 		for (int i = 0; i < executions.size(); i++) {
 			ParallelExecutionRequest request = executions.get(i);
+			requestIndexMap.put(request, i);
+
+			// Check if tool is TerminateTool using instanceof
+			String toolName = request.getToolName();
+			ToolCallBackContext toolContextBackend = lookupToolContext(toolName, toolCallbackMap);
+			boolean isTerminateTool = false;
+
+			if (toolContextBackend != null) {
+				ToolCallBiFunctionDef<?> functionInstance = toolContextBackend.getFunctionInstance();
+				if (functionInstance instanceof TerminateTool) {
+					isTerminateTool = true;
+				}
+			}
+
+			if (isTerminateTool) {
+				terminateRequests.add(request);
+			}
+			else {
+				otherRequests.add(request);
+			}
+		}
+
+		// Execute non-terminate tools first
+		List<CompletableFuture<Map<String, Object>>> otherFutures = new ArrayList<>();
+		for (ParallelExecutionRequest request : otherRequests) {
 			// Create a tool-specific context that includes the toolCallId if provided
 			ToolContext toolSpecificContext = toolContext;
 			if (request.getToolCallId() != null) {
@@ -354,40 +386,112 @@ public class ParallelExecutionService {
 				contextMap.put("toolcallId", request.getToolCallId());
 				toolSpecificContext = new ToolContext(contextMap);
 			}
-			futures
-				.add(executeTool(request.getToolName(), request.getParams(), toolCallbackMap, toolSpecificContext, i));
+			// Use original index from executions list to maintain order
+			int originalIndex = requestIndexMap.get(request);
+			otherFutures.add(executeTool(request.getToolName(), request.getParams(), toolCallbackMap,
+					toolSpecificContext, originalIndex));
 		}
 
-		return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).thenApply(v -> {
-			List<Map<String, Object>> results = new ArrayList<>();
-			for (CompletableFuture<Map<String, Object>> future : futures) {
-				try {
-					results.add(future.join());
+		// Wait for all non-terminate tools to complete (happen-before relationship)
+		CompletableFuture<List<Map<String, Object>>> otherResultsFuture = CompletableFuture
+			.allOf(otherFutures.toArray(new CompletableFuture[0]))
+			.thenApply(v -> {
+				List<Map<String, Object>> results = new ArrayList<>();
+				for (CompletableFuture<Map<String, Object>> future : otherFutures) {
+					try {
+						results.add(future.join());
+					}
+					catch (Exception e) {
+						logger.error("Error getting result from future: {}", e.getMessage(), e);
+						Map<String, Object> errorResult = new HashMap<>();
+						errorResult.put("status", "ERROR");
+						errorResult.put("error", e.getMessage());
+						results.add(errorResult);
+					}
 				}
-				catch (Exception e) {
-					logger.error("Error getting result from future: {}", e.getMessage(), e);
-					Map<String, Object> errorResult = new HashMap<>();
-					errorResult.put("status", "ERROR");
-					errorResult.put("error", e.getMessage());
-					results.add(errorResult);
-				}
-			}
-			// Sort results by index if present
-			results.sort((a, b) -> {
-				Integer indexA = (Integer) a.get("index");
-				Integer indexB = (Integer) b.get("index");
-				if (indexA == null && indexB == null) {
-					return 0;
-				}
-				if (indexA == null) {
-					return 1;
-				}
-				if (indexB == null) {
-					return -1;
-				}
-				return Integer.compare(indexA, indexB);
+				return results;
 			});
-			return results;
+
+		// After all other tools complete, execute terminate tools
+		if (terminateRequests.isEmpty()) {
+			// No terminate tools, just return other results sorted by index
+			return otherResultsFuture.thenApply(results -> {
+				results.sort((a, b) -> {
+					Integer indexA = (Integer) a.get("index");
+					Integer indexB = (Integer) b.get("index");
+					if (indexA == null && indexB == null) {
+						return 0;
+					}
+					if (indexA == null) {
+						return 1;
+					}
+					if (indexB == null) {
+						return -1;
+					}
+					return Integer.compare(indexA, indexB);
+				});
+				return results;
+			});
+		}
+
+		// Execute terminate tools after all other tools complete
+		return otherResultsFuture.thenCompose(otherResults -> {
+			logger.info("Executing {} terminate tool(s) after all other parallel operations completed",
+					terminateRequests.size());
+			List<CompletableFuture<Map<String, Object>>> terminateFutures = new ArrayList<>();
+			for (ParallelExecutionRequest request : terminateRequests) {
+				// Create a tool-specific context that includes the toolCallId if provided
+				ToolContext toolSpecificContext = toolContext;
+				if (request.getToolCallId() != null) {
+					Map<String, Object> contextMap = new HashMap<>();
+					if (toolContext != null && toolContext.getContext() != null) {
+						contextMap.putAll(toolContext.getContext());
+					}
+					contextMap.put("toolcallId", request.getToolCallId());
+					toolSpecificContext = new ToolContext(contextMap);
+				}
+				// Use original index from executions list to maintain order
+				int originalIndex = requestIndexMap.get(request);
+				terminateFutures.add(executeTool(request.getToolName(), request.getParams(), toolCallbackMap,
+						toolSpecificContext, originalIndex));
+			}
+
+			return CompletableFuture.allOf(terminateFutures.toArray(new CompletableFuture[0])).thenApply(v -> {
+				List<Map<String, Object>> terminateResults = new ArrayList<>();
+				for (CompletableFuture<Map<String, Object>> future : terminateFutures) {
+					try {
+						terminateResults.add(future.join());
+					}
+					catch (Exception e) {
+						logger.error("Error getting terminate tool result from future: {}", e.getMessage(), e);
+						Map<String, Object> errorResult = new HashMap<>();
+						errorResult.put("status", "ERROR");
+						errorResult.put("error", e.getMessage());
+						terminateResults.add(errorResult);
+					}
+				}
+
+				// Combine results from other tools and terminate tools
+				List<Map<String, Object>> allResults = new ArrayList<>(otherResults);
+				allResults.addAll(terminateResults);
+
+				// Sort results by index to maintain original order
+				allResults.sort((a, b) -> {
+					Integer indexA = (Integer) a.get("index");
+					Integer indexB = (Integer) b.get("index");
+					if (indexA == null && indexB == null) {
+						return 0;
+					}
+					if (indexA == null) {
+						return 1;
+					}
+					if (indexB == null) {
+						return -1;
+					}
+					return Integer.compare(indexA, indexB);
+				});
+				return allResults;
+			});
 		});
 	}
 

@@ -400,6 +400,7 @@ import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-servic
 import { ToolApiService } from '@/api/tool-api-service'
 import AssignedTools from '@/components/shared/AssignedTools.vue'
 import ToolSelectionModal from '@/components/tool-selection-modal/ToolSelectionModal.vue'
+import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useToast } from '@/plugins/useToast'
 import { templateStore } from '@/stores/templateStore'
@@ -427,6 +428,9 @@ const { isGenerating = false, isExecuting = false } = defineProps<JsonEditorV2Pr
 
 // Get template config singleton
 const templateConfig = usePlanTemplateConfigSingleton()
+
+// Get available tools singleton for validation
+const availableToolsStore = useAvailableToolsSingleton()
 
 // Display data - sync with templateConfig
 const displayData = reactive<{
@@ -601,6 +605,39 @@ const handleRestore = () => {
   }
 }
 
+// Validate that all selected tools exist in available tools
+const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
+  // Ensure available tools are loaded
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
+    await availableToolsStore.loadAvailableTools()
+  }
+
+  const nonExistentTools: string[] = []
+  const availableTools = availableToolsStore.availableTools.value
+  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+
+  // Check all steps for non-existent tools
+  for (let i = 0; i < displayData.steps.length; i++) {
+    const step = displayData.steps[i]
+    const selectedToolKeys = step.selectedToolKeys || []
+
+    for (const toolKey of selectedToolKeys) {
+      if (!availableToolKeys.has(toolKey)) {
+        // Store in format that can be parsed for i18n
+        nonExistentTools.push(`Step ${i + 1}: ${toolKey}`)
+      }
+    }
+  }
+
+  return {
+    isValid: nonExistentTools.length === 0,
+    nonExistentTools,
+  }
+}
+
 const handleSave = async () => {
   try {
     if (!templateConfig.selectedTemplate.value) {
@@ -618,6 +655,27 @@ const handleSave = async () => {
     // Sync displayData to templateConfig before validation and save
     // This ensures all user input is synchronized before saving
     syncDisplayDataToTemplateConfig()
+
+    // Validate that all tools exist
+    const toolsValidation = await validateToolsExist()
+    if (!toolsValidation.isValid) {
+      const toolList = toolsValidation.nonExistentTools
+        .map(tool => {
+          // Parse "Step X: toolName" format
+          const match = tool.match(/^Step (\d+): (.+)$/)
+          if (match) {
+            return t('sidebar.nonExistentToolStep', {
+              stepNumber: match[1],
+              toolName: match[2],
+            })
+          }
+          return tool
+        })
+        .join('\n')
+      const errorMessage = `${t('sidebar.cannotSaveNonExistentTools')}\n\n${t('sidebar.nonExistentToolsHeader')}\n${toolList}`
+      toast.error(errorMessage)
+      return
+    }
 
     // Validate config
     const validation = templateConfig.validate()

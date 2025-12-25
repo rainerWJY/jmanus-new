@@ -240,6 +240,7 @@ import SaveConfirmationDialog from '@/components/sidebar/SaveConfirmationDialog.
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
+import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
@@ -256,6 +257,9 @@ const toast = useToast()
 
 // Template config singleton
 const templateConfig = usePlanTemplateConfigSingleton()
+
+// Get available tools singleton for validation
+const availableToolsStore = useAvailableToolsSingleton()
 
 // Message dialog singleton for executing plans
 const messageDialog = useMessageDialogSingleton()
@@ -591,6 +595,32 @@ const proceedWithExecution = async () => {
     return
   }
 
+  // Validate that all tools exist before execution
+  const toolsValidation = await validateToolsExist()
+  if (!toolsValidation.isValid) {
+    console.log(
+      '[ExecutionController] ❌ Tool validation failed:',
+      toolsValidation.nonExistentTools
+    )
+    isExecutingPlan.value = false // Reset flag on validation failure
+    const toolList = toolsValidation.nonExistentTools
+      .map(tool => {
+        // Parse "Step X: toolName" format
+        const match = tool.match(/^Step (\d+): (.+)$/)
+        if (match) {
+          return t('sidebar.nonExistentToolStep', {
+            stepNumber: match[1],
+            toolName: match[2],
+          })
+        }
+        return tool
+      })
+      .join('\n')
+    const errorMessage = `${t('sidebar.cannotExecuteNonExistentTools')}\n\n${t('sidebar.nonExistentToolsHeader')}\n${toolList}`
+    toast.error(errorMessage)
+    return
+  }
+
   // Reset validation attempt flag when validation passes and execution starts
   hasAttemptedExecute.value = false
 
@@ -694,12 +724,69 @@ const proceedWithExecution = async () => {
   }
 }
 
+// Validate that all selected tools exist in available tools
+const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
+  // Ensure available tools are loaded
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
+    await availableToolsStore.loadAvailableTools()
+  }
+
+  const nonExistentTools: string[] = []
+  const availableTools = availableToolsStore.availableTools.value
+  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+
+  // Get steps from templateConfig
+  const config = templateConfig.getConfig()
+  const steps = config.steps || []
+
+  // Check all steps for non-existent tools
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    const selectedToolKeys = step.selectedToolKeys || []
+
+    for (const toolKey of selectedToolKeys) {
+      if (!availableToolKeys.has(toolKey)) {
+        nonExistentTools.push(`Step ${i + 1}: ${toolKey}`)
+      }
+    }
+  }
+
+  return {
+    isValid: nonExistentTools.length === 0,
+    nonExistentTools,
+  }
+}
+
 const handleSaveAndExecute = async () => {
   console.log('[ExecutionController] 💾 Save and execute requested')
   try {
     // Save using templateConfig directly
     if (!templateConfig.selectedTemplate.value) {
       toast.error(t('sidebar.selectPlanFirst'))
+      return
+    }
+
+    // Validate that all tools exist
+    const toolsValidation = await validateToolsExist()
+    if (!toolsValidation.isValid) {
+      const toolList = toolsValidation.nonExistentTools
+        .map(tool => {
+          // Parse "Step X: toolName" format
+          const match = tool.match(/^Step (\d+): (.+)$/)
+          if (match) {
+            return t('sidebar.nonExistentToolStep', {
+              stepNumber: match[1],
+              toolName: match[2],
+            })
+          }
+          return tool
+        })
+        .join('\n')
+      const errorMessage = `${t('sidebar.cannotSaveNonExistentTools')}\n\n${t('sidebar.nonExistentToolsHeader')}\n${toolList}`
+      toast.error(errorMessage)
       return
     }
 
@@ -795,6 +882,9 @@ const handleStop = async () => {
   const success = await stopTask()
   if (success) {
     console.log('[ExecutionController] Task stopped successfully')
+    // Reset execution flag immediately to synchronize button state
+    isExecutingPlan.value = false
+    console.log('[ExecutionController] Reset isExecutingPlan flag')
     toast.success(t('input.stop') || 'Stopped')
   } else {
     console.error('[ExecutionController] Failed to stop task')

@@ -438,7 +438,6 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	 */
 	protected void performCleanup(ExecutionContext context, BaseAgent lastExecutor) {
 		String planId = context.getCurrentPlanId();
-		llmService.clearAgentMemory(planId);
 		if (lastExecutor != null) {
 			lastExecutor.clearUp(planId);
 		}

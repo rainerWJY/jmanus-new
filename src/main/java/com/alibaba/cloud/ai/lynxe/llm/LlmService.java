@@ -27,7 +27,6 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
-import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.observation.ChatModelObservationConvention;
 import org.springframework.ai.model.SimpleApiKey;
@@ -67,8 +66,6 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	private final Map<String, ChatClient> chatClientCache = new ConcurrentHashMap<>();
 
 	private ChatMemory conversationMemory;
-
-	private ChatMemory agentMemory;
 
 	/*
 	 * Required for creating custom chatModel
@@ -197,23 +194,6 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 
 		log.info("Build and cache dynamic chat client for model: {}", cacheKey);
 		return client;
-	}
-
-	public ChatMemory getAgentMemory(Integer maxMessages) {
-		if (agentMemory == null) {
-			agentMemory = MessageWindowChatMemory.builder()
-				// in memory use by agent
-				.chatMemoryRepository(new InMemoryChatMemoryRepository())
-				.maxMessages(maxMessages)
-				.build();
-		}
-		return agentMemory;
-	}
-
-	public void clearAgentMemory(String memoryId) {
-		if (this.agentMemory != null) {
-			this.agentMemory.clear(memoryId);
-		}
 	}
 
 	public ChatClient getDiaChatClient() {

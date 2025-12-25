@@ -144,10 +144,9 @@ public class DynamicAgent extends ReActAgent {
 	private final List<String> recentToolResults = new ArrayList<>();
 
 	/**
-	 * Flag to track if user request has been saved to conversation memory This prevents
-	 * duplicate saves during retry attempts
+	 * Agent memory stored as a list of messages (replaces ChatMemory-based agentMemory)
 	 */
-	private boolean userRequestSavedToConversationMemory = false;
+	private List<Message> agentMessages = new ArrayList<>();
 
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
@@ -285,44 +284,35 @@ public class DynamicAgent extends ReActAgent {
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
 				String thinkInput = thinkMessages.toString();
 
+				// Check and compress memory if needed before building prompt
+				// This also returns the conversation memory to avoid duplicate retrieval
+				ChatMemory conversationMemory = checkAndCompressMemoryIfNeeded();
+
 				// log.debug("Messages prepared for the prompt: {}", thinkMessages);
 				// Build current prompt. System message is the first message
 				List<Message> messages = new ArrayList<>();
 				// Add history message from agent memory
-				ChatMemory chatMemory = llmService.getAgentMemory(lynxeProperties.getMaxMemory());
-				List<Message> historyMem = chatMemory.get(getCurrentPlanId());
-				// List<Message> subAgentMem = chatMemory.get(getCurrentPlanId());
+				List<Message> historyMem = agentMessages;
 
-				// Add conversation history from MemoryService if conversationId is
-				// available and conversation memory is enabled
-				// Only add conversationHistory in the first think-act round to avoid
-				// duplicate messages in subsequent rounds
-				if (lynxeProperties.getEnableConversationMemory() && memoryService != null
-						&& getConversationId() != null && !getConversationId().trim().isEmpty()) {
-					if (getCurrentStep() == 1) {
-						try {
-							ChatMemory conversationMemory = llmService
-								.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
-							List<Message> conversationHistory = conversationMemory.get(getConversationId());
-							if (conversationHistory != null && !conversationHistory.isEmpty()) {
-								log.debug(
-										"Adding {} conversation history messages for conversationId: {} (first round only)",
-										conversationHistory.size(), getConversationId());
-								// Insert conversation history before current step env
-								// message
-								// to maintain chronological order
-								messages.addAll(conversationHistory);
-							}
-						}
-						catch (Exception e) {
-							log.warn(
-									"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
-									getConversationId(), e);
+				// Add conversation history from conversation memory if available
+				// Reuse the conversation memory retrieved in
+				// checkAndCompressMemoryIfNeeded()
+				if (conversationMemory != null) {
+					try {
+						List<Message> conversationHistory = conversationMemory.get(getConversationId());
+						if (conversationHistory != null && !conversationHistory.isEmpty()) {
+							log.debug("Adding {} conversation history messages for conversationId: {} (round {})",
+									conversationHistory.size(), getConversationId(), getCurrentStep());
+							// Insert conversation history before current step env
+							// message
+							// to maintain chronological order
+							messages.addAll(conversationHistory);
 						}
 					}
-					else {
-						log.debug("Skipping conversationHistory for round {} (only added in first round)",
-								getCurrentStep());
+					catch (Exception e) {
+						log.warn(
+								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
+								getConversationId(), e);
 					}
 				}
 				else if (!lynxeProperties.getEnableConversationMemory()) {
@@ -333,6 +323,7 @@ public class DynamicAgent extends ReActAgent {
 				messages.addAll(historyMem);
 				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
 						getCurrentStep());
+
 				messages.add(currentStepEnvMessage);
 
 				String toolcallId = planIdDispatcher.generateToolCallId();
@@ -358,7 +349,11 @@ public class DynamicAgent extends ReActAgent {
 				// Calculate input character count from all messages by serializing to
 				// JSON
 				// This gives a more accurate count of the actual data sent to LLM
-				int inputCharCount = (int) calculateTotalLength(messages);
+				if (conversationMemoryLimitService == null) {
+					throw new IllegalStateException(
+							"ConversationMemoryLimitService is not available. Cannot calculate message character count.");
+				}
+				int inputCharCount = conversationMemoryLimitService.calculateTotalCharacters(messages);
 				log.info("User prompt character count: {}", inputCharCount);
 
 				// Use streaming response handler for better user experience and content
@@ -782,9 +777,10 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Process multiple tools execution using parallel execution service Multiple tools
-	 * execution does not support TerminableTool and FormInputTool. If these tools are
-	 * present, return error message asking LLM to retry without them.
+	 * Process multiple tools execution using parallel execution service TerminateTool is
+	 * now supported in parallel execution with happen-before relationship (it will
+	 * execute after all other parallel tools complete). FormInputTool is still restricted
+	 * from parallel execution as it requires user interaction.
 	 * @param toolCalls List of tool calls to execute
 	 * @return AgentExecResult containing the execution results
 	 */
@@ -797,14 +793,16 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		try {
-			// Check for TerminableTool and FormInputTool in multiple tools
+			// Check for FormInputTool in multiple tools (TerminateTool is now supported)
 			List<String> restrictedToolNames = new ArrayList<>();
 			for (ToolCall toolCall : toolCalls) {
 				String toolName = toolCall.name();
 				ToolCallBackContext context = getToolCallBackContext(toolName);
 				if (context != null) {
 					ToolCallBiFunctionDef<?> toolInstance = context.getFunctionInstance();
-					if (toolInstance instanceof TerminableTool || toolInstance instanceof FormInputTool) {
+					// Only block FormInputTool - TerminateTool is now supported with
+					// happen-before
+					if (toolInstance instanceof FormInputTool) {
 						restrictedToolNames.add(toolName);
 					}
 				}
@@ -813,9 +811,9 @@ public class DynamicAgent extends ReActAgent {
 			// If restricted tools found, return error asking LLM to retry without them
 			if (!restrictedToolNames.isEmpty()) {
 				String errorMessage = String.format(
-						"Multiple tools execution does not support TerminableTool and FormInputTool. "
+						"Multiple tools execution does not support FormInputTool (requires user interaction). "
 								+ "Found restricted tools: %s. Please retry by calling tools separately, "
-								+ "excluding TerminableTool and FormInputTool from multiple tool calls.",
+								+ "excluding FormInputTool from multiple tool calls.",
 						String.join(", ", restrictedToolNames));
 				log.warn("Multiple tools execution rejected: {}", errorMessage);
 				return new AgentExecResult(errorMessage, AgentState.IN_PROGRESS);
@@ -1397,8 +1395,7 @@ public class DynamicAgent extends ReActAgent {
 
 				// Force compress agent memory to break the loop
 				if (conversationMemoryLimitService != null) {
-					conversationMemoryLimitService.forceCompressAgentMemory(
-							llmService.getAgentMemory(lynxeProperties.getMaxMemory()), getCurrentPlanId());
+					agentMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
 				}
 
 				// Clear the recent results after compression
@@ -1415,25 +1412,69 @@ public class DynamicAgent extends ReActAgent {
 
 			if (!StringUtils.isBlank(userInput)) {
 				// Add user input to memory
-
-				llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), userMessage);
-
+				agentMessages.add(userMessage);
 			}
 		}
+	}
+
+	/**
+	 * Check and compress memory if needed before calling LLM. This ensures memory is
+	 * within limits before building the prompt.
+	 * @return The conversation memory instance, or null if not available
+	 */
+	private ChatMemory checkAndCompressMemoryIfNeeded() {
+		ChatMemory conversationMemory = null;
+		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
+				&& !getConversationId().trim().isEmpty()) {
+			try {
+				conversationMemory = llmService.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(),
+						getConversationId());
+			}
+			catch (Exception e) {
+				log.warn("Failed to get conversation memory for compression check: {}", e.getMessage());
+			}
+		}
+
+		if (conversationMemoryLimitService != null) {
+			agentMessages = conversationMemoryLimitService.checkAndCompressIfNeeded(conversationMemory,
+					getConversationId(), agentMessages);
+		}
+
+		return conversationMemory;
 	}
 
 	private void processMemory(ToolExecutionResult toolExecutionResult) {
 		if (toolExecutionResult == null) {
 			return;
 		}
-		// Process the conversation history to update memory
+
+		// Process the tool execution result messages to update memory
 		List<Message> messages = toolExecutionResult.conversationHistory();
 		if (messages.isEmpty()) {
 			return;
 		}
+
+		// Step 1: Remove all conversationHistory from conversation memory first
+		// These messages will be added to Agent Memory, so remove them from conversation
+		// memory to avoid duplicates
+		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
+				&& !getConversationId().trim().isEmpty()) {
+			try {
+				ChatMemory conversationMemory = llmService
+					.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
+				List<Message> conversationHistory = conversationMemory.get(getConversationId());
+				if (conversationHistory != null && !conversationHistory.isEmpty()) {
+					messages.removeAll(conversationHistory);
+				}
+			}
+			catch (Exception e) {
+				log.warn("Failed to remove duplicate messages from conversation memory for conversationId: {}",
+						getConversationId(), e);
+			}
+		}
+
+		// Step 2: Filter messages to keep only assistant message and tool_call message
 		List<Message> messagesToAdd = new ArrayList<>();
-		// clear current plan memory
-		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).clear(getCurrentPlanId());
 		for (Message message : messages) {
 			// exclude all system message
 			if (message instanceof SystemMessage) {
@@ -1446,7 +1487,10 @@ public class DynamicAgent extends ReActAgent {
 			// only keep assistant message and tool_call message
 			messagesToAdd.add(message);
 		}
-		llmService.getAgentMemory(lynxeProperties.getMaxMemory()).add(getCurrentPlanId(), messagesToAdd);
+
+		// Step 3: Clear current plan memory and add filtered messages to Agent Memory
+		agentMessages.clear();
+		agentMessages.addAll(messagesToAdd);
 	}
 
 	@Override
@@ -1459,6 +1503,53 @@ public class DynamicAgent extends ReActAgent {
 		super.handleCompletedExecution(results);
 		// Note: Final result will be saved to conversation memory in
 		// PlanFinalizer.handlePostExecution()
+	}
+
+	@Override
+	protected String generateFinalSummary() {
+		try {
+			log.info("Generating final summary for agent execution");
+
+			// Get all memory entries from agentMessages
+			List<Message> memoryEntries = new ArrayList<>(agentMessages);
+
+			if (memoryEntries.isEmpty()) {
+				return "No memory entries found for final summary";
+			}
+
+			// Use LLM to generate a concise summary
+			String summaryPrompt = """
+					Based on the completed steps, try to answer the user's original request.
+					If the current steps are insufficient to support answering the original request,
+					simply describe that the step limit has been reached and please try again.
+
+					""";
+			// Create a simple prompt for summary generation
+			UserMessage summaryRequest = new UserMessage(summaryPrompt);
+			memoryEntries.add(getThinkMessage());
+			memoryEntries.add(getNextStepWithEnvMessage());
+			memoryEntries.add(summaryRequest);
+			Prompt prompt = new Prompt(memoryEntries);
+
+			// Get LLM response for summary
+			ChatClient chatClient;
+			if (modelName == null || modelName.isEmpty()) {
+				chatClient = llmService.getDefaultDynamicAgentChatClient();
+			}
+			else {
+				chatClient = llmService.getDynamicAgentChatClient(modelName);
+			}
+			ChatResponse response = chatClient.prompt(prompt).call().chatResponse();
+
+			String summary = response.getResult().getOutput().getText();
+			log.info("Generated final summary: {}", summary);
+			return summary;
+
+		}
+		catch (Exception e) {
+			log.error("Failed to generate final summary", e);
+			return "Summary generation failed: " + e.getMessage();
+		}
 	}
 
 	@Override
@@ -1492,7 +1583,7 @@ public class DynamicAgent extends ReActAgent {
 	protected Message getThinkMessage() {
 		Message baseThinkPrompt = super.getThinkMessage();
 		Message nextStepWithEnvMessage = getNextStepWithEnvMessage();
-		SystemMessage thinkMessage = new SystemMessage("""
+		UserMessage thinkMessage = new UserMessage("""
 				<SystemInfo>
 				%s
 				</SystemInfo>
@@ -1671,45 +1762,6 @@ public class DynamicAgent extends ReActAgent {
 		}
 		else if (formInputTool.getInputState() == FormInputTool.InputState.INPUT_TIMEOUT) {
 			log.warn("User input timed out for planId: {}", getCurrentPlanId());
-		}
-	}
-
-	/**
-	 * Calculate the total escaped string length for all messages in a Prompt. Directly
-	 * serializes the messages list to JSON and returns the length.
-	 * @param prompt the Prompt containing messages
-	 * @return the total length of all messages when serialized to JSON
-	 */
-	private long calculateTotalLength(Prompt prompt) {
-		if (prompt == null || prompt.getInstructions() == null) {
-			return 0;
-		}
-		return calculateTotalLength(prompt.getInstructions());
-	}
-
-	/**
-	 * Calculate the total escaped string length for a list of messages. Directly
-	 * serializes the messages list to JSON and returns the length.
-	 * @param messages the list of messages
-	 * @return the total length of all messages when serialized to JSON
-	 */
-	private long calculateTotalLength(List<Message> messages) {
-		if (messages == null || messages.isEmpty()) {
-			return 0;
-		}
-
-		try {
-			// Directly serialize the entire messages list to JSON
-			String json = objectMapper.writeValueAsString(messages);
-			return json.length();
-		}
-		catch (Exception e) {
-			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
-			// Fallback to simple text length calculation
-			return messages.stream().mapToLong(message -> {
-				String text = message.getText();
-				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
-			}).sum();
 		}
 	}
 
