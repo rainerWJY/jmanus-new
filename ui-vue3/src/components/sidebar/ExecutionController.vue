@@ -876,6 +876,9 @@ const handleStop = async () => {
   const success = await stopTask()
   if (success) {
     console.log('[ExecutionController] Task stopped successfully')
+    // Reset execution flag immediately to synchronize button state
+    isExecutingPlan.value = false
+    console.log('[ExecutionController] Reset isExecutingPlan flag')
     toast.success(t('input.stop') || 'Stopped')
   } else {
     console.error('[ExecutionController] Failed to stop task')
