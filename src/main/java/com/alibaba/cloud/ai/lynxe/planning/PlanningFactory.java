@@ -67,6 +67,16 @@ import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.bash.Bash;
 import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NavigateBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ClickBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.InputTextBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.KeyEnterBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ScreenshotBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NewTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.CloseTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.SwitchTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.GetWebContentBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.DownloadBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.ImageOcrProcessor;
@@ -75,7 +85,8 @@ import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.PdfOcrProcessor;
 import com.alibaba.cloud.ai.lynxe.tool.cron.CronTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.DataSourceService;
 import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseMetadataTool;
-import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseReadTool;
+import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.ExecuteReadSqlTool;
+import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.ExecuteReadSqlToJsonFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseTableToExcelTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.UuidGenerateTool;
@@ -279,10 +290,27 @@ public class PlanningFactory {
 		}
 		if (agentInit) {
 			// Add all tool definitions
-			toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService, innerStorageService, objectMapper,
-					shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager));
-			toolDefinitions.add(DatabaseReadTool.getInstance(dataSourceService, objectMapper, unifiedDirectoryManager,
-					toolI18nService));
+			// Refactored browser tools (split from BrowserUseTool)
+			BrowserUseTool browserUseToolInstance = BrowserUseTool.getInstance(chromeDriverService, innerStorageService,
+					objectMapper, shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager);
+			toolDefinitions.add(new NavigateBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new ClickBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new InputTextBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new KeyEnterBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new ScreenshotBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new NewTabBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new CloseTabBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new SwitchTabBrowserTool(browserUseToolInstance, toolI18nService));
+			toolDefinitions.add(new GetWebContentBrowserTool(browserUseToolInstance, textFileService, toolI18nService));
+			toolDefinitions.add(new DownloadBrowserTool(browserUseToolInstance, unifiedDirectoryManager, toolI18nService));
+			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService, innerStorageService, objectMapper,
+			// 		shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager));
+			// Refactored database read tools (split from DatabaseReadTool)
+			toolDefinitions.add(new ExecuteReadSqlTool(dataSourceService, toolI18nService));
+			toolDefinitions.add(new ExecuteReadSqlToJsonFileTool(dataSourceService, unifiedDirectoryManager,
+					objectMapper, toolI18nService));
+			// toolDefinitions.add(DatabaseReadTool.getInstance(dataSourceService, objectMapper, unifiedDirectoryManager,
+			// 		toolI18nService));
 			toolDefinitions.add(DatabaseWriteTool.getInstance(dataSourceService, objectMapper, toolI18nService));
 			toolDefinitions.add(DatabaseMetadataTool.getInstance(dataSourceService, objectMapper, toolI18nService));
 			toolDefinitions.add(DatabaseTableToExcelTool.getInstance(lynxeProperties, dataSourceService,
