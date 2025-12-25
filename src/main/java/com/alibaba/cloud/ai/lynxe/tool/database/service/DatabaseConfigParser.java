@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.alibaba.cloud.ai.lynxe.tool.database;
+package com.alibaba.cloud.ai.lynxe.tool.database.service;
 
 import java.util.HashMap;
 import java.util.HashSet;

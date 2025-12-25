@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.ai.lynxe.tool.database;
+package com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators;
 
 import java.util.Map;
 
@@ -24,10 +24,11 @@ import org.springframework.stereotype.Component;
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
-import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.GetDatasourceInfoAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.GetTableIndexAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.GetTableMetaAction;
+import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
+import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component

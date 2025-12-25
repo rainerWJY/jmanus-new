@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.alibaba.cloud.ai.lynxe.tool.database;
+package com.alibaba.cloud.ai.lynxe.tool.database.service;
 
 import java.util.List;
 
@@ -26,7 +26,6 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.tool.database.model.po.DatasourceConfigEntity;
-import com.alibaba.cloud.ai.lynxe.tool.database.service.DatasourceConfigService;
 
 @Component
 public class DatabaseUseStartupListener implements ApplicationListener<ApplicationStartedEvent> {
