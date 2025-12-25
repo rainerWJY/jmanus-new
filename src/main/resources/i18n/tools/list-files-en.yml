@@ -14,10 +14,6 @@ parameters: |
           "path": {
               "type": "string",
               "description": "Relative directory path to list (optional, defaults to root, e.g., 'subdir' or empty for root)"
-          },
-          "file_path": {
-              "type": "string",
-              "description": "Alternative parameter name for path (for backward compatibility)"
           }
       },
       "required": [],

@@ -32,10 +32,6 @@ parameters: |
               "type": "string",
               "description": "要读取的文件路径（相对路径，例如 'file.txt' 或 'subdir/file.txt'）"
           },
-          "file_path": {
-              "type": "string",
-              "description": "path 的替代参数名（用于向后兼容）"
-          },
           "offset": {
               "type": "integer",
               "description": "可选：开始读取的行号（从 1 开始）。仅用于无法一次性读取的非常大的文件"
@@ -49,10 +45,7 @@ parameters: |
               "description": "可选：如果为 true，则绕过 300 行限制以读取完整文件。对于非常大的文件请谨慎使用。默认值：false"
           }
       },
-      "anyOf": [
-          {"required": ["path"]},
-          {"required": ["file_path"]}
-      ],
+      "required": ["path"],
       "additionalProperties": false
   }
 

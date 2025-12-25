@@ -8,7 +8,6 @@ description: |
   主要操作：
   - 将 Markdown 文件（.md 或 .markdown）转换为 DOCX 格式
     - path（必需）：要转换的 Markdown 文件路径（根计划目录中的相对路径）
-    - file_path（可选）：path 的替代参数名称（用于向后兼容）
     - output_path（可选）：输出 DOCX 文件路径。如果未提供，则使用与输入相同的名称，扩展名为 .docx
     - 输出文件保存在根计划目录中（rootPlanId/）
     - 支持 Markdown 功能：标题、列表、表格、代码块、水平线、内联格式
@@ -33,20 +32,12 @@ parameters: |
         "type": "string",
         "description": "要转换的 Markdown 文件路径（根计划目录中的相对路径，例如 'file.md' 或 'subdir/file.md'）"
       },
-      "file_path": {
-        "type": "string",
-        "description": "path 的替代参数名称（用于向后兼容）"
-      },
       "output_path": {
         "type": "string",
         "description": "可选：输出 DOCX 文件路径。如果未提供，则使用与输入文件相同的名称，扩展名为 .docx（例如 'file.md' -> 'file.docx'）"
       }
     },
     "required": ["path"],
-    "anyOf": [
-      {"required": ["path"]},
-      {"required": ["file_path"]}
-    ],
     "additionalProperties": false
   }
 

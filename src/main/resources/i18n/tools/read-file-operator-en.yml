@@ -34,10 +34,6 @@ parameters: |
               "type": "string",
               "description": "The file path to read (relative path, e.g., 'file.txt' or 'subdir/file.txt')"
           },
-          "file_path": {
-              "type": "string",
-              "description": "Alternative parameter name for path (for backward compatibility)"
-          },
           "offset": {
               "type": "integer",
               "description": "Optional: Line number to start reading from (1-based). Only use for very large files that can't be read all at once"
@@ -51,10 +47,7 @@ parameters: |
               "description": "Optional: If true, bypasses the 300-line limit for full file reads. Use with caution for very large files. Default: false"
           }
       },
-      "anyOf": [
-          {"required": ["path"]},
-          {"required": ["file_path"]}
-      ],
+      "required": ["path"],
       "additionalProperties": false
   }
 

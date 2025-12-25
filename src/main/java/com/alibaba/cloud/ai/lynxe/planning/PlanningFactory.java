@@ -110,8 +110,6 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallel
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileImportOperator;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileReadOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileWriteOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
@@ -322,11 +320,9 @@ public class PlanningFactory {
 			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 
-			toolDefinitions.add(new GlobalFileReadOperator(textFileService, innerStorageService, objectMapper,
-					shortUrlService, toolI18nService));
 			toolDefinitions.add(new GlobalFileWriteOperator(textFileService, innerStorageService, objectMapper,
 					shortUrlService, toolI18nService));
-			// Refactored file operators (split from GlobalFileReadOperator)
+			// Refactored file operators
 			toolDefinitions.add(new ReadFileOperator(textFileService, innerStorageService, shortUrlService,
 					toolI18nService));
 			// Refactored file operators (split from GlobalFileWriteOperator)
@@ -338,7 +334,6 @@ public class PlanningFactory {
 					toolI18nService));
 			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService, gitIgnoreMatcher,
 					lynxeProperties));
-			toolDefinitions.add(new FileImportOperator(textFileService, null, toolI18nService));
 			// Refactored file splitter (split action only, count removed)
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
 			// Refactored directory operators (split from DirectoryOperator)
