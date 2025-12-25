@@ -67,7 +67,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "image-service-group";
 	}
 
 	@Override

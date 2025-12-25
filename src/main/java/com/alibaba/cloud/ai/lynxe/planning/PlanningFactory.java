@@ -46,7 +46,6 @@ import org.springframework.web.client.RestClient;
 
 import com.alibaba.cloud.ai.lynxe.agent.ToolCallbackProvider;
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
-import com.alibaba.cloud.ai.lynxe.cron.service.CronService;
 import com.alibaba.cloud.ai.lynxe.llm.LlmService;
 import com.alibaba.cloud.ai.lynxe.llm.StreamingResponseHandler;
 import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServiceEntity;
@@ -81,7 +80,6 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.ImageOcrProcessor;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.MarkdownConverterTool;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.PdfOcrProcessor;
-import com.alibaba.cloud.ai.lynxe.tool.cron.CronTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseMetadataTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseTableToExcelTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseWriteTool;
@@ -159,9 +157,6 @@ public class PlanningFactory {
 	@Autowired
 	private StreamingResponseHandler streamingResponseHandler;
 
-	@Autowired
-	@Lazy
-	private CronService cronService;
 
 	@Autowired
 	private SubplanToolService subplanToolService;
@@ -353,7 +348,6 @@ public class PlanningFactory {
 			// This will be handled in the toolCallbackMap creation loop below
 			toolDefinitions.add(new FileBasedParallelExecutionTool(objectMapper, toolCallbackMap,
 					unifiedDirectoryManager, parallelExecutionService, toolI18nService));
-			toolDefinitions.add(new CronTool(cronService, objectMapper, toolI18nService));
 			toolDefinitions.add(new MarkdownConverterTool(unifiedDirectoryManager,
 					new PdfOcrProcessor(unifiedDirectoryManager, llmService, lynxeProperties,
 							new ImageRecognitionExecutorPool(lynxeProperties)),
