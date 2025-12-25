@@ -50,6 +50,8 @@ public class ConversationMemoryLimitService {
 
 	private static final int SUMMARY_MAX_CHARS = 4000;
 
+	private static final double RETENTION_RATIO = 0.4; // Retain 40% of content
+
 	private static final String COMPRESSION_CONFIRMATION_MESSAGE = "Got it. Thanks for the additional context!";
 
 	@Autowired
@@ -196,8 +198,9 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize and trim messages: keep recent 5000 chars (at least one complete round),
-	 * summarize older rounds into a 3000-4000 char UserMessage.
+	 * Summarize and trim messages: retain 40% of content (by character count), ensuring
+	 * at least one complete round is kept. Summarize older rounds into a 3000-4000 char
+	 * UserMessage.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID
 	 * @param messages Current list of messages
@@ -211,9 +214,21 @@ public class ConversationMemoryLimitService {
 			return;
 		}
 
+		// Calculate total character count of all rounds
+		int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+		
+		// Calculate target retention: 40% of total content
+		int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+		
+		// If total is very small, keep all rounds
+		if (totalChars <= 0 || targetRetentionChars <= 0) {
+			log.debug("Total character count ({}) is too small, keeping all rounds for conversationId: {}", totalChars,
+					conversationId);
+			return;
+		}
+
 		// Find which rounds to keep and which to summarize
-		// Strategy: Keep recent rounds up to 5000 chars, ensuring at least one complete
-		// round
+		// Strategy: Keep rounds from newest to oldest until accumulated chars reach 40% retention
 		List<DialogRound> roundsToKeep = new ArrayList<>();
 		List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -225,37 +240,21 @@ public class ConversationMemoryLimitService {
 			DialogRound round = dialogRounds.get(i);
 			int roundChars = round.getTotalChars();
 
-			// If this is the newest round, always keep it (even if it exceeds 5000)
+			// Always keep at least the newest round (even if it exceeds 40%)
 			if (i == dialogRounds.size() - 1) {
-				// If newest round exceeds 5000 chars, summarize it but keep the summary
-				if (roundChars > RECENT_CHARS_TO_KEEP) {
-					UserMessage summarizedRound = summarizeRounds(List.of(round));
-					DialogRound summarizedRoundObj = new DialogRound();
-					summarizedRoundObj.addMessage(summarizedRound);
-					// Add confirmation AssistantMessage to maintain user-assistant pair pattern
-					AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
-					summarizedRoundObj.addMessage(confirmationMessage);
-					roundsToKeep.add(0, summarizedRoundObj); // Add at beginning to
-																// maintain order
-					accumulatedChars += summarizedRound.getText().length() + confirmationMessage.getText().length();
-				}
-				else {
-					roundsToKeep.add(0, round);
-					accumulatedChars += roundChars;
-				}
+				roundsToKeep.add(0, round);
+				accumulatedChars += roundChars;
 				hasKeptAtLeastOneRound = true;
 			}
 			else {
-				// For other rounds, check if we can add them within 5000 char limit
-				if (accumulatedChars + roundChars <= RECENT_CHARS_TO_KEEP) {
-					roundsToKeep.add(0, round); // Add at beginning to maintain
-												// chronological order
+				// For other rounds, check if we can add them within 40% retention limit
+				if (accumulatedChars + roundChars <= targetRetentionChars) {
+					roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
 					accumulatedChars += roundChars;
 					hasKeptAtLeastOneRound = true;
 				}
 				else {
-					// Can't add this round, all remaining are older and should be
-					// summarized
+					// Can't add this round, all remaining are older and should be summarized
 					for (int j = i; j >= 0; j--) {
 						roundsToSummarize.add(0, dialogRounds.get(j));
 					}
@@ -264,22 +263,10 @@ public class ConversationMemoryLimitService {
 			}
 		}
 
-		// Ensure we kept at least one round
+		// Ensure we kept at least one round (fallback if somehow no rounds were kept)
 		if (!hasKeptAtLeastOneRound && !dialogRounds.isEmpty()) {
-			// Fallback: keep the newest round even if it exceeds limit
 			DialogRound newestRound = dialogRounds.get(dialogRounds.size() - 1);
-			if (newestRound.getTotalChars() > RECENT_CHARS_TO_KEEP) {
-				UserMessage summarizedRound = summarizeRounds(List.of(newestRound));
-				DialogRound summarizedRoundObj = new DialogRound();
-				summarizedRoundObj.addMessage(summarizedRound);
-				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
-				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
-				summarizedRoundObj.addMessage(confirmationMessage);
-				roundsToKeep.add(summarizedRoundObj);
-			}
-			else {
-				roundsToKeep.add(newestRound);
-			}
+			roundsToKeep.add(newestRound);
 			// Add all others to summarize
 			for (int i = 0; i < dialogRounds.size() - 1; i++) {
 				roundsToSummarize.add(dialogRounds.get(i));
@@ -315,10 +302,11 @@ public class ConversationMemoryLimitService {
 
 		int keptChars = calculateTotalCharacters(
 				roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
+		double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
 		log.info(
-				"Summarized conversation memory for conversationId: {}. Kept {} recent rounds ({} chars), summarized {} older rounds into {} chars",
-				conversationId, roundsToKeep.size(), keptChars, roundsToSummarize.size(),
-				summaryMessage != null ? summaryMessage.getText().length() : 0);
+				"Summarized conversation memory for conversationId: {}. Kept {} recent rounds ({} chars, {:.1f}% retention), summarized {} older rounds into {} chars",
+				conversationId, roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
+				roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
 	}
 
 	/**
@@ -571,24 +559,61 @@ public class ConversationMemoryLimitService {
 				return;
 			}
 
-			// Force compression: keep only the most recent round, summarize all older
-			// rounds
+			// Calculate total character count of all rounds
+			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			
+			// Calculate target retention: 40% of total content
+			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+			
+			// If total is very small, keep all rounds
+			if (totalChars <= 0 || targetRetentionChars <= 0) {
+				log.debug("Total character count ({}) is too small, keeping all rounds for conversationId: {}",
+						totalChars, conversationId);
+				return;
+			}
+
+			// Force compression: keep rounds from newest to oldest until accumulated chars reach 40% retention
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
-			// Keep only the most recent round
-			if (dialogRounds.size() > 1) {
-				DialogRound newestRound = dialogRounds.get(dialogRounds.size() - 1);
-				roundsToKeep.add(newestRound);
+			int accumulatedChars = 0;
+			boolean hasKeptAtLeastOneRound = false;
 
-				// Summarize all older rounds
+			// Start from the newest round and work backwards
+			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
+				DialogRound round = dialogRounds.get(i);
+				int roundChars = round.getTotalChars();
+
+				// Always keep at least the newest round (even if it exceeds 40%)
+				if (i == dialogRounds.size() - 1) {
+					roundsToKeep.add(round);
+					accumulatedChars += roundChars;
+					hasKeptAtLeastOneRound = true;
+				}
+				else {
+					// For other rounds, check if we can add them within 40% retention limit
+					if (accumulatedChars + roundChars <= targetRetentionChars) {
+						roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
+						accumulatedChars += roundChars;
+						hasKeptAtLeastOneRound = true;
+					}
+					else {
+						// Can't add this round, all remaining are older and should be summarized
+						for (int j = i; j >= 0; j--) {
+							roundsToSummarize.add(0, dialogRounds.get(j));
+						}
+						break;
+					}
+				}
+			}
+
+			// Ensure we kept at least one round (fallback if somehow no rounds were kept)
+			if (!hasKeptAtLeastOneRound && !dialogRounds.isEmpty()) {
+				roundsToKeep.add(dialogRounds.get(dialogRounds.size() - 1));
+				// Add all others to summarize
 				for (int i = 0; i < dialogRounds.size() - 1; i++) {
 					roundsToSummarize.add(dialogRounds.get(i));
 				}
-			}
-			else {
-				// If only one round, just keep it
-				roundsToKeep.add(dialogRounds.get(0));
 			}
 
 			// Summarize older rounds
@@ -620,10 +645,11 @@ public class ConversationMemoryLimitService {
 
 			int keptChars = calculateTotalCharacters(
 					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
+			double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
 			log.info(
-					"Forced compression completed for conversationId: {}. Kept {} recent round(s) ({} chars), summarized {} older rounds into {} chars",
-					conversationId, roundsToKeep.size(), keptChars, roundsToSummarize.size(),
-					summaryMessage != null ? summaryMessage.getText().length() : 0);
+					"Forced compression completed for conversationId: {}. Kept {} recent round(s) ({} chars, {}% retention), summarized {} older rounds into {} chars",
+					conversationId, roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
+					roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
 		}
 		catch (Exception e) {
 			log.warn("Failed to force compress conversation memory for conversationId: {}", conversationId, e);
@@ -653,24 +679,60 @@ public class ConversationMemoryLimitService {
 				return new ArrayList<>(messages);
 			}
 
-			// Force compression: keep only the most recent round, summarize all older
-			// rounds
+			// Calculate total character count of all rounds
+			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			
+			// Calculate target retention: 40% of total content
+			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+			
+			// If total is very small, keep all rounds
+			if (totalChars <= 0 || targetRetentionChars <= 0) {
+				log.debug("Total character count ({}) is too small, keeping all rounds", totalChars);
+				return new ArrayList<>(messages);
+			}
+
+			// Force compression: keep rounds from newest to oldest until accumulated chars reach 40% retention
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
-			// Keep only the most recent round
-			if (dialogRounds.size() > 1) {
-				DialogRound newestRound = dialogRounds.get(dialogRounds.size() - 1);
-				roundsToKeep.add(newestRound);
+			int accumulatedChars = 0;
+			boolean hasKeptAtLeastOneRound = false;
 
-				// Summarize all older rounds
+			// Start from the newest round and work backwards
+			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
+				DialogRound round = dialogRounds.get(i);
+				int roundChars = round.getTotalChars();
+
+				// Always keep at least the newest round (even if it exceeds 40%)
+				if (i == dialogRounds.size() - 1) {
+					roundsToKeep.add(round);
+					accumulatedChars += roundChars;
+					hasKeptAtLeastOneRound = true;
+				}
+				else {
+					// For other rounds, check if we can add them within 40% retention limit
+					if (accumulatedChars + roundChars <= targetRetentionChars) {
+						roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
+						accumulatedChars += roundChars;
+						hasKeptAtLeastOneRound = true;
+					}
+					else {
+						// Can't add this round, all remaining are older and should be summarized
+						for (int j = i; j >= 0; j--) {
+							roundsToSummarize.add(0, dialogRounds.get(j));
+						}
+						break;
+					}
+				}
+			}
+
+			// Ensure we kept at least one round (fallback if somehow no rounds were kept)
+			if (!hasKeptAtLeastOneRound && !dialogRounds.isEmpty()) {
+				roundsToKeep.add(dialogRounds.get(dialogRounds.size() - 1));
+				// Add all others to summarize
 				for (int i = 0; i < dialogRounds.size() - 1; i++) {
 					roundsToSummarize.add(dialogRounds.get(i));
 				}
-			}
-			else {
-				// If only one round, just keep it
-				roundsToKeep.add(dialogRounds.get(0));
 			}
 
 			// Summarize older rounds
@@ -699,10 +761,11 @@ public class ConversationMemoryLimitService {
 
 			int keptChars = calculateTotalCharacters(
 					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
+			double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
 			log.info(
-					"Forced compression completed. Kept {} recent round(s) ({} chars), summarized {} older rounds into {} chars",
-					roundsToKeep.size(), keptChars, roundsToSummarize.size(),
-					summaryMessage != null ? summaryMessage.getText().length() : 0);
+					"Forced compression completed. Kept {} recent round(s) ({} chars, {}% retention), summarized {} older rounds into {} chars",
+					roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
+					roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
 
 			return compressedMessages;
 		}
