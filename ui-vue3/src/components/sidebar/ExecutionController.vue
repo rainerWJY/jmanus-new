@@ -598,7 +598,10 @@ const proceedWithExecution = async () => {
   // Validate that all tools exist before execution
   const toolsValidation = await validateToolsExist()
   if (!toolsValidation.isValid) {
-    console.log('[ExecutionController] ❌ Tool validation failed:', toolsValidation.nonExistentTools)
+    console.log(
+      '[ExecutionController] ❌ Tool validation failed:',
+      toolsValidation.nonExistentTools
+    )
     isExecutingPlan.value = false // Reset flag on validation failure
     const toolList = toolsValidation.nonExistentTools
       .map(tool => {
@@ -724,7 +727,10 @@ const proceedWithExecution = async () => {
 // Validate that all selected tools exist in available tools
 const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
   // Ensure available tools are loaded
-  if (availableToolsStore.availableTools.value.length === 0 && !availableToolsStore.isLoading.value) {
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
     await availableToolsStore.loadAvailableTools()
   }
 

@@ -50,11 +50,7 @@
               :title="'Tool not found: ' + toolId"
             />
           </div>
-          <span
-            v-if="isToolExists(toolId)"
-            class="tool-desc"
-            :title="getToolDescription(toolId)"
-          >
+          <span v-if="isToolExists(toolId)" class="tool-desc" :title="getToolDescription(toolId)">
             {{ getToolDescription(toolId) }}
           </span>
           <span v-else class="tool-warning-message">
@@ -141,11 +137,11 @@ watch(
     }
     // Emit only existing tools for backward compatibility
     const existingTools = props.selectedToolIds.filter(toolId => isToolExists(toolId))
-    
+
     // Only emit if the filtered list actually changed to prevent recursive updates
     const existingToolsStr = existingTools.sort().join(',')
     const lastEmittedStr = lastEmittedFilteredTools.value.sort().join(',')
-    
+
     if (existingToolsStr !== lastEmittedStr) {
       lastEmittedFilteredTools.value = existingTools
       emit('tools-filtered', existingTools)

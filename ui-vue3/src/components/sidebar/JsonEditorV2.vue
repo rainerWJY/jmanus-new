@@ -608,7 +608,10 @@ const handleRestore = () => {
 // Validate that all selected tools exist in available tools
 const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
   // Ensure available tools are loaded
-  if (availableToolsStore.availableTools.value.length === 0 && !availableToolsStore.isLoading.value) {
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
     await availableToolsStore.loadAvailableTools()
   }
 

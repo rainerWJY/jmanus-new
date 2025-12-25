@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { FileInfo } from '@/api/file-upload-api-service'
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { useAvailableToolsSingleton, type useAvailableTools } from '@/composables/useAvailableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
@@ -101,7 +101,7 @@ const messageDialog = useMessageDialogSingleton()
 const planExecution = usePlanExecutionSingleton()
 const { stopTask } = useTaskStop()
 const fileUpload = useFileUploadSingleton()
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore: ReturnType<typeof useAvailableTools> = useAvailableToolsSingleton()
 const toast = useToast()
 
 // Track if task is running
