@@ -148,7 +148,6 @@ public class DynamicAgent extends ReActAgent {
 	 */
 	private List<Message> agentMessages = new ArrayList<>();
 
-
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
 		for (ToolCallBackContext toolCallBack : toolCallBackContext.values()) {
@@ -296,7 +295,8 @@ public class DynamicAgent extends ReActAgent {
 				List<Message> historyMem = agentMessages;
 
 				// Add conversation history from conversation memory if available
-				// Reuse the conversation memory retrieved in checkAndCompressMemoryIfNeeded()
+				// Reuse the conversation memory retrieved in
+				// checkAndCompressMemoryIfNeeded()
 				if (conversationMemory != null) {
 					try {
 						List<Message> conversationHistory = conversationMemory.get(getConversationId());
@@ -323,9 +323,9 @@ public class DynamicAgent extends ReActAgent {
 				messages.addAll(historyMem);
 				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
 						getCurrentStep());
-				
+
 				messages.add(currentStepEnvMessage);
-				
+
 				String toolcallId = planIdDispatcher.generateToolCallId();
 				// Call the LLM
 				Map<String, Object> toolContextMap = new HashMap<>();
@@ -777,10 +777,10 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Process multiple tools execution using parallel execution service
-	 * TerminateTool is now supported in parallel execution with happen-before relationship
-	 * (it will execute after all other parallel tools complete).
-	 * FormInputTool is still restricted from parallel execution as it requires user interaction.
+	 * Process multiple tools execution using parallel execution service TerminateTool is
+	 * now supported in parallel execution with happen-before relationship (it will
+	 * execute after all other parallel tools complete). FormInputTool is still restricted
+	 * from parallel execution as it requires user interaction.
 	 * @param toolCalls List of tool calls to execute
 	 * @return AgentExecResult containing the execution results
 	 */
@@ -800,7 +800,8 @@ public class DynamicAgent extends ReActAgent {
 				ToolCallBackContext context = getToolCallBackContext(toolName);
 				if (context != null) {
 					ToolCallBiFunctionDef<?> toolInstance = context.getFunctionInstance();
-					// Only block FormInputTool - TerminateTool is now supported with happen-before
+					// Only block FormInputTool - TerminateTool is now supported with
+					// happen-before
 					if (toolInstance instanceof FormInputTool) {
 						restrictedToolNames.add(toolName);
 					}
@@ -1454,7 +1455,8 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		// Step 1: Remove all conversationHistory from conversation memory first
-		// These messages will be added to Agent Memory, so remove them from conversation memory to avoid duplicates
+		// These messages will be added to Agent Memory, so remove them from conversation
+		// memory to avoid duplicates
 		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
 				&& !getConversationId().trim().isEmpty()) {
 			try {
@@ -1470,7 +1472,6 @@ public class DynamicAgent extends ReActAgent {
 						getConversationId(), e);
 			}
 		}
-
 
 		// Step 2: Filter messages to keep only assistant message and tool_call message
 		List<Message> messagesToAdd = new ArrayList<>();
@@ -1763,7 +1764,5 @@ public class DynamicAgent extends ReActAgent {
 			log.warn("User input timed out for planId: {}", getCurrentPlanId());
 		}
 	}
-
-
 
 }

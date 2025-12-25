@@ -44,9 +44,7 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 
 	private static final Logger log = LoggerFactory.getLogger(FormInputTool.class);
 
-
 	public static final String name = "form_input";
-
 
 	// Data structures:
 	/**

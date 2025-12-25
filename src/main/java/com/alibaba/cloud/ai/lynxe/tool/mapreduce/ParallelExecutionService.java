@@ -341,7 +341,8 @@ public class ParallelExecutionService {
 	public CompletableFuture<List<Map<String, Object>>> executeToolsInParallel(
 			List<ParallelExecutionRequest> executions, Map<String, ToolCallBackContext> toolCallbackMap,
 			ToolContext toolContext) {
-		// Separate terminate tools from other tools to establish happen-before relationship
+		// Separate terminate tools from other tools to establish happen-before
+		// relationship
 		// Use instanceof check instead of string comparison for accurate detection
 		// Track original indices to maintain order
 		List<ParallelExecutionRequest> terminateRequests = new ArrayList<>();
@@ -351,19 +352,19 @@ public class ParallelExecutionService {
 		for (int i = 0; i < executions.size(); i++) {
 			ParallelExecutionRequest request = executions.get(i);
 			requestIndexMap.put(request, i);
-			
+
 			// Check if tool is TerminateTool using instanceof
 			String toolName = request.getToolName();
 			ToolCallBackContext toolContextBackend = lookupToolContext(toolName, toolCallbackMap);
 			boolean isTerminateTool = false;
-			
+
 			if (toolContextBackend != null) {
 				ToolCallBiFunctionDef<?> functionInstance = toolContextBackend.getFunctionInstance();
 				if (functionInstance instanceof TerminateTool) {
 					isTerminateTool = true;
 				}
 			}
-			
+
 			if (isTerminateTool) {
 				terminateRequests.add(request);
 			}
@@ -387,9 +388,8 @@ public class ParallelExecutionService {
 			}
 			// Use original index from executions list to maintain order
 			int originalIndex = requestIndexMap.get(request);
-			otherFutures.add(
-					executeTool(request.getToolName(), request.getParams(), toolCallbackMap, toolSpecificContext,
-							originalIndex));
+			otherFutures.add(executeTool(request.getToolName(), request.getParams(), toolCallbackMap,
+					toolSpecificContext, originalIndex));
 		}
 
 		// Wait for all non-terminate tools to complete (happen-before relationship)

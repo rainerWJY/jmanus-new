@@ -67,7 +67,6 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 
 	private ChatMemory conversationMemory;
 
-
 	/*
 	 * Required for creating custom chatModel
 	 */
@@ -196,7 +195,6 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		log.info("Build and cache dynamic chat client for model: {}", cacheKey);
 		return client;
 	}
-
 
 	public ChatClient getDiaChatClient() {
 		if (diaChatClient == null) {

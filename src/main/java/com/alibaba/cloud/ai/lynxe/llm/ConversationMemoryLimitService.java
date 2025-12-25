@@ -103,8 +103,8 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Calculate total character count of all messages by serializing to JSON.
-	 * This gives a more accurate count of the actual data that would be sent to LLM.
+	 * Calculate total character count of all messages by serializing to JSON. This gives
+	 * a more accurate count of the actual data that would be sent to LLM.
 	 * @param messages List of messages
 	 * @return Total character count
 	 */
@@ -216,10 +216,10 @@ public class ConversationMemoryLimitService {
 
 		// Calculate total character count of all rounds
 		int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
-		
+
 		// Calculate target retention: 40% of total content
 		int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
-		
+
 		// If total is very small, keep all rounds
 		if (totalChars <= 0 || targetRetentionChars <= 0) {
 			log.debug("Total character count ({}) is too small, keeping all rounds for conversationId: {}", totalChars,
@@ -228,7 +228,8 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Find which rounds to keep and which to summarize
-		// Strategy: Keep rounds from newest to oldest until accumulated chars reach 40% retention
+		// Strategy: Keep rounds from newest to oldest until accumulated chars reach 40%
+		// retention
 		List<DialogRound> roundsToKeep = new ArrayList<>();
 		List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -249,12 +250,14 @@ public class ConversationMemoryLimitService {
 			else {
 				// For other rounds, check if we can add them within 40% retention limit
 				if (accumulatedChars + roundChars <= targetRetentionChars) {
-					roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
+					roundsToKeep.add(0, round); // Add at beginning to maintain
+												// chronological order
 					accumulatedChars += roundChars;
 					hasKeptAtLeastOneRound = true;
 				}
 				else {
-					// Can't add this round, all remaining are older and should be summarized
+					// Can't add this round, all remaining are older and should be
+					// summarized
 					for (int j = i; j >= 0; j--) {
 						roundsToSummarize.add(0, dialogRounds.get(j));
 					}
@@ -279,8 +282,10 @@ public class ConversationMemoryLimitService {
 			summaryMessage = summarizeRounds(roundsToSummarize);
 		}
 
-		// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then recent rounds
-		// This maintains the user-assistant message pair pattern similar to state_snapshot storage
+		// Rebuild memory: summary first (as UserMessage), then confirmation (as
+		// AssistantMessage), then recent rounds
+		// This maintains the user-assistant message pair pattern similar to
+		// state_snapshot storage
 		chatMemory.clear(conversationId);
 
 		if (summaryMessage != null) {
@@ -312,7 +317,8 @@ public class ConversationMemoryLimitService {
 	/**
 	 * Group messages into dialog rounds. Supports three grouping scenarios:
 	 * <ol>
-	 * <li>UserMessage -> AssistantMessage -> ToolResponseMessage (complete round with tool call)</li>
+	 * <li>UserMessage -> AssistantMessage -> ToolResponseMessage (complete round with
+	 * tool call)</li>
 	 * <li>UserMessage -> AssistantMessage (round without tool call)</li>
 	 * <li>AssistantMessage -> ToolResponseMessage (agent memory scenario)</li>
 	 * </ol>
@@ -326,7 +332,8 @@ public class ConversationMemoryLimitService {
 		for (Message message : messages) {
 			if (message instanceof UserMessage) {
 				// Scenario: UserMessage starts a new round
-				// Can be followed by AssistantMessage (with or without ToolResponseMessage)
+				// Can be followed by AssistantMessage (with or without
+				// ToolResponseMessage)
 				// Complete previous round if exists
 				if (currentRound != null) {
 					rounds.add(currentRound);
@@ -336,26 +343,32 @@ public class ConversationMemoryLimitService {
 				currentRound.addMessage(message);
 			}
 			else if (message instanceof AssistantMessage) {
-				// Check if current round has UserMessage (Scenario 2: UserMessage -> AssistantMessage)
-				// or if it's a standalone AssistantMessage (Scenario 3: AssistantMessage -> ToolResponseMessage)
+				// Check if current round has UserMessage (Scenario 2: UserMessage ->
+				// AssistantMessage)
+				// or if it's a standalone AssistantMessage (Scenario 3: AssistantMessage
+				// -> ToolResponseMessage)
 				if (currentRound != null) {
 					// Check if current round already has a UserMessage
-					boolean hasUserMessage = currentRound.getMessages().stream()
+					boolean hasUserMessage = currentRound.getMessages()
+						.stream()
 						.anyMatch(msg -> msg instanceof UserMessage);
 					if (hasUserMessage) {
 						// Scenario 2: UserMessage -> AssistantMessage
-						// Add AssistantMessage to current round (round may complete here or wait for ToolResponseMessage)
+						// Add AssistantMessage to current round (round may complete here
+						// or wait for ToolResponseMessage)
 						currentRound.addMessage(message);
 					}
 					else {
-						// Current round doesn't have UserMessage, complete it and start new round
+						// Current round doesn't have UserMessage, complete it and start
+						// new round
 						rounds.add(currentRound);
 						currentRound = new DialogRound();
 						currentRound.addMessage(message);
 					}
 				}
 				else {
-					// Scenario 3: AssistantMessage -> ToolResponseMessage (agent memory scenario)
+					// Scenario 3: AssistantMessage -> ToolResponseMessage (agent memory
+					// scenario)
 					// Start new round with AssistantMessage
 					currentRound = new DialogRound();
 					currentRound.addMessage(message);
@@ -384,7 +397,8 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Add the last round if it exists and wasn't completed
-		// This handles incomplete rounds like UserMessage -> AssistantMessage (Scenario 2)
+		// This handles incomplete rounds like UserMessage -> AssistantMessage (Scenario
+		// 2)
 		if (currentRound != null) {
 			rounds.add(currentRound);
 		}
@@ -393,8 +407,9 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize multiple dialog rounds into a single UserMessage in state_snapshot XML format.
-	 * The summary should be between 3000-4000 chars and structured as state_snapshot XML.
+	 * Summarize multiple dialog rounds into a single UserMessage in state_snapshot XML
+	 * format. The summary should be between 3000-4000 chars and structured as
+	 * state_snapshot XML.
 	 * @param rounds Dialog rounds to summarize
 	 * @return Summarized UserMessage in state_snapshot XML format
 	 */
@@ -431,43 +446,44 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Create summarization prompt with state_snapshot XML format requirement
-			String summaryPrompt = String.format("""
-					First, reason in your scratchpad. Then, generate the <state_snapshot>.
-					
-					Analyze the following conversation history and create a structured state_snapshot XML.
-					The state_snapshot should be between %d and %d characters total.
-					
-					Required XML structure:
-					<state_snapshot>
-					<overall_goal>
-					[The main objective or goal of the conversation]
-					</overall_goal>
-					<key_knowledge>
-					[Important facts, commands, configurations, URLs, file paths, and key information discovered]
-					</key_knowledge>
-					<file_system_state>
-					[Files that were created, modified, deleted, or accessed (use prefixes: CREATED, MODIFIED, DELETED, ACCESSED)]
-					</file_system_state>
-					<recent_actions>
-					[Recent tool calls, commands executed, searches performed, and actions taken]
-					</recent_actions>
-					<current_plan>
-					[Current plan items with status: [DONE], [IN PROGRESS], [PENDING]]
-					</current_plan>
-					</state_snapshot>
-					
-					Guidelines:
-					- Preserve all critical information: URLs, file paths, commands, configurations
-					- Include tool names and their results when relevant
-					- Track file system changes accurately
-					- Maintain plan status and progress
-					- Keep the total length between %d and %d characters
-					- Output the XML content directly, no additional text before or after
-					
-					Conversation history:
-					%s
-					""", SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS,
-					conversationHistory);
+			String summaryPrompt = String.format(
+					"""
+							First, reason in your scratchpad. Then, generate the <state_snapshot>.
+
+							Analyze the following conversation history and create a structured state_snapshot XML.
+							The state_snapshot should be between %d and %d characters total.
+
+							Required XML structure:
+							<state_snapshot>
+							<overall_goal>
+							[The main objective or goal of the conversation]
+							</overall_goal>
+							<key_knowledge>
+							[Important facts, commands, configurations, URLs, file paths, and key information discovered]
+							</key_knowledge>
+							<file_system_state>
+							[Files that were created, modified, deleted, or accessed (use prefixes: CREATED, MODIFIED, DELETED, ACCESSED)]
+							</file_system_state>
+							<recent_actions>
+							[Recent tool calls, commands executed, searches performed, and actions taken]
+							</recent_actions>
+							<current_plan>
+							[Current plan items with status: [DONE], [IN PROGRESS], [PENDING]]
+							</current_plan>
+							</state_snapshot>
+
+							Guidelines:
+							- Preserve all critical information: URLs, file paths, commands, configurations
+							- Include tool names and their results when relevant
+							- Track file system changes accurately
+							- Maintain plan status and progress
+							- Keep the total length between %d and %d characters
+							- Output the XML content directly, no additional text before or after
+
+							Conversation history:
+							%s
+							""",
+					SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, conversationHistory);
 
 			// Use LLM to generate summary in state_snapshot format
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
@@ -548,7 +564,8 @@ public class ConversationMemoryLimitService {
 				return;
 			}
 
-			log.info("Force compressing conversation memory for conversationId: {} to break potential loop. Message count: {}",
+			log.info(
+					"Force compressing conversation memory for conversationId: {} to break potential loop. Message count: {}",
 					conversationId, messages.size());
 
 			// Group messages into dialog rounds
@@ -561,10 +578,10 @@ public class ConversationMemoryLimitService {
 
 			// Calculate total character count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
-			
+
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
-			
+
 			// If total is very small, keep all rounds
 			if (totalChars <= 0 || targetRetentionChars <= 0) {
 				log.debug("Total character count ({}) is too small, keeping all rounds for conversationId: {}",
@@ -572,7 +589,8 @@ public class ConversationMemoryLimitService {
 				return;
 			}
 
-			// Force compression: keep rounds from newest to oldest until accumulated chars reach 40% retention
+			// Force compression: keep rounds from newest to oldest until accumulated
+			// chars reach 40% retention
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -591,14 +609,17 @@ public class ConversationMemoryLimitService {
 					hasKeptAtLeastOneRound = true;
 				}
 				else {
-					// For other rounds, check if we can add them within 40% retention limit
+					// For other rounds, check if we can add them within 40% retention
+					// limit
 					if (accumulatedChars + roundChars <= targetRetentionChars) {
-						roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
+						roundsToKeep.add(0, round); // Add at beginning to maintain
+													// chronological order
 						accumulatedChars += roundChars;
 						hasKeptAtLeastOneRound = true;
 					}
 					else {
-						// Can't add this round, all remaining are older and should be summarized
+						// Can't add this round, all remaining are older and should be
+						// summarized
 						for (int j = i; j >= 0; j--) {
 							roundsToSummarize.add(0, dialogRounds.get(j));
 						}
@@ -622,14 +643,17 @@ public class ConversationMemoryLimitService {
 				summaryMessage = summarizeRounds(roundsToSummarize);
 			}
 
-			// Rebuild memory: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
-			// This maintains the user-assistant message pair pattern similar to state_snapshot storage
+			// Rebuild memory: summary first (as UserMessage), then confirmation (as
+			// AssistantMessage), then most recent round
+			// This maintains the user-assistant message pair pattern similar to
+			// state_snapshot storage
 			chatMemory.clear(conversationId);
 
 			if (summaryMessage != null) {
 				// Add summary as UserMessage (like state_snapshot)
 				chatMemory.add(conversationId, summaryMessage);
-				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+				// Add confirmation AssistantMessage to maintain user-assistant pair
+				// pattern
 				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 				chatMemory.add(conversationId, confirmationMessage);
 				log.info("Added forced summary message ({} chars) with confirmation for conversationId: {}",
@@ -681,17 +705,18 @@ public class ConversationMemoryLimitService {
 
 			// Calculate total character count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
-			
+
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
-			
+
 			// If total is very small, keep all rounds
 			if (totalChars <= 0 || targetRetentionChars <= 0) {
 				log.debug("Total character count ({}) is too small, keeping all rounds", totalChars);
 				return new ArrayList<>(messages);
 			}
 
-			// Force compression: keep rounds from newest to oldest until accumulated chars reach 40% retention
+			// Force compression: keep rounds from newest to oldest until accumulated
+			// chars reach 40% retention
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -710,14 +735,17 @@ public class ConversationMemoryLimitService {
 					hasKeptAtLeastOneRound = true;
 				}
 				else {
-					// For other rounds, check if we can add them within 40% retention limit
+					// For other rounds, check if we can add them within 40% retention
+					// limit
 					if (accumulatedChars + roundChars <= targetRetentionChars) {
-						roundsToKeep.add(0, round); // Add at beginning to maintain chronological order
+						roundsToKeep.add(0, round); // Add at beginning to maintain
+													// chronological order
 						accumulatedChars += roundChars;
 						hasKeptAtLeastOneRound = true;
 					}
 					else {
-						// Can't add this round, all remaining are older and should be summarized
+						// Can't add this round, all remaining are older and should be
+						// summarized
 						for (int j = i; j >= 0; j--) {
 							roundsToSummarize.add(0, dialogRounds.get(j));
 						}
@@ -741,17 +769,21 @@ public class ConversationMemoryLimitService {
 				summaryMessage = summarizeRounds(roundsToSummarize);
 			}
 
-			// Build compressed message list: summary first (as UserMessage), then confirmation (as AssistantMessage), then most recent round
-			// This maintains the user-assistant message pair pattern similar to state_snapshot storage
+			// Build compressed message list: summary first (as UserMessage), then
+			// confirmation (as AssistantMessage), then most recent round
+			// This maintains the user-assistant message pair pattern similar to
+			// state_snapshot storage
 			List<Message> compressedMessages = new ArrayList<>();
 
 			if (summaryMessage != null) {
 				// Add summary as UserMessage (like state_snapshot)
 				compressedMessages.add(summaryMessage);
-				// Add confirmation AssistantMessage to maintain user-assistant pair pattern
+				// Add confirmation AssistantMessage to maintain user-assistant pair
+				// pattern
 				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 				compressedMessages.add(confirmationMessage);
-				log.info("Added forced summary message ({} chars) with confirmation", summaryMessage.getText().length());
+				log.info("Added forced summary message ({} chars) with confirmation",
+						summaryMessage.getText().length());
 			}
 
 			// Add most recent round
@@ -777,13 +809,14 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Check if messages exceed the limit and compress both conversation and agent memory if needed.
-	 * This method checks the total character count of all messages (conversation + agent) and
-	 * compresses them if they exceed the limit.
+	 * Check if messages exceed the limit and compress both conversation and agent memory
+	 * if needed. This method checks the total character count of all messages
+	 * (conversation + agent) and compresses them if they exceed the limit.
 	 * @param conversationMemory The conversation memory instance
 	 * @param conversationId The conversation ID
 	 * @param agentMessages The agent memory messages
-	 * @return Compressed agent messages if compression occurred, original messages otherwise
+	 * @return Compressed agent messages if compression occurred, original messages
+	 * otherwise
 	 */
 	public List<Message> checkAndCompressIfNeeded(ChatMemory conversationMemory, String conversationId,
 			List<Message> agentMessages) {
@@ -815,8 +848,7 @@ public class ConversationMemoryLimitService {
 				return agentMessages;
 			}
 
-			log.info(
-					"Total memory size ({}) exceeds limit ({}). Force compressing conversation and agent memory...",
+			log.info("Total memory size ({}) exceeds limit ({}). Force compressing conversation and agent memory...",
 					totalChars, maxChars);
 
 			// Step 1: Force compress conversation memory first

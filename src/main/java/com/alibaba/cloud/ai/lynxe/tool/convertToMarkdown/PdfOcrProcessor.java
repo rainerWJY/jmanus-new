@@ -475,9 +475,12 @@ public class PdfOcrProcessor {
 			String extractedText = chatClient.prompt().options(chatOptions).system(systemMessage -> {
 				systemMessage.text("You are an OCR (Optical Character Recognition) specialist.");
 				systemMessage.text("Extract all visible text content from the provided image.");
-				systemMessage.text("Return ONLY the extracted text content - do NOT return coordinates, bounding boxes, or any structured data.");
-				systemMessage.text("Do NOT return numbers in the format of 'x,y,width,height,angle' or any coordinate information.");
-				systemMessage.text("Return only readable text characters, preserving the structure and layout as much as possible.");
+				systemMessage.text(
+						"Return ONLY the extracted text content - do NOT return coordinates, bounding boxes, or any structured data.");
+				systemMessage.text(
+						"Do NOT return numbers in the format of 'x,y,width,height,angle' or any coordinate information.");
+				systemMessage.text(
+						"Return only readable text characters, preserving the structure and layout as much as possible.");
 				systemMessage.text("For Chinese text, extract all Chinese characters accurately.");
 				systemMessage.text("Focus on accurate text recognition and maintain readability.");
 				if (additionalRequirement != null && !additionalRequirement.trim().isEmpty()) {
@@ -485,7 +488,8 @@ public class PdfOcrProcessor {
 				}
 				systemMessage.text("If no text is visible in the image, return ''(empty string) ");
 			})
-				.user(userMessage -> userMessage.text("Please extract all text content from this image. Return only the text content, not coordinates or bounding boxes:")
+				.user(userMessage -> userMessage.text(
+						"Please extract all text content from this image. Return only the text content, not coordinates or bounding boxes:")
 					.media(MimeTypeUtils.parseMimeType("image/" + imageFormatName.toLowerCase()),
 							new InputStreamResource(imageInputStream)))
 				.call()
@@ -515,8 +519,8 @@ public class PdfOcrProcessor {
 	}
 
 	/**
-	 * Filter out coordinate data patterns from OCR result
-	 * Detects and removes lines that match OCR bounding box coordinate patterns (e.g., "30,18,21,30,90")
+	 * Filter out coordinate data patterns from OCR result Detects and removes lines that
+	 * match OCR bounding box coordinate patterns (e.g., "30,18,21,30,90")
 	 * @param text The OCR result text that may contain coordinates
 	 * @return Filtered text with coordinates removed
 	 */
@@ -525,10 +529,11 @@ public class PdfOcrProcessor {
 			return text;
 		}
 
-		// Pattern to match coordinate lines: numbers separated by commas (typically 4-5 numbers)
+		// Pattern to match coordinate lines: numbers separated by commas (typically 4-5
+		// numbers)
 		// Format: x,y,width,height,angle or similar
 		java.util.regex.Pattern coordinatePattern = java.util.regex.Pattern
-				.compile("^\\s*\\d+,\\d+,\\d+,\\d+(,\\d+)?\\s*$", java.util.regex.Pattern.MULTILINE);
+			.compile("^\\s*\\d+,\\d+,\\d+,\\d+(,\\d+)?\\s*$", java.util.regex.Pattern.MULTILINE);
 
 		String[] lines = text.split("\\r?\\n");
 		java.util.List<String> filteredLines = new java.util.ArrayList<>();
@@ -542,8 +547,7 @@ public class PdfOcrProcessor {
 			}
 			// Also skip lines that are mostly numbers and commas (likely coordinates)
 			String trimmedLine = line.trim();
-			if (trimmedLine.matches("^[\\d,\\s]+$") && trimmedLine.length() > 0
-					&& trimmedLine.split(",").length >= 3) {
+			if (trimmedLine.matches("^[\\d,\\s]+$") && trimmedLine.length() > 0 && trimmedLine.split(",").length >= 3) {
 				coordinateLinesRemoved++;
 				continue;
 			}

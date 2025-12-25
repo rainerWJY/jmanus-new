@@ -91,12 +91,11 @@ public class ClickByElementAction extends BrowserAction {
 					log.info("Successfully clicked element at index {} using fallback method (locator.click)", index);
 				}
 				catch (Exception fallbackException) {
-					log.error("Both primary (mouse simulation) and fallback (locator.click) methods failed for element with idx {}: Primary error: {}, Fallback error: {}",
+					log.error(
+							"Both primary (mouse simulation) and fallback (locator.click) methods failed for element with idx {}: Primary error: {}, Fallback error: {}",
 							index, e.getMessage(), fallbackException.getMessage());
-					throw new RuntimeException(
-							"Primary method (mouse simulation) failed: " + e.getMessage()
-									+ ". Fallback method (locator.click) also failed: " + fallbackException.getMessage(),
-							e);
+					throw new RuntimeException("Primary method (mouse simulation) failed: " + e.getMessage()
+							+ ". Fallback method (locator.click) also failed: " + fallbackException.getMessage(), e);
 				}
 			}
 		});
@@ -104,8 +103,8 @@ public class ClickByElementAction extends BrowserAction {
 	}
 
 	/**
-	 * Primary method: Simulate mouse movement to element center and click
-	 * This method moves the mouse to the center of the element and performs a click
+	 * Primary method: Simulate mouse movement to element center and click This method
+	 * moves the mouse to the center of the element and performs a click
 	 * @param page The Playwright Page instance
 	 * @param locator The Locator for the element
 	 * @param index The element index for logging
