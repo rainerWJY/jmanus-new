@@ -96,6 +96,12 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.CreateTableTool;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.GetTableStructureTool;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.AddMultipleRowsToTableTool;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.UpdateRowInTableTool;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.DeleteRowFromTableTool;
+import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.QueryTableTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileImportOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileReadOperator;
@@ -130,8 +136,7 @@ public class PlanningFactory {
 
 	private final DataSourceService dataSourceService;
 
-	// private final TableProcessingService tableProcessingService; // Currently unused -
-	// commented out for future use
+	private final TableProcessingService tableProcessingService;
 
 	private final IExcelProcessingService excelProcessingService;
 
@@ -228,7 +233,7 @@ public class PlanningFactory {
 		this.innerStorageService = innerStorageService;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		this.dataSourceService = dataSourceService;
-		// this.tableProcessingService = tableProcessingService; // Currently unused
+		this.tableProcessingService = tableProcessingService;
 		this.excelProcessingService = excelProcessingService;
 	}
 
@@ -314,6 +319,13 @@ public class PlanningFactory {
 				.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService, symlinkDetector));
 			// toolDefinitions.add(new UploadedFileLoaderTool(unifiedDirectoryManager,
 			// applicationContext));
+			// Refactored table operators (split from TableProcessorTool)
+			toolDefinitions.add(new CreateTableTool(tableProcessingService, toolI18nService));
+			toolDefinitions.add(new GetTableStructureTool(tableProcessingService, toolI18nService));
+			toolDefinitions.add(new AddMultipleRowsToTableTool(tableProcessingService, toolI18nService));
+			toolDefinitions.add(new UpdateRowInTableTool(tableProcessingService, toolI18nService));
+			toolDefinitions.add(new DeleteRowFromTableTool(tableProcessingService, toolI18nService));
+			toolDefinitions.add(new QueryTableTool(tableProcessingService, toolI18nService));
 			// toolDefinitions.add(new TableProcessorTool(tableProcessingService));
 			// toolDefinitions.add(pptGeneratorOperator);
 			// toolDefinitions.add(jsxGeneratorOperator);
