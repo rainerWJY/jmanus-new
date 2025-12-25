@@ -1,0 +1,27 @@
+description: |
+  Split text files (markdown, code, HTML, etc.) into smaller pieces. This tool helps break down
+  large text files into manageable chunks while preserving content completeness.
+  
+  Important: Files are read from rootPlanId/ directory, same as GlobalFileOperator and
+  MarkdownConverterTool. For example, to split rootPlanId/projects.md, use file_path "projects.md".
+  
+  The file is split into 10 smaller pieces (as evenly as possible by lines).
+  Output files are saved in the same directory as the source file, named with index prefix: 0-filename.ext, 1-filename.ext, etc.
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "file_path": {
+              "type": "string",
+              "description": "Path to the file to split (relative to rootPlanId/ directory, e.g., 'file.md' or 'subdir/file.md')"
+          },
+          "header": {
+              "type": "string",
+              "description": "Optional header text to add at the beginning of each split file"
+          }
+      },
+      "required": ["file_path"],
+      "additionalProperties": false
+  }
+

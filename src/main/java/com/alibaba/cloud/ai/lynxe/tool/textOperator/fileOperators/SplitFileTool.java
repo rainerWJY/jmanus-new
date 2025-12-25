@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.ai.lynxe.tool.mapreduce;
+package com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,19 +29,16 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * File splitter tool that splits text files (markdown, code, HTML, etc.) into smaller
- * pieces. Splits files by lines to ensure content completeness and adds index numbers to
- * split file names.
+ * Split file tool that splits text files (markdown, code, HTML, etc.) into smaller pieces.
+ * Splits files by lines to ensure content completeness and adds index numbers to split file names.
  */
-public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSplitterInput> {
+public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput> {
 
-	private static final Logger log = LoggerFactory.getLogger(FileSplitterTool.class);
+	private static final Logger log = LoggerFactory.getLogger(SplitFileTool.class);
 
-	private static final String TOOL_NAME = "file_splitter";
+	private static final String TOOL_NAME = "split-file";
 
 	/**
 	 * Number of pieces to split file into
@@ -50,11 +46,9 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 	private static final int SPLIT_COUNT = 10;
 
 	/**
-	 * Input class for file splitter operations
+	 * Input class for split file operations
 	 */
-	public static class FileSplitterInput {
-
-		private String action;
+	public static class SplitFileInput {
 
 		@com.fasterxml.jackson.annotation.JsonProperty("file_path")
 		private String filePath;
@@ -62,14 +56,6 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 		private String header;
 
 		// Getters and setters
-		public String getAction() {
-			return action;
-		}
-
-		public void setAction(String action) {
-			this.action = action;
-		}
-
 		public String getFilePath() {
 			return filePath;
 		}
@@ -90,90 +76,29 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 
 	private final TextFileService textFileService;
 
-	private final ObjectMapper objectMapper;
-
 	private final ToolI18nService toolI18nService;
 
-	public FileSplitterTool(TextFileService textFileService, ObjectMapper objectMapper,
-			ToolI18nService toolI18nService) {
+	public SplitFileTool(TextFileService textFileService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
-		this.objectMapper = objectMapper;
 		this.toolI18nService = toolI18nService;
 	}
 
-	public ToolExecuteResult run(String toolInput) {
-		log.info("FileSplitterTool toolInput: {}", toolInput);
-		try {
-			Map<String, Object> toolInputMap = objectMapper.readValue(toolInput,
-					new TypeReference<Map<String, Object>>() {
-					});
-
-			String action = (String) toolInputMap.get("action");
-			String filePath = (String) toolInputMap.get("file_path");
-			String header = (String) toolInputMap.get("header");
-
-			// Basic parameter validation
-			if (action == null) {
-				return new ToolExecuteResult("Error: action parameter is required");
-			}
-
-			return switch (action) {
-				case "split" -> {
-					if (filePath == null || filePath.trim().isEmpty()) {
-						yield new ToolExecuteResult("Error: file_path parameter is required for split operation");
-					}
-					// Header is optional, can be null or empty
-					yield splitFile(filePath, header);
-				}
-				case "count" -> {
-					if (filePath == null || filePath.trim().isEmpty()) {
-						yield new ToolExecuteResult("Error: file_path parameter is required for count operation");
-					}
-					yield countFile(filePath);
-				}
-				default ->
-					new ToolExecuteResult("Unknown operation: " + action + ". Supported operations: split, count");
-			};
-		}
-		catch (Exception e) {
-			log.error("FileSplitterTool execution failed", e);
-			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
-		}
-	}
-
 	@Override
-	public ToolExecuteResult run(FileSplitterInput input) {
-		log.info("FileSplitterTool input: action={}, filePath={}", input.getAction(), input.getFilePath());
+	public ToolExecuteResult run(SplitFileInput input) {
+		log.info("SplitFileTool input: filePath={}", input.getFilePath());
 		try {
-			String action = input.getAction();
 			String filePath = input.getFilePath();
 			String header = input.getHeader();
 
 			// Basic parameter validation
-			if (action == null) {
-				return new ToolExecuteResult("Error: action parameter is required");
+			if (filePath == null || filePath.trim().isEmpty()) {
+				return new ToolExecuteResult("Error: file_path parameter is required");
 			}
 
-			return switch (action) {
-				case "split" -> {
-					if (filePath == null || filePath.trim().isEmpty()) {
-						yield new ToolExecuteResult("Error: file_path parameter is required for split operation");
-					}
-					// Header is optional, can be null or empty
-					yield splitFile(filePath, header);
-				}
-				case "count" -> {
-					if (filePath == null || filePath.trim().isEmpty()) {
-						yield new ToolExecuteResult("Error: file_path parameter is required for count operation");
-					}
-					yield countFile(filePath);
-				}
-				default ->
-					new ToolExecuteResult("Unknown operation: " + action + ". Supported operations: split, count");
-			};
+			return splitFile(filePath, header);
 		}
 		catch (Exception e) {
-			log.error("FileSplitterTool execution failed", e);
+			log.error("SplitFileTool execution failed", e);
 			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
 		}
 	}
@@ -196,7 +121,6 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 		String normalizedPath = normalizeFilePath(filePath);
 
 		// Get the root plan directory
-		// Same approach as GlobalFileOperator and MarkdownConverterTool
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 
 		// Resolve file path within the root plan directory
@@ -342,8 +266,7 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 
 			// Build result message
 			StringBuilder result = new StringBuilder();
-			result
-				.append(String.format("Successfully split file '%s' into %d pieces:\n", fileName, createdFiles.size()));
+			result.append(String.format("Successfully split file '%s' into %d pieces:\n", fileName, createdFiles.size()));
 			result.append("=".repeat(60)).append("\n");
 			for (String createdFile : createdFiles) {
 				result.append(String.format("  - %s\n", createdFile));
@@ -366,71 +289,9 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 		}
 	}
 
-	/**
-	 * Count total lines and character size of the file
-	 */
-	private ToolExecuteResult countFile(String filePath) {
-		try {
-			Path sourceFile = validateFilePath(filePath);
-
-			// Read all lines
-			List<String> allLines = Files.readAllLines(sourceFile);
-			int totalLines = allLines.size();
-
-			// Calculate total character count (including newlines)
-			long totalChars = 0;
-			for (String line : allLines) {
-				totalChars += line.length() + 1; // +1 for newline character
-			}
-			// Subtract 1 if file doesn't end with newline
-			if (!allLines.isEmpty() && !allLines.get(allLines.size() - 1).isEmpty()) {
-				// Last line might not have trailing newline
-				// Actually, Files.readAllLines() doesn't include trailing newline in line
-				// content
-				// So we need to check if we should add it
-			}
-
-			// Get file size from filesystem
-			long fileSizeBytes = Files.size(sourceFile);
-
-			// Build result message
-			StringBuilder result = new StringBuilder();
-			result.append(String.format("File statistics for '%s':\n", sourceFile.getFileName()));
-			result.append("=".repeat(60)).append("\n");
-			result.append(String.format("Total lines: %d\n", totalLines));
-			result.append(String.format("Total characters: %d\n", totalChars));
-			result.append(String.format("File size: %s\n", formatFileSize(fileSizeBytes)));
-			result.append(String.format("Average characters per line: %.1f\n",
-					totalLines > 0 ? (double) totalChars / totalLines : 0.0));
-
-			return new ToolExecuteResult(result.toString());
-		}
-		catch (IOException e) {
-			log.error("Error counting file: {}", filePath, e);
-			return new ToolExecuteResult("Error counting file: " + e.getMessage());
-		}
-		catch (Exception e) {
-			log.error("Unexpected error counting file: {}", filePath, e);
-			return new ToolExecuteResult("Unexpected error counting file: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Format file size in human-readable format
-	 */
-	private String formatFileSize(long size) {
-		if (size < 1024)
-			return size + " B";
-		if (size < 1024 * 1024)
-			return String.format("%.1f KB", size / 1024.0);
-		if (size < 1024 * 1024 * 1024)
-			return String.format("%.1f MB", size / (1024.0 * 1024));
-		return String.format("%.1f GB", size / (1024.0 * 1024 * 1024));
-	}
-
 	@Override
 	public String getCurrentToolStateString() {
-		return "File splitter tool ready. Use 'split' action to split files or 'count' action to count file statistics.";
+		return "";
 	}
 
 	@Override
@@ -440,23 +301,23 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("file-splitter-tool");
+		return toolI18nService.getDescription("split-file");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("file-splitter-tool");
+		return toolI18nService.getParameters("split-file");
 	}
 
 	@Override
-	public Class<FileSplitterInput> getInputType() {
-		return FileSplitterInput.class;
+	public Class<SplitFileInput> getInputType() {
+		return SplitFileInput.class;
 	}
 
 	@Override
 	public void cleanup(String planId) {
 		if (planId != null) {
-			log.info("Cleaning up file splitter resources for plan: {}", planId);
+			log.info("Cleaning up split file resources for plan: {}", planId);
 		}
 	}
 
@@ -471,3 +332,4 @@ public class FileSplitterTool extends AbstractBaseTool<FileSplitterTool.FileSpli
 	}
 
 }
+

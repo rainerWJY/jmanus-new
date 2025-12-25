@@ -79,7 +79,8 @@ import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseReadTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseTableToExcelTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.DatabaseWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.UuidGenerateTool;
-import com.alibaba.cloud.ai.lynxe.tool.dirOperator.DirectoryOperator;
+import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.GlobFilesTool;
+import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.ListFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
@@ -90,33 +91,22 @@ import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationTool;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.jsxGenerator.JsxGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileBasedParallelExecutionTool;
-import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileSplitterTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FunctionRegistryService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
-import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
-import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.CreatePptTool;
-import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.GetPptTemplateListTool;
-import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.pptOperators.GetPptTemplateTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.TableProcessingService;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.CreateTableTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.GetTableStructureTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.AddMultipleRowsToTableTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.UpdateRowInTableTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.DeleteRowFromTableTool;
-import com.alibaba.cloud.ai.lynxe.tool.tableProcessor.tableOperators.QueryTableTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileImportOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileReadOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileWriteOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReplaceFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteFileOperator;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -143,7 +133,6 @@ public class PlanningFactory {
 
 	private final DataSourceService dataSourceService;
 
-	private final TableProcessingService tableProcessingService;
 
 	private final IExcelProcessingService excelProcessingService;
 
@@ -175,10 +164,6 @@ public class PlanningFactory {
 	@Autowired
 	@Lazy
 	private TaskInterruptionManager taskInterruptionManager;
-
-	@SuppressWarnings("unused")
-	@Autowired
-	private PptGeneratorOperator pptGeneratorOperator;
 
 	@Autowired
 	private PptGeneratorService pptGeneratorService;
@@ -236,7 +221,7 @@ public class PlanningFactory {
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
 			SmartContentSavingService innerStorageService, UnifiedDirectoryManager unifiedDirectoryManager,
-			DataSourceService dataSourceService, TableProcessingService tableProcessingService,
+			DataSourceService dataSourceService,
 			IExcelProcessingService excelProcessingService) {
 		this.chromeDriverService = chromeDriverService;
 		this.recorder = recorder;
@@ -246,7 +231,6 @@ public class PlanningFactory {
 		this.innerStorageService = innerStorageService;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		this.dataSourceService = dataSourceService;
-		this.tableProcessingService = tableProcessingService;
 		this.excelProcessingService = excelProcessingService;
 	}
 
@@ -327,24 +311,15 @@ public class PlanningFactory {
 			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService, gitIgnoreMatcher,
 					lynxeProperties));
 			toolDefinitions.add(new FileImportOperator(textFileService, null, toolI18nService));
-			toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper, toolI18nService));
-			toolDefinitions
-				.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService, symlinkDetector));
+			// Refactored file splitter (split action only, count removed)
+			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
+			// Refactored directory operators (split from DirectoryOperator)
+			toolDefinitions.add(new ListFilesTool(unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService));
+			// toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper, toolI18nService));
+			// toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService, symlinkDetector));
 			// toolDefinitions.add(new UploadedFileLoaderTool(unifiedDirectoryManager,
 			// applicationContext));
-			// Refactored table operators (split from TableProcessorTool)
-			toolDefinitions.add(new CreateTableTool(tableProcessingService, toolI18nService));
-			toolDefinitions.add(new GetTableStructureTool(tableProcessingService, toolI18nService));
-			toolDefinitions.add(new AddMultipleRowsToTableTool(tableProcessingService, toolI18nService));
-			toolDefinitions.add(new UpdateRowInTableTool(tableProcessingService, toolI18nService));
-			toolDefinitions.add(new DeleteRowFromTableTool(tableProcessingService, toolI18nService));
-			toolDefinitions.add(new QueryTableTool(tableProcessingService, toolI18nService));
-			// toolDefinitions.add(new TableProcessorTool(tableProcessingService));
-			// Refactored PPT operators (split from PptGeneratorOperator)
-			toolDefinitions.add(new CreatePptTool(pptGeneratorService, toolI18nService));
-			toolDefinitions.add(new GetPptTemplateListTool(pptGeneratorService, toolI18nService));
-			toolDefinitions.add(new GetPptTemplateTool(pptGeneratorService, toolI18nService));
-			// toolDefinitions.add(pptGeneratorOperator);
 			// toolDefinitions.add(jsxGeneratorOperator);
 			// toolDefinitions.add(new FileMergeTool(unifiedDirectoryManager));
 			// toolDefinitions.add(new GoogleSearch());
