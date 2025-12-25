@@ -101,6 +101,10 @@ import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileImportOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileReadOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileWriteOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReplaceFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteFileOperator;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -292,6 +296,16 @@ public class PlanningFactory {
 					shortUrlService, toolI18nService));
 			toolDefinitions.add(new GlobalFileWriteOperator(textFileService, innerStorageService, objectMapper,
 					shortUrlService, toolI18nService));
+			// Refactored file operators (split from GlobalFileReadOperator)
+			toolDefinitions.add(new ReadFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
+			// Refactored file operators (split from GlobalFileWriteOperator)
+			toolDefinitions.add(new DeleteFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
+			toolDefinitions.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
+			toolDefinitions.add(new WriteFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
 			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService, gitIgnoreMatcher,
 					lynxeProperties));
 			toolDefinitions.add(new FileImportOperator(textFileService, null, toolI18nService));
