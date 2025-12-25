@@ -27,8 +27,8 @@ import org.springframework.stereotype.Service;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 
 /**
- * Service to manage function registries for parallel execution tools.
- * Stores registries per planId to allow multiple tools to share state.
+ * Service to manage function registries for parallel execution tools. Stores registries
+ * per planId to allow multiple tools to share state.
  */
 @Service
 public class FunctionRegistryService {
@@ -97,4 +97,3 @@ public class FunctionRegistryService {
 	}
 
 }
-

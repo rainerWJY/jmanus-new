@@ -147,4 +147,3 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 	}
 
 }
-

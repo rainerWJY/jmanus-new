@@ -33,12 +33,12 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 
 /**
- * Read file operator that reads file contents from the local filesystem.
- * This operator provides access to files that can be accessed across all
- * sub-plans within the same execution context.
+ * Read file operator that reads file contents from the local filesystem. This operator
+ * provides access to files that can be accessed across all sub-plans within the same
+ * execution context.
  *
- * Keywords: global files, root directory, root folder, root plan directory,
- * global file read operations, root file access, cross-plan files.
+ * Keywords: global files, root directory, root folder, root plan directory, global file
+ * read operations, root file access, cross-plan files.
  */
 public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFileInput> {
 
@@ -429,4 +429,3 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 	}
 
 }
-

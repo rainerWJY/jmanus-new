@@ -33,7 +33,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Clear pending execution tool that clears all pending functions (functions with no result yet).
+ * Clear pending execution tool that clears all pending functions (functions with no
+ * result yet).
  */
 public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExecutionTool.ClearPendingInput>
 		implements AsyncToolCallBiFunctionDef<ClearPendingExecutionTool.ClearPendingInput> {
@@ -74,7 +75,7 @@ public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExec
 		try {
 			String planId = this.currentPlanId;
 			List<FunctionRegistryService.FunctionRegistry> functionRegistries = functionRegistryService
-					.getRegistries(planId);
+				.getRegistries(planId);
 
 			int clearedCount = 0;
 			for (FunctionRegistryService.FunctionRegistry function : functionRegistries) {
@@ -88,16 +89,19 @@ public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExec
 			result.put("message", "Cleared " + clearedCount + " pending functions");
 			result.put("count", clearedCount);
 			try {
-				return CompletableFuture.completedFuture(new ToolExecuteResult(objectMapper.writeValueAsString(result)));
+				return CompletableFuture
+					.completedFuture(new ToolExecuteResult(objectMapper.writeValueAsString(result)));
 			}
 			catch (JsonProcessingException e) {
 				logger.error("Error serializing result: {}", e.getMessage(), e);
-				return CompletableFuture.completedFuture(new ToolExecuteResult("Cleared " + clearedCount + " pending functions"));
+				return CompletableFuture
+					.completedFuture(new ToolExecuteResult("Cleared " + clearedCount + " pending functions"));
 			}
 		}
 		catch (Exception e) {
 			logger.error("Error clearing pending functions: {}", e.getMessage(), e);
-			return CompletableFuture.completedFuture(new ToolExecuteResult("Error clearing pending functions: " + e.getMessage()));
+			return CompletableFuture
+				.completedFuture(new ToolExecuteResult("Error clearing pending functions: " + e.getMessage()));
 		}
 	}
 
@@ -148,4 +152,3 @@ public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExec
 	}
 
 }
-

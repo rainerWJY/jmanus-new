@@ -127,4 +127,3 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 	}
 
 }
-

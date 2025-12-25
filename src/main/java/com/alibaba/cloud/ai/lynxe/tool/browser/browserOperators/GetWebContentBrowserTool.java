@@ -44,7 +44,9 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 	 * Input class for get_web_content operations
 	 */
 	public static class GetWebContentInput {
+
 		// No parameters needed for get_web_content
+
 	}
 
 	public GetWebContentBrowserTool(BrowserUseTool browserUseTool, TextFileService textFileService,
@@ -70,10 +72,8 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 				return validation;
 			}
 
-			return executeActionWithRetry(
-					() -> new WriteCurrentWebContentAction(browserUseTool, textFileService)
-							.execute(toBrowserRequestVO(input)),
-					"get_web_content");
+			return executeActionWithRetry(() -> new WriteCurrentWebContentAction(browserUseTool, textFileService)
+				.execute(toBrowserRequestVO(input)), "get_web_content");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing get_web_content: {}", e.getMessage(), e);
@@ -120,4 +120,3 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 	}
 
 }
-

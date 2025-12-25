@@ -129,4 +129,3 @@ public class NavigateBrowserTool extends AbstractBrowserTool<NavigateBrowserTool
 	}
 
 }
-

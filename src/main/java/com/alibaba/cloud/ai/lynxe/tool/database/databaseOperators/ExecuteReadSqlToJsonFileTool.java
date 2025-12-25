@@ -29,9 +29,11 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Execute read SQL to JSON file tool that executes SELECT queries and saves results to JSON file.
+ * Execute read SQL to JSON file tool that executes SELECT queries and saves results to
+ * JSON file.
  */
-public class ExecuteReadSqlToJsonFileTool extends AbstractBaseTool<ExecuteReadSqlToJsonFileTool.ExecuteReadSqlToJsonFileInput> {
+public class ExecuteReadSqlToJsonFileTool
+		extends AbstractBaseTool<ExecuteReadSqlToJsonFileTool.ExecuteReadSqlToJsonFileInput> {
 
 	private static final Logger log = LoggerFactory.getLogger(ExecuteReadSqlToJsonFileTool.class);
 
@@ -200,4 +202,3 @@ public class ExecuteReadSqlToJsonFileTool extends AbstractBaseTool<ExecuteReadSq
 	}
 
 }
-

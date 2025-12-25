@@ -31,8 +31,9 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * Split file tool that splits text files (markdown, code, HTML, etc.) into smaller pieces.
- * Splits files by lines to ensure content completeness and adds index numbers to split file names.
+ * Split file tool that splits text files (markdown, code, HTML, etc.) into smaller
+ * pieces. Splits files by lines to ensure content completeness and adds index numbers to
+ * split file names.
  */
 public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput> {
 
@@ -266,7 +267,8 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 
 			// Build result message
 			StringBuilder result = new StringBuilder();
-			result.append(String.format("Successfully split file '%s' into %d pieces:\n", fileName, createdFiles.size()));
+			result
+				.append(String.format("Successfully split file '%s' into %d pieces:\n", fileName, createdFiles.size()));
 			result.append("=".repeat(60)).append("\n");
 			for (String createdFile : createdFiles) {
 				result.append(String.format("  - %s\n", createdFile));
@@ -332,4 +334,3 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 	}
 
 }
-

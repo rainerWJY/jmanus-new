@@ -131,4 +131,3 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 	}
 
 }
-

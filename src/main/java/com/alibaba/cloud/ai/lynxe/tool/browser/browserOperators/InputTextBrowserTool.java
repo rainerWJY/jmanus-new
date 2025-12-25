@@ -96,8 +96,8 @@ public class InputTextBrowserTool extends AbstractBrowserTool<InputTextBrowserTo
 				return new ToolExecuteResult("Error: text parameter is required");
 			}
 
-			return executeActionWithRetry(
-					() -> new InputTextAction(browserUseTool).execute(toBrowserRequestVO(input)), "input_text");
+			return executeActionWithRetry(() -> new InputTextAction(browserUseTool).execute(toBrowserRequestVO(input)),
+					"input_text");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing input_text: {}", e.getMessage(), e);
@@ -144,4 +144,3 @@ public class InputTextBrowserTool extends AbstractBrowserTool<InputTextBrowserTo
 	}
 
 }
-

@@ -36,7 +36,7 @@ public class McpTool extends AbstractBaseTool<Map<String, Object>> {
 	private SmartContentSavingService smartContentSavingService;
 
 	public McpTool(ToolCallback toolCallback, String serviceNameString, String planId,
-		SmartContentSavingService smartContentSavingService, ObjectMapper objectMapper) {
+			SmartContentSavingService smartContentSavingService, ObjectMapper objectMapper) {
 		this.toolCallback = toolCallback;
 		this.objectMapper = objectMapper;
 		this.serviceNameString = serviceNameString;

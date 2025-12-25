@@ -607,7 +607,6 @@ public class PdfOcrProcessor {
 		return filename;
 	}
 
-
 	/**
 	 * Save OCR result to file
 	 */

@@ -42,8 +42,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 /**
- * Register batch execution tool that registers multiple executions of different tools in parallel.
- * Each function can have its own tool name and parameters.
+ * Register batch execution tool that registers multiple executions of different tools in
+ * parallel. Each function can have its own tool name and parameters.
  */
 public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchExecutionTool.RegisterBatchInput>
 		implements AsyncToolCallBiFunctionDef<RegisterBatchExecutionTool.RegisterBatchInput> {
@@ -99,7 +99,8 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 	}
 
 	/**
-	 * Custom deserializer for functions field that handles both JSON array and JSON string formats.
+	 * Custom deserializer for functions field that handles both JSON array and JSON
+	 * string formats.
 	 */
 	static class FunctionsListDeserializer extends JsonDeserializer<List<FunctionRequest>> {
 
@@ -108,8 +109,7 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 		private static final ObjectMapper objectMapper = new ObjectMapper();
 
 		@Override
-		public List<FunctionRequest> deserialize(JsonParser p, DeserializationContext ctxt)
-				throws java.io.IOException {
+		public List<FunctionRequest> deserialize(JsonParser p, DeserializationContext ctxt) throws java.io.IOException {
 			JsonToken currentToken = p.getCurrentToken();
 
 			if (currentToken == JsonToken.START_ARRAY) {
@@ -177,7 +177,7 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 		try {
 			String planId = this.currentPlanId;
 			List<FunctionRegistryService.FunctionRegistry> functionRegistries = functionRegistryService
-					.getRegistries(planId);
+				.getRegistries(planId);
 
 			List<FunctionRequest> functionRequests = input.getFunctions();
 			if (functionRequests == null || functionRequests.isEmpty()) {
@@ -208,7 +208,7 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 				functionRegistries.add(function);
 
 				registeredFunctions
-						.add(Map.of("id", funcId, "input", params, "toolName", toolName, "status", "REGISTERED"));
+					.add(Map.of("id", funcId, "input", params, "toolName", toolName, "status", "REGISTERED"));
 			}
 
 			if (registeredFunctions.isEmpty()) {
@@ -220,7 +220,7 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 			result.put("functions", registeredFunctions);
 			try {
 				return CompletableFuture
-						.completedFuture(new ToolExecuteResult(objectMapper.writeValueAsString(result)));
+					.completedFuture(new ToolExecuteResult(objectMapper.writeValueAsString(result)));
 			}
 			catch (JsonProcessingException e) {
 				logger.error("Error serializing result: {}", e.getMessage(), e);
@@ -230,7 +230,8 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 		}
 		catch (Exception e) {
 			logger.error("Error registering functions batch: {}", e.getMessage(), e);
-			return CompletableFuture.completedFuture(new ToolExecuteResult("Error registering functions: " + e.getMessage()));
+			return CompletableFuture
+				.completedFuture(new ToolExecuteResult("Error registering functions: " + e.getMessage()));
 		}
 	}
 
@@ -281,4 +282,3 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 	}
 
 }
-

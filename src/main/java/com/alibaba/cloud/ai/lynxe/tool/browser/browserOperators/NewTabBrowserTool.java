@@ -129,4 +129,3 @@ public class NewTabBrowserTool extends AbstractBrowserTool<NewTabBrowserTool.New
 	}
 
 }
-

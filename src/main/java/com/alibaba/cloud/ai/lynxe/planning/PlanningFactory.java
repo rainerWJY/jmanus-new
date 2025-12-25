@@ -139,7 +139,6 @@ public class PlanningFactory {
 
 	private final DataSourceService dataSourceService;
 
-
 	private final IExcelProcessingService excelProcessingService;
 
 	private final static Logger log = LoggerFactory.getLogger(PlanningFactory.class);
@@ -170,7 +169,6 @@ public class PlanningFactory {
 	@Autowired
 	@Lazy
 	private TaskInterruptionManager taskInterruptionManager;
-
 
 	@Autowired
 	private PlanIdDispatcher planIdDispatcher;
@@ -222,8 +220,7 @@ public class PlanningFactory {
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
 			SmartContentSavingService innerStorageService, UnifiedDirectoryManager unifiedDirectoryManager,
-			DataSourceService dataSourceService,
-			IExcelProcessingService excelProcessingService) {
+			DataSourceService dataSourceService, IExcelProcessingService excelProcessingService) {
 		this.chromeDriverService = chromeDriverService;
 		this.recorder = recorder;
 		this.lynxeProperties = lynxeProperties;
@@ -292,15 +289,19 @@ public class PlanningFactory {
 			toolDefinitions.add(new CloseTabBrowserTool(browserUseToolInstance, toolI18nService));
 			toolDefinitions.add(new SwitchTabBrowserTool(browserUseToolInstance, toolI18nService));
 			toolDefinitions.add(new GetWebContentBrowserTool(browserUseToolInstance, textFileService, toolI18nService));
-			toolDefinitions.add(new DownloadBrowserTool(browserUseToolInstance, unifiedDirectoryManager, toolI18nService));
-			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService, innerStorageService, objectMapper,
-			// 		shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager));
+			toolDefinitions
+				.add(new DownloadBrowserTool(browserUseToolInstance, unifiedDirectoryManager, toolI18nService));
+			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService,
+			// innerStorageService, objectMapper,
+			// shortUrlService, textFileService, toolI18nService,
+			// unifiedDirectoryManager));
 			// Refactored database read tools (split from DatabaseReadTool)
 			toolDefinitions.add(new ExecuteReadSqlTool(dataSourceService, toolI18nService));
 			toolDefinitions.add(new ExecuteReadSqlToJsonFileTool(dataSourceService, unifiedDirectoryManager,
 					objectMapper, toolI18nService));
-			// toolDefinitions.add(DatabaseReadTool.getInstance(dataSourceService, objectMapper, unifiedDirectoryManager,
-			// 		toolI18nService));
+			// toolDefinitions.add(DatabaseReadTool.getInstance(dataSourceService,
+			// objectMapper, unifiedDirectoryManager,
+			// toolI18nService));
 			toolDefinitions.add(DatabaseWriteTool.getInstance(dataSourceService, objectMapper, toolI18nService));
 			toolDefinitions.add(DatabaseMetadataTool.getInstance(dataSourceService, objectMapper, toolI18nService));
 			toolDefinitions.add(DatabaseTableToExcelTool.getInstance(lynxeProperties, dataSourceService,
@@ -313,15 +314,15 @@ public class PlanningFactory {
 			// toolDefinitions.add(new DocLoaderTool());
 
 			// Refactored file operators
-			toolDefinitions.add(new ReadFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
+			toolDefinitions
+				.add(new ReadFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
 			// Refactored file operators
-			toolDefinitions.add(new DeleteFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
-			toolDefinitions.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
-			toolDefinitions.add(new WriteFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
+			toolDefinitions
+				.add(new DeleteFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
+			toolDefinitions
+				.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
+			toolDefinitions
+				.add(new WriteFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
 			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService, gitIgnoreMatcher,
 					lynxeProperties));
 			// Refactored file splitter (split action only, count removed)
@@ -329,8 +330,10 @@ public class PlanningFactory {
 			// Refactored directory operators (split from DirectoryOperator)
 			toolDefinitions.add(new ListFilesTool(unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService));
-			// toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper, toolI18nService));
-			// toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager, objectMapper, toolI18nService, symlinkDetector));
+			// toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper,
+			// toolI18nService));
+			// toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager,
+			// objectMapper, toolI18nService, symlinkDetector));
 			// toolDefinitions.add(new UploadedFileLoaderTool(unifiedDirectoryManager,
 			// applicationContext));
 			// toolDefinitions.add(jsxGeneratorOperator);
@@ -345,7 +348,8 @@ public class PlanningFactory {
 					toolCallbackMap, functionRegistryService, parallelExecutionService, toolI18nService);
 			toolDefinitions.add(startParallelExecutionTool);
 			toolDefinitions.add(new ClearPendingExecutionTool(objectMapper, functionRegistryService, toolI18nService));
-			// Note: StartParallelExecutionTool needs toolCallbackMap set after all tools are registered
+			// Note: StartParallelExecutionTool needs toolCallbackMap set after all tools
+			// are registered
 			// This will be handled in the toolCallbackMap creation loop below
 			toolDefinitions.add(new FileBasedParallelExecutionTool(objectMapper, toolCallbackMap,
 					unifiedDirectoryManager, parallelExecutionService, toolI18nService));

@@ -81,8 +81,8 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 				return new ToolExecuteResult("Error: index parameter is required");
 			}
 
-			return executeActionWithRetry(() -> new ClickByElementAction(browserUseTool).execute(toBrowserRequestVO(input)),
-					"click");
+			return executeActionWithRetry(
+					() -> new ClickByElementAction(browserUseTool).execute(toBrowserRequestVO(input)), "click");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing click: {}", e.getMessage(), e);
@@ -129,4 +129,3 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 	}
 
 }
-

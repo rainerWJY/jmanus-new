@@ -37,8 +37,8 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Glob files tool that finds files matching a glob pattern.
- * Results are sorted by modification time (most recently modified first).
+ * Glob files tool that finds files matching a glob pattern. Results are sorted by
+ * modification time (most recently modified first).
  */
 public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput> {
 
@@ -242,8 +242,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 	}
 
 	/**
-	 * Normalize glob pattern by auto-prefixing with recursive pattern if needed.
-	 * Patterns are automatically prefixed for recursive search.
+	 * Normalize glob pattern by auto-prefixing with recursive pattern if needed. Patterns
+	 * are automatically prefixed for recursive search.
 	 */
 	private String normalizeGlobPattern(String globPattern) {
 		if (globPattern == null || globPattern.isEmpty()) {
@@ -320,4 +320,3 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 	}
 
 }
-

@@ -27,8 +27,8 @@ import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptInput;
 
 /**
- * Create PPT tool that creates new PPT files or creates based on template.
- * Supports .pptx and .ppt file formats.
+ * Create PPT tool that creates new PPT files or creates based on template. Supports .pptx
+ * and .ppt file formats.
  */
 public class CreatePptTool extends AbstractBaseTool<CreatePptTool.CreatePptInput> {
 
@@ -262,4 +262,3 @@ public class CreatePptTool extends AbstractBaseTool<CreatePptTool.CreatePptInput
 	}
 
 }
-

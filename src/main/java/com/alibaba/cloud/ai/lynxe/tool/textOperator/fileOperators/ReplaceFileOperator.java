@@ -35,12 +35,12 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 
 /**
- * Replace file operator that performs exact string replacement in files (StrReplace tool implementation).
- * This operator provides access to files that can be accessed across all
+ * Replace file operator that performs exact string replacement in files (StrReplace tool
+ * implementation). This operator provides access to files that can be accessed across all
  * sub-plans within the same execution context.
  *
- * Keywords: global files, root directory, root folder, root plan directory,
- * global file write operations, root file access, cross-plan files, replace text, StrReplace.
+ * Keywords: global files, root directory, root folder, root plan directory, global file
+ * write operations, root file access, cross-plan files, replace text, StrReplace.
  */
 public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.ReplaceFileInput> {
 
@@ -221,7 +221,8 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 		Path rootPlanDirectory = textFileService.getRootPlanDirectory(this.rootPlanId);
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 
-		// For ReplaceFileOperator, check root plan directory first, then subplan directory
+		// For ReplaceFileOperator, check root plan directory first, then subplan
+		// directory
 		// if applicable
 		// This allows accessing files in root plan directory even when in subplan context
 		// Use the centralized method from UnifiedDirectoryManager
@@ -283,8 +284,8 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 	}
 
 	/**
-	 * Replace text in file (StrReplace tool implementation)
-	 * Performs exact string replacement with uniqueness validation
+	 * Replace text in file (StrReplace tool implementation) Performs exact string
+	 * replacement with uniqueness validation
 	 */
 	private ToolExecuteResult replaceText(String filePath, String oldString, String newString) {
 		try {
@@ -394,4 +395,3 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 	}
 
 }
-

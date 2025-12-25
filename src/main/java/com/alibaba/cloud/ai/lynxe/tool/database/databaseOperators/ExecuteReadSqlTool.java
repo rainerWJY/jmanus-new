@@ -174,4 +174,3 @@ public class ExecuteReadSqlTool extends AbstractBaseTool<ExecuteReadSqlTool.Exec
 	}
 
 }
-

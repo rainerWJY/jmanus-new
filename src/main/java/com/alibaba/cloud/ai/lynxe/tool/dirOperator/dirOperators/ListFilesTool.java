@@ -29,8 +29,9 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * List files tool that lists files and directories from the local filesystem.
- * Provides access to directory listings that can be accessed across all sub-plans within the same execution context.
+ * List files tool that lists files and directories from the local filesystem. Provides
+ * access to directory listings that can be accessed across all sub-plans within the same
+ * execution context.
  */
 public class ListFilesTool extends AbstractBaseTool<ListFilesTool.ListFilesInput> {
 
@@ -255,4 +256,3 @@ public class ListFilesTool extends AbstractBaseTool<ListFilesTool.ListFilesInput
 	}
 
 }
-

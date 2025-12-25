@@ -35,12 +35,12 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 
 /**
- * Write file operator that creates new files or overwrites existing files completely (Write tool implementation).
- * This operator provides access to files that can be accessed across all
- * sub-plans within the same execution context.
+ * Write file operator that creates new files or overwrites existing files completely
+ * (Write tool implementation). This operator provides access to files that can be
+ * accessed across all sub-plans within the same execution context.
  *
- * Keywords: global files, root directory, root folder, root plan directory,
- * global file write operations, root file access, cross-plan files, write file, create file.
+ * Keywords: global files, root directory, root folder, root plan directory, global file
+ * write operations, root file access, cross-plan files, write file, create file.
  */
 public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteFileInput> {
 
@@ -270,8 +270,8 @@ public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteF
 	}
 
 	/**
-	 * Write file (Write tool implementation)
-	 * Creates new files or overwrites existing files completely
+	 * Write file (Write tool implementation) Creates new files or overwrites existing
+	 * files completely
 	 */
 	private ToolExecuteResult writeFile(String filePath, String contents) {
 		try {
@@ -356,4 +356,3 @@ public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteF
 	}
 
 }
-

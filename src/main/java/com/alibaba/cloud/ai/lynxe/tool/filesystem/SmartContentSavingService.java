@@ -30,7 +30,7 @@ import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
  * Internal file storage service for storing intermediate data in MapReduce processes
  */
 @Service
-public class SmartContentSavingService  {
+public class SmartContentSavingService {
 
 	private static final Logger log = LoggerFactory.getLogger(SmartContentSavingService.class);
 

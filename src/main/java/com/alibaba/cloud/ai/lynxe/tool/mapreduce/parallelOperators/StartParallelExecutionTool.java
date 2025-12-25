@@ -36,8 +36,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Start parallel execution tool that executes all registered functions in parallel.
- * Uses asynchronous non-blocking execution to prevent thread pool starvation.
+ * Start parallel execution tool that executes all registered functions in parallel. Uses
+ * asynchronous non-blocking execution to prevent thread pool starvation.
  */
 public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelExecutionTool.StartInput>
 		implements AsyncToolCallBiFunctionDef<StartParallelExecutionTool.StartInput> {
@@ -92,7 +92,7 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 		try {
 			String planId = this.currentPlanId;
 			List<FunctionRegistryService.FunctionRegistry> functionRegistries = functionRegistryService
-					.getRegistries(planId);
+				.getRegistries(planId);
 
 			if (functionRegistries.isEmpty()) {
 				return CompletableFuture.completedFuture(new ToolExecuteResult("No functions registered"));
@@ -126,71 +126,72 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 
 			// Use ParallelExecutionService to execute all tools in parallel
 			return parallelExecutionService.executeToolsInParallel(executions, toolCallbackMap, parentToolContext)
-					.thenApply(results -> {
-						// Map results back to FunctionRegistry objects
-						for (int i = 0; i < pendingFunctions.size() && i < results.size(); i++) {
-							FunctionRegistryService.FunctionRegistry function = pendingFunctions.get(i);
-							Map<String, Object> result = results.get(i);
+				.thenApply(results -> {
+					// Map results back to FunctionRegistry objects
+					for (int i = 0; i < pendingFunctions.size() && i < results.size(); i++) {
+						FunctionRegistryService.FunctionRegistry function = pendingFunctions.get(i);
+						Map<String, Object> result = results.get(i);
 
-							String status = (String) result.get("status");
-							if ("SUCCESS".equals(status)) {
-								Object outputObj = result.get("output");
-								String output = outputObj != null ? outputObj.toString() : "No output";
+						String status = (String) result.get("status");
+						if ("SUCCESS".equals(status)) {
+							Object outputObj = result.get("output");
+							String output = outputObj != null ? outputObj.toString() : "No output";
+							if (output != null) {
+								output = output.replace("\\\"", "\"").replace("\\\\", "\\");
+							}
+							function.setResult(new ToolExecuteResult(output));
+						}
+						else {
+							Object errorObj = result.get("error");
+							String error = errorObj != null ? errorObj.toString() : "Unknown error";
+							function.setResult(new ToolExecuteResult("Error: " + error));
+						}
+					}
+
+					// Build result with function IDs
+					List<Map<String, Object>> resultList = new ArrayList<>();
+					for (FunctionRegistryService.FunctionRegistry function : functionRegistries) {
+						if (function.getResult() != null) {
+							Map<String, Object> item = new HashMap<>();
+							item.put("id", function.getId());
+							item.put("status", "COMPLETED");
+							String output = null;
+							try {
+								output = function.getResult().getOutput();
 								if (output != null) {
 									output = output.replace("\\\"", "\"").replace("\\\\", "\\");
 								}
-								function.setResult(new ToolExecuteResult(output));
 							}
-							else {
-								Object errorObj = result.get("error");
-								String error = errorObj != null ? errorObj.toString() : "Unknown error";
-								function.setResult(new ToolExecuteResult("Error: " + error));
+							catch (Exception ignore) {
 							}
+							if (output == null) {
+								output = "No output";
+							}
+							item.put("output", output);
+							resultList.add(item);
 						}
+					}
 
-						// Build result with function IDs
-						List<Map<String, Object>> resultList = new ArrayList<>();
-						for (FunctionRegistryService.FunctionRegistry function : functionRegistries) {
-							if (function.getResult() != null) {
-								Map<String, Object> item = new HashMap<>();
-								item.put("id", function.getId());
-								item.put("status", "COMPLETED");
-								String output = null;
-								try {
-									output = function.getResult().getOutput();
-									if (output != null) {
-										output = output.replace("\\\"", "\"").replace("\\\\", "\\");
-									}
-								}
-								catch (Exception ignore) {
-								}
-								if (output == null) {
-									output = "No output";
-								}
-								item.put("output", output);
-								resultList.add(item);
-							}
-						}
-
-						Map<String, Object> finalResult = new HashMap<>();
-						finalResult.put("results", resultList);
-						finalResult.put("message", "Successfully executed " + executions.size() + " functions");
-						try {
-							return new ToolExecuteResult(objectMapper.writeValueAsString(finalResult));
-						}
-						catch (JsonProcessingException e) {
-							logger.error("Error serializing result: {}", e.getMessage(), e);
-							return new ToolExecuteResult("Successfully executed " + executions.size() + " functions");
-						}
-					})
-					.exceptionally(ex -> {
-						logger.error("Error in async execution: {}", ex.getMessage(), ex);
-						return new ToolExecuteResult("Error starting execution: " + ex.getMessage());
-					});
+					Map<String, Object> finalResult = new HashMap<>();
+					finalResult.put("results", resultList);
+					finalResult.put("message", "Successfully executed " + executions.size() + " functions");
+					try {
+						return new ToolExecuteResult(objectMapper.writeValueAsString(finalResult));
+					}
+					catch (JsonProcessingException e) {
+						logger.error("Error serializing result: {}", e.getMessage(), e);
+						return new ToolExecuteResult("Successfully executed " + executions.size() + " functions");
+					}
+				})
+				.exceptionally(ex -> {
+					logger.error("Error in async execution: {}", ex.getMessage(), ex);
+					return new ToolExecuteResult("Error starting execution: " + ex.getMessage());
+				});
 		}
 		catch (Exception e) {
 			logger.error("Error starting async execution: {}", e.getMessage(), e);
-			return CompletableFuture.completedFuture(new ToolExecuteResult("Error starting execution: " + e.getMessage()));
+			return CompletableFuture
+				.completedFuture(new ToolExecuteResult("Error starting execution: " + e.getMessage()));
 		}
 	}
 
@@ -241,4 +242,3 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 	}
 
 }
-

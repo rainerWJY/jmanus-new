@@ -41,7 +41,9 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 	 * Input class for screenshot operations
 	 */
 	public static class ScreenshotInput {
+
 		// No parameters needed for screenshot
+
 	}
 
 	public ScreenshotBrowserTool(BrowserUseTool browserUseTool, ToolI18nService toolI18nService) {
@@ -113,4 +115,3 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 	}
 
 }
-

@@ -129,4 +129,3 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 	}
 
 }
-

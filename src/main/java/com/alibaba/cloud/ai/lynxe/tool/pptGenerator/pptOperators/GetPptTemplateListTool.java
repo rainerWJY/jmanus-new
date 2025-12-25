@@ -26,8 +26,8 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
 
 /**
- * Get PPT template list tool that retrieves available template list.
- * Returns template information in JSON format.
+ * Get PPT template list tool that retrieves available template list. Returns template
+ * information in JSON format.
  */
 public class GetPptTemplateListTool extends AbstractBaseTool<GetPptTemplateListTool.GetPptTemplateListInput> {
 
@@ -118,4 +118,3 @@ public class GetPptTemplateListTool extends AbstractBaseTool<GetPptTemplateListT
 	}
 
 }
-
