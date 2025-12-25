@@ -58,7 +58,7 @@
             {{ getToolDescription(toolId) }}
           </span>
           <span v-else class="tool-warning-message">
-            This tool does not exist and may not be available
+            {{ t('sidebar.toolNotExistWarning') }}
           </span>
         </div>
       </div>
@@ -75,6 +75,10 @@
 import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, watch, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+// I18n
+const { t } = useI18n()
 
 // Props
 interface Props {
