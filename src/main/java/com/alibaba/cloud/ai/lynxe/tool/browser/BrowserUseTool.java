@@ -15,24 +15,41 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.*;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ClickByElementAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.CloseTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.DownloadFileAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ExecuteJsAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.GetElementPositionByNameAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.GetTextAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.InputTextAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.KeyEnterAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.MoveToAndClickAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.NavigateAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.NewTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.RefreshAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ScreenShotAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ScrollAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.SwitchTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.actions.WriteCurrentWebContentAction;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 

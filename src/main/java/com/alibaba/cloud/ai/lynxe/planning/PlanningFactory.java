@@ -95,6 +95,7 @@ import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.ListFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.image.ImageGenerationProvider;
@@ -109,10 +110,8 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatch
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.EnhancedGrep;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.GlobalFileWriteOperator;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReplaceFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitFileTool;
@@ -320,12 +319,10 @@ public class PlanningFactory {
 			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 
-			toolDefinitions.add(new GlobalFileWriteOperator(textFileService, innerStorageService, objectMapper,
-					shortUrlService, toolI18nService));
 			// Refactored file operators
 			toolDefinitions.add(new ReadFileOperator(textFileService, innerStorageService, shortUrlService,
 					toolI18nService));
-			// Refactored file operators (split from GlobalFileWriteOperator)
+			// Refactored file operators
 			toolDefinitions.add(new DeleteFileOperator(textFileService, innerStorageService, shortUrlService,
 					toolI18nService));
 			toolDefinitions.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService,

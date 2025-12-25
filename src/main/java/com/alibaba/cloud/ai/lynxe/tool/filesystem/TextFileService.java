@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.ai.lynxe.tool.textOperator;
+package com.alibaba.cloud.ai.lynxe.tool.filesystem;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,14 +29,14 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
-import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.FileState;
 
 import jakarta.annotation.PreDestroy;
 
 @Service
 @Primary
-public class TextFileService implements ApplicationRunner, ITextFileService {
+public class TextFileService implements ApplicationRunner{
 
 	private static final Logger log = LoggerFactory.getLogger(TextFileService.class);
 
