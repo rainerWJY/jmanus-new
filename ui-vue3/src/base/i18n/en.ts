@@ -1044,6 +1044,7 @@ const words: I18nType = {
     apiError: 'API call failed',
     resizeHint: 'Drag to resize',
     cannotSaveNonExistentTools: 'Cannot save plan template: Some tools do not exist.',
+    cannotExecuteNonExistentTools: 'Cannot execute plan: Some tools do not exist.',
     nonExistentToolsHeader: 'Non-existent tools:',
     nonExistentToolStep: 'Step {stepNumber}: {toolName}',
     toolNotExistWarning: 'This tool does not exist and may not be available',

@@ -985,6 +985,7 @@ const words: I18nType = {
     apiError: 'API调用失败',
     resizeHint: '拖拽调整大小',
     cannotSaveNonExistentTools: '无法保存计划模板：某些工具不存在。',
+    cannotExecuteNonExistentTools: '无法执行计划：某些工具不存在。',
     nonExistentToolsHeader: '不存在的工具：',
     nonExistentToolStep: '步骤 {stepNumber}：{toolName}',
     toolNotExistWarning: '此工具不存在，可能不可用',

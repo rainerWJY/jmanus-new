@@ -595,6 +595,29 @@ const proceedWithExecution = async () => {
     return
   }
 
+  // Validate that all tools exist before execution
+  const toolsValidation = await validateToolsExist()
+  if (!toolsValidation.isValid) {
+    console.log('[ExecutionController] ❌ Tool validation failed:', toolsValidation.nonExistentTools)
+    isExecutingPlan.value = false // Reset flag on validation failure
+    const toolList = toolsValidation.nonExistentTools
+      .map(tool => {
+        // Parse "Step X: toolName" format
+        const match = tool.match(/^Step (\d+): (.+)$/)
+        if (match) {
+          return t('sidebar.nonExistentToolStep', {
+            stepNumber: match[1],
+            toolName: match[2],
+          })
+        }
+        return tool
+      })
+      .join('\n')
+    const errorMessage = `${t('sidebar.cannotExecuteNonExistentTools')}\n\n${t('sidebar.nonExistentToolsHeader')}\n${toolList}`
+    toast.error(errorMessage)
+    return
+  }
+
   // Reset validation attempt flag when validation passes and execution starts
   hasAttemptedExecute.value = false
 
