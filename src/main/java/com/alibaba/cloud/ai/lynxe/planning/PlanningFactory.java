@@ -91,8 +91,11 @@ import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.jsxGenerator.JsxGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileBasedParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FileSplitterTool;
+import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FunctionRegistryService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
-import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorOperator;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
@@ -208,6 +211,9 @@ public class PlanningFactory {
 
 	@Autowired
 	private ParallelExecutionService parallelExecutionService;
+
+	@Autowired
+	private FunctionRegistryService functionRegistryService;
 
 	@Autowired
 	private ToolI18nService toolI18nService;
@@ -344,8 +350,15 @@ public class PlanningFactory {
 			// toolDefinitions.add(new GoogleSearch());
 			// toolDefinitions.add(new PythonExecute());
 			toolDefinitions.add(new FormInputTool(objectMapper, toolI18nService));
-			toolDefinitions.add(new ParallelExecutionTool(objectMapper, toolCallbackMap, planIdDispatcher,
-					levelBasedExecutorPool, toolI18nService, serviceGroupIndexService, parallelExecutionService));
+			// Refactored parallel execution operators (split from ParallelExecutionTool)
+			toolDefinitions.add(new RegisterBatchExecutionTool(objectMapper, planIdDispatcher, functionRegistryService,
+					toolI18nService));
+			StartParallelExecutionTool startParallelExecutionTool = new StartParallelExecutionTool(objectMapper,
+					toolCallbackMap, functionRegistryService, parallelExecutionService, toolI18nService);
+			toolDefinitions.add(startParallelExecutionTool);
+			toolDefinitions.add(new ClearPendingExecutionTool(objectMapper, functionRegistryService, toolI18nService));
+			// Note: StartParallelExecutionTool needs toolCallbackMap set after all tools are registered
+			// This will be handled in the toolCallbackMap creation loop below
 			toolDefinitions.add(new FileBasedParallelExecutionTool(objectMapper, toolCallbackMap,
 					unifiedDirectoryManager, parallelExecutionService, toolI18nService));
 			toolDefinitions.add(new CronTool(cronService, objectMapper, toolI18nService));

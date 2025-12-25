@@ -38,7 +38,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Common service for parallel execution of tools. Handles the execution logic shared
- * between ParallelExecutionTool and FileBasedParallelExecutionTool.
+ * between parallel execution operators and FileBasedParallelExecutionTool.
  */
 @Service
 public class ParallelExecutionService {
@@ -509,7 +509,7 @@ public class ParallelExecutionService {
 			// Parse JSON schema
 			Map<String, Object> schema = objectMapper.readValue(parametersSchema, Map.class);
 
-			// Handle oneOf schemas (like in ParallelExecutionTool)
+			// Handle oneOf schemas (like in parallel execution operators)
 			if (schema.containsKey("oneOf")) {
 				// For oneOf, we'll check all variants and collect required fields
 				List<String> allRequired = new ArrayList<>();
