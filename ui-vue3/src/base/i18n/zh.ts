@@ -116,7 +116,7 @@ const words: I18nType = {
     waitingForFiles: 'AI 模型正在处理您的请求，生成的文件将在此处显示。',
     filesTip: '分析结果、报告和数据导出等生成的文件将显示在此文件浏览器中。',
     noPlanExecuting: '当前没有执行中的任务。',
-    startTaskTip: '请在左侧对话框中发起任务，生成的文件将在此处显示。',
+    startTaskTip: '请在右侧对话框中发起任务，生成的文件将在此处显示。',
     waitingForGeneration: '等待文件生成',
     planExecuting: 'AI 模型正在执行计划并生成文件。',
     checking: '检查中...',
