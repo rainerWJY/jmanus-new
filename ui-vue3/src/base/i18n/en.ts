@@ -122,7 +122,7 @@ const words: I18nType = {
       'Generated files like analysis results, reports, and data exports will be displayed in this file browser.',
     noPlanExecuting: 'No task is currently being executed.',
     startTaskTip:
-      'Please start a task in the chat panel on the left. Generated files will be displayed here.',
+      'Please start a task in the chat panel on the right. Generated files will be displayed here.',
     waitingForGeneration: 'Waiting for File Generation',
     planExecuting: 'The AI model is currently executing the plan and generating files.',
     checking: 'Checking...',
