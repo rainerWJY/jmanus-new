@@ -297,20 +297,30 @@ const loadParameterRequirements = async () => {
     console.log('[PublishModal] Parameter requirements loaded:', requirements)
 
     // Initialize form parameters with extracted parameters
-    // Preserve existing descriptions if parameters already exist (from toolConfig)
+    // Preserve existing descriptions from toolConfig.inputSchema if available
     if (requirements.hasParameters) {
-      // Create a map of existing parameters by name to preserve descriptions
-      const existingParamsMap = new Map<string, string>()
-      formData.parameters.forEach(param => {
+      // Priority: Get descriptions from toolConfig.inputSchema (backend saved data)
+      const toolConfig = templateConfig.selectedTemplate.value?.toolConfig
+      const backendInputSchema = toolConfig?.inputSchema || []
+      const backendParamsMap = new Map<string, string>()
+      backendInputSchema.forEach(param => {
         if (param.name) {
-          existingParamsMap.set(param.name, param.description || '')
+          backendParamsMap.set(param.name, param.description || '')
         }
       })
 
-      // Merge: use existing description if available, otherwise use parameter name as default
+      // Fallback: Also check formData.parameters for any user edits that haven't been saved yet
+      const formParamsMap = new Map<string, string>()
+      formData.parameters.forEach(param => {
+        if (param.name && param.description) {
+          formParamsMap.set(param.name, param.description)
+        }
+      })
+
+      // Merge: Priority order: backend inputSchema > formData > parameter name as default
       formData.parameters = requirements.parameters.map(param => ({
         name: param,
-        description: existingParamsMap.get(param) || param,
+        description: backendParamsMap.get(param) || formParamsMap.get(param) || param,
       }))
       console.log(
         '[PublishModal] Updated formData.parameters with requirements:',
