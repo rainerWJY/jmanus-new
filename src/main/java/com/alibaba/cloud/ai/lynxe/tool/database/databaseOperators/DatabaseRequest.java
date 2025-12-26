@@ -41,7 +41,6 @@ public class DatabaseRequest {
 	 * <li>{@code execute_sql} - Execute SQL queries</li>
 	 * <li>{@code get_table_name} - Get table name list</li>
 	 * <li>{@code get_table_meta} - Get table metadata information</li>
-	 * <li>{@code get_table_index} - Get table index information</li>
 	 * <li>{@code get_datasource_info} - Get data source information</li>
 	 * </ul>
 	 */
@@ -62,8 +61,7 @@ public class DatabaseRequest {
 	 *
 	 * <p>
 	 * Used to specify table names, comments or other text information. Used for filtering
-	 * when operation type is {@code get_table_name}, {@code get_table_meta},
-	 * {@code get_table_index}.
+	 * when operation type is {@code get_table_name}, {@code get_table_meta}.
 	 * </p>
 	 */
 	private String text;

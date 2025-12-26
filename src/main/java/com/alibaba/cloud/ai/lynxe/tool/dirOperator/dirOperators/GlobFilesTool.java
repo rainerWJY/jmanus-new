@@ -311,7 +311,7 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

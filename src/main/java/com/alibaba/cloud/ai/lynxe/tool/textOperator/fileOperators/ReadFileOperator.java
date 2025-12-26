@@ -420,7 +420,7 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

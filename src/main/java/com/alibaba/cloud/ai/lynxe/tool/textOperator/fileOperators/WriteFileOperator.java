@@ -347,7 +347,7 @@ public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteF
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

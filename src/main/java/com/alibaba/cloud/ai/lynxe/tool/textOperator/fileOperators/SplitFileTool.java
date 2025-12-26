@@ -325,7 +325,7 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

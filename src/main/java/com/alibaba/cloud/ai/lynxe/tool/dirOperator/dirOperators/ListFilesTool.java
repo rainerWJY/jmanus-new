@@ -247,7 +247,7 @@ public class ListFilesTool extends AbstractBaseTool<ListFilesTool.ListFilesInput
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

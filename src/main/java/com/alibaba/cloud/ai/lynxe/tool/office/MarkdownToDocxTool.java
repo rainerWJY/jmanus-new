@@ -832,7 +832,7 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "import-export-service";
 	}
 
 	@Override

@@ -308,7 +308,7 @@ public class DeleteFileOperator extends AbstractBaseTool<DeleteFileOperator.Dele
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "file-service-group";
 	}
 
 	@Override

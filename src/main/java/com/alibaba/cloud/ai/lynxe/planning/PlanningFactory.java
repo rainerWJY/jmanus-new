@@ -80,11 +80,12 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.ImageOcrProcessor;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.MarkdownConverterTool;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.PdfOcrProcessor;
-import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseMetadataTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseTableToExcelTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.DatabaseWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.ExecuteReadSqlToJsonFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.ExecuteReadSqlTool;
+import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.GetDatasourceInfoTool;
+import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.GetTableMetaTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.UuidGenerateTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
 import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.GlobFilesTool;
@@ -297,7 +298,8 @@ public class PlanningFactory {
 			// objectMapper, unifiedDirectoryManager,
 			// toolI18nService));
 			toolDefinitions.add(DatabaseWriteTool.getInstance(dataSourceService, objectMapper, toolI18nService));
-			toolDefinitions.add(DatabaseMetadataTool.getInstance(dataSourceService, objectMapper, toolI18nService));
+			toolDefinitions.add(GetTableMetaTool.getInstance(dataSourceService, objectMapper, toolI18nService));
+			toolDefinitions.add(GetDatasourceInfoTool.getInstance(dataSourceService, objectMapper, toolI18nService));
 			toolDefinitions.add(DatabaseTableToExcelTool.getInstance(lynxeProperties, dataSourceService,
 					excelProcessingService, unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(UuidGenerateTool.getInstance(objectMapper, toolI18nService));
