@@ -15,13 +15,13 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.Page;
 
 public class RefreshAction extends BrowserAction {
 
-	public RefreshAction(BrowserUseTool browserUseTool) {
+	public RefreshAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

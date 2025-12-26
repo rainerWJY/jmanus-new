@@ -15,14 +15,14 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 import com.microsoft.playwright.Page;
 
 public class NewTabAction extends BrowserAction {
 
-	public NewTabAction(BrowserUseTool browserUseTool) {
+	public NewTabAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

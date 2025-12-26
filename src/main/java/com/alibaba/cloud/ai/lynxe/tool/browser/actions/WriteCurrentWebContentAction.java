@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.microsoft.playwright.Page;
@@ -37,7 +37,7 @@ public class WriteCurrentWebContentAction extends BrowserAction {
 
 	private final TextFileService textFileService;
 
-	public WriteCurrentWebContentAction(BrowserUseTool browserUseTool, TextFileService textFileService) {
+	public WriteCurrentWebContentAction(BrowserUseCommonService browserUseTool, TextFileService textFileService) {
 		super(browserUseTool);
 		this.textFileService = textFileService;
 	}
@@ -77,7 +77,7 @@ public class WriteCurrentWebContentAction extends BrowserAction {
 
 			// Get directory path - use rootPlanId if available, otherwise use
 			// currentPlanId
-			BrowserUseTool browserUseTool = getBrowserUseTool();
+			BrowserUseCommonService browserUseTool = getBrowserUseTool();
 			String rootPlanId = browserUseTool.getRootPlanId();
 
 			if (rootPlanId == null || rootPlanId.trim().isEmpty()) {

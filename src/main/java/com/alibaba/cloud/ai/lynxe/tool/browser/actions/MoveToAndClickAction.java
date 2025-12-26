@@ -15,7 +15,7 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 
 // import java.util.List; // Already imported by BrowserAction or not needed directly
@@ -26,7 +26,7 @@ public class MoveToAndClickAction extends BrowserAction {
 
 	private final static org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MoveToAndClickAction.class);
 
-	public MoveToAndClickAction(BrowserUseTool browserUseTool) {
+	public MoveToAndClickAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

@@ -15,7 +15,7 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 import com.microsoft.playwright.Page;
@@ -24,7 +24,7 @@ import com.microsoft.playwright.options.LoadState;
 
 public class NavigateAction extends BrowserAction {
 
-	public NavigateAction(BrowserUseTool browserUseTool) {
+	public NavigateAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

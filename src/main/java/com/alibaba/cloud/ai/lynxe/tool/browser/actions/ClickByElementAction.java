@@ -15,7 +15,7 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -25,7 +25,7 @@ public class ClickByElementAction extends BrowserAction {
 
 	private final static org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ClickByElementAction.class);
 
-	public ClickByElementAction(BrowserUseTool browserUseTool) {
+	public ClickByElementAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

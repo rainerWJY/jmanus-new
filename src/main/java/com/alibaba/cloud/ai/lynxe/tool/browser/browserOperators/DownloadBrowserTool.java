@@ -20,9 +20,9 @@ import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.DownloadFileAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
@@ -60,7 +60,7 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 
 	}
 
-	public DownloadBrowserTool(BrowserUseTool browserUseTool, UnifiedDirectoryManager unifiedDirectoryManager,
+	public DownloadBrowserTool(BrowserUseCommonService browserUseTool, UnifiedDirectoryManager unifiedDirectoryManager,
 			ToolI18nService toolI18nService) {
 		super(browserUseTool);
 		this.unifiedDirectoryManager = unifiedDirectoryManager;

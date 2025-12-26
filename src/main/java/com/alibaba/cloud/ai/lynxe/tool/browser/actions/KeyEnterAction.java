@@ -15,14 +15,14 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
 public class KeyEnterAction extends BrowserAction {
 
-	public KeyEnterAction(BrowserUseTool browserUseTool) {
+	public KeyEnterAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

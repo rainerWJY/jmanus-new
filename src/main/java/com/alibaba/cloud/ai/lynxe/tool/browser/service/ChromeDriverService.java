@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.ai.lynxe.tool.browser;
+package com.alibaba.cloud.ai.lynxe.tool.browser.service;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,7 +47,7 @@ import jakarta.annotation.PreDestroy;
 
 @Service
 @Primary
-public class ChromeDriverService implements IChromeDriverService {
+public class ChromeDriverService{
 
 	private static final Logger log = LoggerFactory.getLogger(ChromeDriverService.class);
 

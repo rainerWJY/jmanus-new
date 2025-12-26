@@ -15,16 +15,16 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Frame;
+import com.microsoft.playwright.Page;
 
 public class GetElementPositionByNameAction extends BrowserAction {
 
@@ -32,7 +32,7 @@ public class GetElementPositionByNameAction extends BrowserAction {
 
 	private final static org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GetElementPositionByNameAction.class);
 
-	public GetElementPositionByNameAction(BrowserUseTool browserUseTool, ObjectMapper objectMapper) {
+	public GetElementPositionByNameAction(BrowserUseCommonService browserUseTool, ObjectMapper objectMapper) {
 		super(browserUseTool);
 		this.objectMapper = objectMapper;
 	}

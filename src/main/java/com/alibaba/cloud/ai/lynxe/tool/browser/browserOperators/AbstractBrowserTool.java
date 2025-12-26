@@ -19,8 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
@@ -32,9 +32,9 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 
 	protected static final Logger log = LoggerFactory.getLogger(AbstractBrowserTool.class);
 
-	protected final BrowserUseTool browserUseTool;
+	protected final BrowserUseCommonService browserUseTool;
 
-	public AbstractBrowserTool(BrowserUseTool browserUseTool) {
+	public AbstractBrowserTool(BrowserUseCommonService browserUseTool) {
 		this.browserUseTool = browserUseTool;
 	}
 
@@ -119,7 +119,7 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 	 */
 	protected ToolExecuteResult validateDriver() {
 		try {
-			com.alibaba.cloud.ai.lynxe.tool.browser.DriverWrapper driver = browserUseTool.getDriver();
+			com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper driver = browserUseTool.getDriver();
 			if (driver == null) {
 				return new ToolExecuteResult("Browser driver is not available");
 			}

@@ -64,8 +64,6 @@ import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.bash.Bash;
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ClickBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.CloseTabBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.DownloadBrowserTool;
@@ -76,6 +74,8 @@ import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NavigateBrowserT
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NewTabBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ScreenshotBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.SwitchTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.ImageOcrProcessor;
 import com.alibaba.cloud.ai.lynxe.tool.convertToMarkdown.MarkdownConverterTool;
@@ -273,7 +273,7 @@ public class PlanningFactory {
 		if (agentInit) {
 			// Add all tool definitions
 			// Refactored browser tools (split from BrowserUseTool)
-			BrowserUseTool browserUseToolInstance = BrowserUseTool.getInstance(chromeDriverService, innerStorageService,
+			BrowserUseCommonService browserUseToolInstance = BrowserUseCommonService.getInstance(chromeDriverService, innerStorageService,
 					objectMapper, shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager);
 			toolDefinitions.add(new NavigateBrowserTool(browserUseToolInstance, toolI18nService));
 			toolDefinitions.add(new ClickBrowserTool(browserUseToolInstance, toolI18nService));

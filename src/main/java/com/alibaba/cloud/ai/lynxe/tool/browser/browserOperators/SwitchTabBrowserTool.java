@@ -18,9 +18,9 @@ package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.SwitchTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -57,7 +57,7 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 
 	}
 
-	public SwitchTabBrowserTool(BrowserUseTool browserUseTool, ToolI18nService toolI18nService) {
+	public SwitchTabBrowserTool(BrowserUseCommonService browserUseTool, ToolI18nService toolI18nService) {
 		super(browserUseTool);
 		this.toolI18nService = toolI18nService;
 	}

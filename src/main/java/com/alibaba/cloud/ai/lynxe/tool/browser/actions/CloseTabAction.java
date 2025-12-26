@@ -20,7 +20,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
@@ -29,7 +29,7 @@ public class CloseTabAction extends BrowserAction {
 
 	private static final Logger logger = LoggerFactory.getLogger(CloseTabAction.class);
 
-	public CloseTabAction(BrowserUseTool browserUseTool) {
+	public CloseTabAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

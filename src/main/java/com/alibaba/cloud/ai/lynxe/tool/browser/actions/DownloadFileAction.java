@@ -15,16 +15,17 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
-import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
-import com.microsoft.playwright.Download;
-import com.microsoft.playwright.Page;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
+import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.microsoft.playwright.Download;
+import com.microsoft.playwright.Page;
 
 /**
  * Action to handle file downloads in the browser. This action clicks on a download
@@ -36,7 +37,7 @@ public class DownloadFileAction extends BrowserAction {
 
 	private final Path downloadDirectory;
 
-	public DownloadFileAction(BrowserUseTool browserUseTool, Path downloadDirectory) {
+	public DownloadFileAction(BrowserUseCommonService browserUseTool, Path downloadDirectory) {
 		super(browserUseTool);
 		this.downloadDirectory = downloadDirectory;
 	}

@@ -15,14 +15,14 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.actions;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
-import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
-import com.microsoft.playwright.Page;
-
 import java.io.IOException;
 import java.io.InputStream;
 
 import org.springframework.core.io.ClassPathResource;
+
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
+import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.microsoft.playwright.Page;
 
 public class GetMarkdownAction extends BrowserAction {
 
@@ -83,7 +83,7 @@ public class GetMarkdownAction extends BrowserAction {
 		}
 	}
 
-	public GetMarkdownAction(BrowserUseTool browserUseTool) {
+	public GetMarkdownAction(BrowserUseCommonService browserUseTool) {
 		super(browserUseTool);
 	}
 

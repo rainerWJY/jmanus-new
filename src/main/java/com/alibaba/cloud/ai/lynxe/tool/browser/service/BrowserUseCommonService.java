@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.cloud.ai.lynxe.tool.browser;
+package com.alibaba.cloud.ai.lynxe.tool.browser.service;
 
 import java.util.HashMap;
 import java.util.List;
@@ -51,9 +51,9 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
-public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
+public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> {
 
-	private static final Logger log = LoggerFactory.getLogger(BrowserUseTool.class);
+	private static final Logger log = LoggerFactory.getLogger(BrowserUseCommonService.class);
 
 	private final ChromeDriverService chromeDriverService;
 
@@ -69,7 +69,7 @@ public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
-	public BrowserUseTool(ChromeDriverService chromeDriverService, SmartContentSavingService innerStorageService,
+	public BrowserUseCommonService(ChromeDriverService chromeDriverService, SmartContentSavingService innerStorageService,
 			ObjectMapper objectMapper, com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService,
 			TextFileService textFileService, ToolI18nService toolI18nService,
 			UnifiedDirectoryManager unifiedDirectoryManager) {
@@ -110,11 +110,11 @@ public class BrowserUseTool extends AbstractBaseTool<BrowserRequestVO> {
 	// Track if run method has been called at least once
 	private volatile boolean hasRunAtLeastOnce = false;
 
-	public static synchronized BrowserUseTool getInstance(ChromeDriverService chromeDriverService,
+	public static synchronized BrowserUseCommonService getInstance(ChromeDriverService chromeDriverService,
 			SmartContentSavingService innerStorageService, ObjectMapper objectMapper,
 			com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService, TextFileService textFileService,
 			ToolI18nService toolI18nService, UnifiedDirectoryManager unifiedDirectoryManager) {
-		BrowserUseTool instance = new BrowserUseTool(chromeDriverService, innerStorageService, objectMapper,
+		BrowserUseCommonService instance = new BrowserUseCommonService(chromeDriverService, innerStorageService, objectMapper,
 				shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager);
 		return instance;
 	}

@@ -18,9 +18,9 @@ package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
 import com.alibaba.cloud.ai.lynxe.tool.browser.actions.WriteCurrentWebContentAction;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
@@ -49,7 +49,7 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 
 	}
 
-	public GetWebContentBrowserTool(BrowserUseTool browserUseTool, TextFileService textFileService,
+	public GetWebContentBrowserTool(BrowserUseCommonService browserUseTool, TextFileService textFileService,
 			ToolI18nService toolI18nService) {
 		super(browserUseTool);
 		this.textFileService = textFileService;

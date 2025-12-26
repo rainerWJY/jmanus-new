@@ -23,8 +23,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.BrowserUseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.DriverWrapper;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.ElementHandle;
@@ -38,13 +38,13 @@ public abstract class BrowserAction {
 
 	public abstract ToolExecuteResult execute(BrowserRequestVO request) throws Exception;
 
-	private final BrowserUseTool browserUseTool;
+	private final BrowserUseCommonService browserUseTool;
 
-	public BrowserAction(BrowserUseTool browserUseTool) {
+	public BrowserAction(BrowserUseCommonService browserUseTool) {
 		this.browserUseTool = browserUseTool;
 	}
 
-	public BrowserUseTool getBrowserUseTool() {
+	public BrowserUseCommonService getBrowserUseTool() {
 		return browserUseTool;
 	}
 
