@@ -500,12 +500,17 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		Path ignoreRootPath = determineIgnoreRootPath(root);
 		gitIgnoreMatcher.initialize(ignoreRootPath, respectGitIgnore);
 
-		// Walk directory tree, following symbolic links to traverse linked_external
-		// Use walkFileTree to handle circular symlinks gracefully by skipping problematic
-		// directories
+		// Walk directory tree, NOT following symbolic links (like grep/ripgrep)
+		// This avoids infinite loops from circular symlinks
 		FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+				// Skip symbolic links (do not follow them, like grep/ripgrep)
+				if (Files.isSymbolicLink(dir)) {
+					log.debug("Skipping symbolic link directory: {}", dir);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+
 				// Check path depth relative to root
 				int depth = rootPath.relativize(dir).getNameCount();
 				if (depth > MAX_DEPTH) {
@@ -532,6 +537,12 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				// Skip symbolic links (do not follow them, like grep/ripgrep)
+				if (Files.isSymbolicLink(file)) {
+					log.debug("Skipping symbolic link file: {}", file);
+					return FileVisitResult.CONTINUE;
+				}
+
 				// Check path length for files as well
 				String pathString = file.toString();
 				if (pathString.length() > MAX_PATH_LENGTH) {
@@ -585,6 +596,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
 				// Handle circular symlinks by skipping the problematic directory
+				// (This should rarely happen now since we don't follow symlinks, but kept for safety)
 				if (exc instanceof FileSystemLoopException) {
 					log.warn("Circular symlink detected: {}. Skipping this directory and continuing.", file);
 					return FileVisitResult.SKIP_SUBTREE;
@@ -603,9 +615,10 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			}
 		};
 
-		// Walk the directory tree with depth limit - all exceptions are handled by
-		// visitFileFailed
-		Files.walkFileTree(root, java.util.EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
+		// Walk the directory tree with depth limit - do NOT follow symbolic links
+		// (like grep/ripgrep to avoid infinite loops from circular symlinks)
+		// All exceptions are handled by visitFileFailed
+		Files.walkFileTree(root, java.util.EnumSet.noneOf(FileVisitOption.class), MAX_DEPTH, visitor);
 
 		return files;
 	}
