@@ -38,6 +38,24 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 		this.browserUseTool = browserUseTool;
 	}
 
+	@Override
+	public void setCurrentPlanId(String planId) {
+		super.setCurrentPlanId(planId);
+		// Synchronize planId to BrowserUseTool instance
+		if (browserUseTool != null) {
+			browserUseTool.setCurrentPlanId(planId);
+		}
+	}
+
+	@Override
+	public void setRootPlanId(String rootPlanId) {
+		super.setRootPlanId(rootPlanId);
+		// Synchronize rootPlanId to BrowserUseTool instance
+		if (browserUseTool != null) {
+			browserUseTool.setRootPlanId(rootPlanId);
+		}
+	}
+
 	/**
 	 * Execute action with retry mechanism for better reliability
 	 */
