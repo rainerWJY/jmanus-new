@@ -45,6 +45,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.alibaba.cloud.ai.lynxe.agent.fix.DynamicAgentStreamingFix;
 import com.alibaba.cloud.ai.lynxe.event.LynxeListener;
 import com.alibaba.cloud.ai.lynxe.event.ModelChangeEvent;
 import com.alibaba.cloud.ai.lynxe.model.entity.DynamicModelEntity;
@@ -100,6 +101,9 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	@Autowired(required = false)
 	private ConversationMemoryLimitService conversationMemoryLimitService;
 
+	@Autowired(required = false)
+	private DynamicAgentStreamingFix dynamicAgentStreamingFix;
+
 	public LlmService() {
 	}
 
@@ -113,10 +117,17 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		// Use the existing openAiChatModel method which calls openAiApi()
 		OpenAiChatModel chatModel = openAiChatModel(modelName, model, options);
 
-		return ChatClient.builder(chatModel)
+		var builder = ChatClient.builder(chatModel)
 			.defaultAdvisors(new SimpleLoggerAdvisor())
-			.defaultOptions(OpenAiChatOptions.fromOptions(options))
-			.build();
+			.defaultOptions(OpenAiChatOptions.fromOptions(options));
+
+		// Add streaming fix advisor if available
+		// StreamAdvisor can be added via defaultAdvisors as it extends Advisor
+		if (dynamicAgentStreamingFix != null) {
+			builder.defaultAdvisors(dynamicAgentStreamingFix);
+		}
+
+		return builder.build();
 	}
 
 	private void initializeChatClientsWithModel(DynamicModelEntity model) {
