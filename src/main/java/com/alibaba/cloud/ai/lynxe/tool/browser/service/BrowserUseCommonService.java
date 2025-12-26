@@ -21,27 +21,9 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
-import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ClickByElementAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.CloseTabAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.DownloadFileAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ExecuteJsAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.GetElementPositionByNameAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.GetTextAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.InputTextAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.KeyEnterAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.MoveToAndClickAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.NavigateAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.NewTabAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.RefreshAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ScreenShotAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ScrollAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.SwitchTabAction;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.WriteCurrentWebContentAction;
-import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
@@ -51,7 +33,8 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
-public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> {
+@Service
+public class BrowserUseCommonService {
 
 	private static final Logger log = LoggerFactory.getLogger(BrowserUseCommonService.class);
 
@@ -69,6 +52,7 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
+
 	public BrowserUseCommonService(ChromeDriverService chromeDriverService, SmartContentSavingService innerStorageService,
 			ObjectMapper objectMapper, com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService,
 			TextFileService textFileService, ToolI18nService toolI18nService,
@@ -82,17 +66,22 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 	}
 
-	public DriverWrapper getDriver() {
+	/**
+	 * Get driver for a specific plan
+	 * @param planId the plan ID
+	 * @return DriverWrapper instance
+	 */
+	public DriverWrapper getDriver(String planId) {
 		try {
-			DriverWrapper driver = chromeDriverService.getDriver(currentPlanId);
+			DriverWrapper driver = chromeDriverService.getDriver(planId);
 			if (driver == null) {
-				throw new RuntimeException("Failed to get driver for planId: " + currentPlanId);
+				throw new RuntimeException("Failed to get driver for planId: " + planId);
 			}
 			return driver;
 		}
 		catch (Exception e) {
-			log.error("Error getting driver for planId {}: {}", currentPlanId, e.getMessage(), e);
-			throw new RuntimeException("Failed to get driver for planId: " + currentPlanId, e);
+			log.error("Error getting driver for planId {}: {}", planId, e.getMessage(), e);
+			throw new RuntimeException("Failed to get driver for planId: " + planId, e);
 		}
 	}
 
@@ -105,278 +94,12 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		return timeout != null ? timeout : 30; // Default timeout is 30 seconds
 	}
 
-	private final String name = "browser_use";
-
-	// Track if run method has been called at least once
-	private volatile boolean hasRunAtLeastOnce = false;
-
-	public static synchronized BrowserUseCommonService getInstance(ChromeDriverService chromeDriverService,
-			SmartContentSavingService innerStorageService, ObjectMapper objectMapper,
-			com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService, TextFileService textFileService,
-			ToolI18nService toolI18nService, UnifiedDirectoryManager unifiedDirectoryManager) {
-		BrowserUseCommonService instance = new BrowserUseCommonService(chromeDriverService, innerStorageService, objectMapper,
-				shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager);
-		return instance;
-	}
-
 	/**
 	 * Get ShortUrlService instance
 	 * @return ShortUrlService
 	 */
 	public com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService getShortUrlService() {
 		return shortUrlService;
-	}
-
-	public ToolExecuteResult run(BrowserRequestVO requestVO) {
-		String action = null;
-		try {
-			log.info("BrowserUseTool requestVO: action={}", requestVO.getAction());
-
-			// Mark that run has been called at least once
-			hasRunAtLeastOnce = true;
-
-			// Get parameters from RequestVO
-			action = requestVO.getAction();
-			if (action == null || action.trim().isEmpty()) {
-				return new ToolExecuteResult("Action parameter is required and cannot be empty");
-			}
-
-			// Validate driver availability before executing any action
-			try {
-				DriverWrapper driver = getDriver();
-				if (driver == null) {
-					return new ToolExecuteResult("Browser driver is not available");
-				}
-
-				// Check if browser is still connected
-				if (driver.getBrowser() == null || !driver.getBrowser().isConnected()) {
-					return new ToolExecuteResult("Browser is not connected. Please try again or restart the browser.");
-				}
-
-				// Check if current page is valid
-				Page currentPage = driver.getCurrentPage();
-				if (currentPage == null || currentPage.isClosed()) {
-					return new ToolExecuteResult("Current page is not available. Please navigate to a page first.");
-				}
-			}
-			catch (Exception e) {
-				log.error("Driver validation failed for action '{}': {}", action, e.getMessage(), e);
-				return new ToolExecuteResult("Browser driver validation failed: " + e.getMessage());
-			}
-
-			ToolExecuteResult result;
-			try {
-				switch (action) {
-					case "navigate": {
-						result = executeActionWithRetry(() -> new NavigateAction(this).execute(requestVO), action);
-						break;
-					}
-					case "click": {
-						result = executeActionWithRetry(() -> new ClickByElementAction(this).execute(requestVO),
-								action);
-						break;
-					}
-					case "input_text": {
-						result = executeActionWithRetry(() -> new InputTextAction(this).execute(requestVO), action);
-						break;
-					}
-					case "key_enter": {
-						result = executeActionWithRetry(() -> new KeyEnterAction(this).execute(requestVO), action);
-						break;
-					}
-					case "screenshot": {
-						result = executeActionWithRetry(() -> new ScreenShotAction(this).execute(requestVO), action);
-						break;
-					}
-					case "get_text": {
-						result = executeActionWithRetry(() -> new GetTextAction(this).execute(requestVO), action);
-						// Text content may be long, use intelligent processing
-						try {
-							SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-								.processContent(currentPlanId, result.getOutput(), "get_text");
-							return new ToolExecuteResult(processedResult.getComprehensiveResult());
-						}
-						catch (Exception e) {
-							log.warn("Failed to process get_text content intelligently: {}", e.getMessage());
-							return result; // Return original result if processing fails
-						}
-					}
-					case "execute_js": {
-						result = executeActionWithRetry(() -> new ExecuteJsAction(this).execute(requestVO), action);
-						// JS execution results may be long, use intelligent processing
-						try {
-							SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-								.processContent(currentPlanId, result.getOutput(), "execute_js");
-							return new ToolExecuteResult(processedResult.getComprehensiveResult());
-						}
-						catch (Exception e) {
-							log.warn("Failed to process execute_js content intelligently: {}", e.getMessage());
-							return result; // Return original result if processing fails
-						}
-					}
-					case "scroll": {
-						result = executeActionWithRetry(() -> new ScrollAction(this).execute(requestVO), action);
-						break;
-					}
-					case "new_tab": {
-						result = executeActionWithRetry(() -> new NewTabAction(this).execute(requestVO), action);
-						break;
-					}
-					case "close_tab": {
-						result = executeActionWithRetry(() -> new CloseTabAction(this).execute(requestVO), action);
-						break;
-					}
-					case "switch_tab": {
-						result = executeActionWithRetry(() -> new SwitchTabAction(this).execute(requestVO), action);
-						break;
-					}
-					case "refresh": {
-						result = executeActionWithRetry(() -> new RefreshAction(this).execute(requestVO), action);
-						break;
-					}
-					case "get_element_position": {
-						result = executeActionWithRetry(
-								() -> new GetElementPositionByNameAction(this, objectMapper).execute(requestVO),
-								action);
-						break;
-					}
-					case "move_to_and_click": {
-						result = executeActionWithRetry(() -> new MoveToAndClickAction(this).execute(requestVO),
-								action);
-						break;
-					}
-					case "get_web_content": {
-						result = executeActionWithRetry(
-								() -> new WriteCurrentWebContentAction(this, textFileService).execute(requestVO),
-								action);
-						break;
-					}
-					case "download": {
-						// Get download directory for current plan
-						java.nio.file.Path downloadDir = unifiedDirectoryManager.getRootPlanDirectory(rootPlanId)
-							.resolve("downloads");
-						try {
-							unifiedDirectoryManager.ensureDirectoryExists(downloadDir);
-						}
-						catch (java.io.IOException e) {
-							log.error("Failed to create download directory: {}", e.getMessage());
-							return new ToolExecuteResult("Failed to create download directory: " + e.getMessage());
-						}
-						result = executeActionWithRetry(
-								() -> new DownloadFileAction(this, downloadDir).execute(requestVO), action);
-						break;
-					}
-					default:
-						return new ToolExecuteResult("Unknown action: " + action);
-				}
-			}
-			catch (TimeoutError e) {
-				log.error("Timeout error executing action '{}': {}", action, e.getMessage(), e);
-				return new ToolExecuteResult("Browser action '" + action + "' timed out: " + e.getMessage());
-			}
-			catch (PlaywrightException e) {
-				log.error("Playwright error executing action '{}': {}", action, e.getMessage(), e);
-				return new ToolExecuteResult(
-						"Browser action '" + action + "' failed due to Playwright error: " + e.getMessage());
-			}
-			catch (Exception e) {
-				log.error("Unexpected error executing action '{}': {}", action, e.getMessage(), e);
-				return new ToolExecuteResult("Browser action '" + action + "' failed: " + e.getMessage());
-			}
-
-			// For other operations, also perform intelligent processing (but thresholds
-			// usually won't be exceeded)
-			try {
-				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
-					.processContent(currentPlanId, result.getOutput(), action);
-				return new ToolExecuteResult(processedResult.getComprehensiveResult());
-			}
-			catch (Exception e) {
-				log.warn("Failed to process content intelligently for action '{}': {}", action, e.getMessage());
-				return result; // Return original result if processing fails
-			}
-
-		}
-		catch (TimeoutError e) {
-			log.error("Timeout error in browser tool for action '{}': {}", action, e.getMessage(), e);
-			return new ToolExecuteResult("Browser operation timed out: " + e.getMessage());
-		}
-		catch (PlaywrightException e) {
-			log.error("Playwright error in browser tool for action '{}': {}", action, e.getMessage(), e);
-			return new ToolExecuteResult("Browser operation failed due to Playwright error: " + e.getMessage());
-		}
-		catch (Exception e) {
-			log.error("Unexpected error in browser tool for action '{}': {}", action, e.getMessage(), e);
-			return new ToolExecuteResult("Browser operation failed: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Execute action with retry mechanism for better reliability
-	 */
-	private ToolExecuteResult executeActionWithRetry(ActionExecutor executor, String actionName) {
-		int maxRetries = 2;
-		int retryDelay = 1000; // 1 second
-
-		for (int attempt = 1; attempt <= maxRetries; attempt++) {
-			try {
-				return executor.execute();
-			}
-			catch (TimeoutError e) {
-				if (attempt == maxRetries) {
-					log.error("Action '{}' timed out after {} attempts: {}", actionName, maxRetries, e.getMessage());
-					throw e;
-				}
-				log.warn("Action '{}' timed out on attempt {}, retrying: {}", actionName, attempt, e.getMessage());
-			}
-			catch (PlaywrightException e) {
-				// Some Playwright exceptions are not worth retrying
-				if (e.getMessage().contains("Target page, context or browser has been closed")
-						|| e.getMessage().contains("Browser has been closed")
-						|| e.getMessage().contains("Context has been closed")) {
-					log.error("Action '{}' failed due to closed browser/context: {}", actionName, e.getMessage());
-					throw e;
-				}
-
-				if (attempt == maxRetries) {
-					log.error("Action '{}' failed after {} attempts: {}", actionName, maxRetries, e.getMessage());
-					throw e;
-				}
-				log.warn("Action '{}' failed on attempt {}, retrying: {}", actionName, attempt, e.getMessage());
-			}
-			catch (RuntimeException e) {
-				// For runtime exceptions, don't retry
-				log.error("Action '{}' failed with non-retryable error: {}", actionName, e.getMessage());
-				throw e;
-			}
-			catch (Exception e) {
-				// For checked exceptions, wrap and don't retry
-				log.error("Action '{}' failed with non-retryable error: {}", actionName, e.getMessage());
-				throw new RuntimeException("Action failed: " + actionName, e);
-			}
-
-			// Wait before retry
-			try {
-				Thread.sleep(retryDelay);
-			}
-			catch (InterruptedException ie) {
-				Thread.currentThread().interrupt();
-				throw new RuntimeException("Interrupted during retry delay for action: " + actionName, ie);
-			}
-		}
-
-		// Should never reach here
-		throw new RuntimeException("Unexpected end of retry loop for action: " + actionName);
-	}
-
-	/**
-	 * Functional interface for action execution
-	 */
-	@FunctionalInterface
-	private interface ActionExecutor {
-
-		ToolExecuteResult execute() throws Exception;
-
 	}
 
 	private List<Map<String, Object>> getTabsInfo(Page page) {
@@ -419,7 +142,13 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		}
 	}
 
-	public Map<String, Object> getCurrentState(Page page) {
+	/**
+	 * Get current browser state for a page
+	 * @param page the Playwright Page instance
+	 * @param rootPlanId the root plan ID for short URL resolution
+	 * @return Map containing browser state information
+	 */
+	public Map<String, Object> getCurrentState(Page page, String rootPlanId) {
 		Map<String, Object> state = new HashMap<>();
 
 		try {
@@ -564,44 +293,17 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		}
 	}
 
-	@Override
-	public String getServiceGroup() {
-		return "default-service-group";
-	}
-
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	@Override
-	public String getDescription() {
-		return toolI18nService.getDescription("browser-use-tool");
-	}
-
-	@Override
-	public String getParameters() {
-		return toolI18nService.getParameters("browser-use-tool");
-	}
-
-	@Override
-	public Class<BrowserRequestVO> getInputType() {
-		return BrowserRequestVO.class;
-	}
-
+	/**
+	 * Get the current browser state as a string
+	 * @param planId the plan ID
+	 * @param rootPlanId the root plan ID
+	 * @return String representation of the current browser state
+	 */
 	@SuppressWarnings("unchecked")
-	@Override
-	public String getCurrentToolStateString() {
-		// Only initialize browser if run method has been called at least once
-		if (!hasRunAtLeastOnce) {
-			return """
-					Browser tool context is empty
-					""";
-		}
-
+	public String getCurrentToolStateString(String planId, String rootPlanId) {
 		try {
-			DriverWrapper driver = getDriver();
-			Map<String, Object> state = getCurrentState(driver.getCurrentPage());
+			DriverWrapper driver = getDriver(planId);
+			Map<String, Object> state = getCurrentState(driver.getCurrentPage(), rootPlanId);
 			// Build URL and title information
 			String urlInfo = String.format("\n   URL: %s\n   Title: %s", state.get("url"), state.get("title"));
 
@@ -670,8 +372,10 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		}
 	}
 
-	// cleanup method already exists, just ensure it conforms to interface specification
-	@Override
+	/**
+	 * Cleanup browser resources for a specific plan
+	 * @param planId the plan ID to cleanup
+	 */
 	public void cleanup(String planId) {
 		if (planId != null) {
 			log.info("Cleaning up Chrome resources for plan: {}", planId);
@@ -679,13 +383,12 @@ public class BrowserUseCommonService extends AbstractBaseTool<BrowserRequestVO> 
 		}
 	}
 
+	/**
+	 * Get LynxeProperties from ChromeDriverService
+	 * @return LynxeProperties instance
+	 */
 	public LynxeProperties getLynxeProperties() {
 		return (LynxeProperties) this.chromeDriverService.getLynxeProperties();
-	}
-
-	@Override
-	public boolean isSelectable() {
-		return true;
 	}
 
 }

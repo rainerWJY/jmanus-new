@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.pptGenerator.PptGeneratorService;
@@ -214,13 +215,17 @@ public class CreatePptTool extends AbstractBaseTool<CreatePptTool.CreatePptInput
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
 		String planId = this.currentPlanId;
+		String stateString;
 		if (planId != null) {
-			return String.format("PPT Generator - Current File: %s, Last Operation: %s",
+			stateString = String.format("PPT Generator - Current File: %s, Last Operation: %s",
 					pptGeneratorService.getCurrentFilePath(planId), pptGeneratorService.getLastOperationResult(planId));
 		}
-		return "PPT Generator is ready";
+		else {
+			stateString = "PPT Generator is ready";
+		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	@Override

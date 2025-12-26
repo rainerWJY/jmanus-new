@@ -145,8 +145,8 @@ public class TerminateTool extends AbstractBaseTool<Map<String, Object>> impleme
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	public TerminateTool(String planId, String expectedReturnInfo) {

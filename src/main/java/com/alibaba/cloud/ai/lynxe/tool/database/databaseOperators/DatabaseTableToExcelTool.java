@@ -32,6 +32,7 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
@@ -392,7 +393,8 @@ public class DatabaseTableToExcelTool extends AbstractBaseTool<DatabaseTableToEx
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			Map<String, String> datasourceInfo = dataSourceService.getAllDatasourceInfo();
 			StringBuilder stateBuilder = new StringBuilder();
@@ -409,12 +411,13 @@ public class DatabaseTableToExcelTool extends AbstractBaseTool<DatabaseTableToEx
 			}
 
 			stateBuilder.append("\n=== End Database Table to Excel Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get database table to Excel tool state", e);
-			return String.format("Database table to Excel tool state error: %s", e.getMessage());
+			stateString = String.format("Database table to Excel tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	public static DatabaseTableToExcelTool getInstance(LynxeProperties lynxeProperties,

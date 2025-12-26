@@ -18,11 +18,12 @@ package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.KeyEnterAction;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -61,14 +62,6 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 	}
 
 	@Override
-	protected BrowserRequestVO toBrowserRequestVO(KeyEnterInput input) {
-		BrowserRequestVO request = new BrowserRequestVO();
-		request.setAction("key_enter");
-		request.setIndex(input.getIndex());
-		return request;
-	}
-
-	@Override
 	public ToolExecuteResult run(KeyEnterInput input) {
 		log.info("KeyEnterBrowserTool request: index={}", input.getIndex());
 		try {
@@ -77,12 +70,54 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 				return validation;
 			}
 
-			if (input.getIndex() == null) {
+			Integer index = input.getIndex();
+			if (index == null) {
 				return new ToolExecuteResult("Error: index parameter is required");
 			}
 
-			return executeActionWithRetry(() -> new KeyEnterAction(browserUseTool).execute(toBrowserRequestVO(input)),
-					"key_enter");
+			return executeActionWithRetry(() -> {
+				Locator locator = getLocatorByIdx(index);
+				if (locator == null) {
+					return new ToolExecuteResult("Element with index " + index + " not found in ARIA snapshot");
+				}
+
+				// Execute the enter operation with timeout handling
+				try {
+					// Check if element is visible and enabled
+					if (!locator.isVisible()) {
+						return new ToolExecuteResult("Element at index " + index + " is not visible");
+					}
+
+					// Press Enter with explicit timeout
+					locator.press("Enter", new Locator.PressOptions().setTimeout(getBrowserTimeoutMs()));
+
+					// Wait for page to process the action and update content
+					// This is especially important for search actions that trigger AJAX requests
+					Page page = getCurrentPage();
+					try {
+						// Wait for network idle to ensure search requests complete
+						page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+								new Page.WaitForLoadStateOptions().setTimeout(3000));
+					}
+					catch (TimeoutError e) {
+						// If network idle timeout, wait a bit more for content to update
+						Thread.sleep(1000);
+					}
+					catch (Exception e) {
+						// If any error, wait a short time anyway
+						Thread.sleep(500);
+					}
+
+				}
+				catch (TimeoutError e) {
+					return new ToolExecuteResult("Timeout waiting for element at index " + index
+							+ " to be ready for Enter key press. " + e.getMessage());
+				}
+				catch (Exception e) {
+					return new ToolExecuteResult("Failed to press Enter on element at index " + index + ": " + e.getMessage());
+				}
+				return new ToolExecuteResult("Successfully pressed Enter key at index " + index);
+			}, "key_enter");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing key_enter: {}", e.getMessage(), e);
@@ -124,8 +159,9 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
+		return new ToolStateInfo("browser-service-group", stateString);
 	}
 
 }

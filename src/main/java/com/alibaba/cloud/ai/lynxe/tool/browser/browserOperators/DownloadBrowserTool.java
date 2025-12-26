@@ -16,16 +16,19 @@
 package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.DownloadFileAction;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.microsoft.playwright.Download;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -68,14 +71,6 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 	}
 
 	@Override
-	protected BrowserRequestVO toBrowserRequestVO(DownloadInput input) {
-		BrowserRequestVO request = new BrowserRequestVO();
-		request.setAction("download");
-		request.setIndex(input.getIndex());
-		return request;
-	}
-
-	@Override
 	public ToolExecuteResult run(DownloadInput input) {
 		log.info("DownloadBrowserTool request: index={}", input.getIndex());
 		try {
@@ -84,12 +79,13 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				return validation;
 			}
 
-			if (input.getIndex() == null) {
+			Integer index = input.getIndex();
+			if (index == null) {
 				return new ToolExecuteResult("Error: index parameter is required");
 			}
 
 			// Get download directory for current plan
-			Path downloadDir = unifiedDirectoryManager.getRootPlanDirectory(rootPlanId).resolve("downloads");
+			Path downloadDir = unifiedDirectoryManager.getRootPlanDirectory(getRootPlanId()).resolve("downloads");
 			try {
 				unifiedDirectoryManager.ensureDirectoryExists(downloadDir);
 			}
@@ -98,9 +94,80 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				return new ToolExecuteResult("Failed to create download directory: " + e.getMessage());
 			}
 
-			return executeActionWithRetry(
-					() -> new DownloadFileAction(browserUseTool, downloadDir).execute(toBrowserRequestVO(input)),
-					"download");
+			return executeActionWithRetry(() -> {
+				Page page = getCurrentPage();
+				if (page == null) {
+					return new ToolExecuteResult("No active page available");
+				}
+
+				try {
+					// Create a future to capture the download
+					CompletableFuture<Download> downloadFuture = new CompletableFuture<>();
+
+					// Set up download listener
+					page.onDownload(download -> {
+						log.info("Download started: {}", download.suggestedFilename());
+						downloadFuture.complete(download);
+					});
+
+					// Get the element locator by index
+					var locator = getLocatorByIdx(index);
+					if (locator == null) {
+						return new ToolExecuteResult("Element with index " + index + " not found");
+					}
+
+					// Check if element exists
+					if (locator.count() == 0) {
+						return new ToolExecuteResult("Element with index " + index + " does not exist");
+					}
+
+					// Click the download element
+					log.info("Clicking element with index {} to trigger download", index);
+					locator.first()
+						.click(new com.microsoft.playwright.Locator.ClickOptions().setTimeout(getElementTimeoutMs()));
+
+					// Wait for download to start (with timeout)
+					Download download;
+					try {
+						download = downloadFuture.get(getBrowserTimeoutSec(), TimeUnit.SECONDS);
+					}
+					catch (java.util.concurrent.TimeoutException e) {
+						log.warn("No download was triggered within timeout period");
+						return new ToolExecuteResult("No download was triggered after clicking element with index " + index
+								+ ". The element might not be a download link or the download might have been blocked.");
+					}
+
+					// Get suggested filename
+					String suggestedFilename = download.suggestedFilename();
+					log.info("Download detected: {}", suggestedFilename);
+
+					// Save the download to the download directory
+					Path downloadPath = downloadDir.resolve(suggestedFilename);
+					download.saveAs(downloadPath);
+
+					// Wait for download to complete
+					String failure = download.failure();
+					if (failure != null) {
+						log.error("Download failed: {}", failure);
+						return new ToolExecuteResult("Download failed: " + failure);
+					}
+
+					log.info("Download completed successfully: {}", downloadPath);
+
+					// Get file size
+					long fileSize = java.nio.file.Files.size(downloadPath);
+					String fileSizeStr = formatFileSize(fileSize);
+
+					return new ToolExecuteResult(String.format(
+							"File downloaded successfully:\n" + "- Filename: %s\n" + "- Size: %s\n" + "- Location: %s",
+							suggestedFilename, fileSizeStr, downloadPath.toString()));
+
+				}
+				catch (Exception e) {
+					log.error("Error during download action: {}", e.getMessage(), e);
+					return new ToolExecuteResult("Download failed: " + e.getMessage());
+				}
+			}, "download");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing download: {}", e.getMessage(), e);
@@ -113,6 +180,24 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 		catch (Exception e) {
 			log.error("Unexpected error executing download: {}", e.getMessage(), e);
 			return new ToolExecuteResult("Browser download failed: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Format file size to human-readable format
+	 */
+	private String formatFileSize(long bytes) {
+		if (bytes < 1024) {
+			return bytes + " B";
+		}
+		else if (bytes < 1024 * 1024) {
+			return String.format("%.2f KB", bytes / 1024.0);
+		}
+		else if (bytes < 1024 * 1024 * 1024) {
+			return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
+		}
+		else {
+			return String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0));
 		}
 	}
 
@@ -142,8 +227,9 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
+		return new ToolStateInfo("browser-service-group", stateString);
 	}
 
 }

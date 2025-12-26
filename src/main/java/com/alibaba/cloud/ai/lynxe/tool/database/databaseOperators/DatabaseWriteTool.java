@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.ExecuteSqlAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
@@ -109,7 +110,8 @@ public class DatabaseWriteTool extends AbstractBaseTool<DatabaseRequest> {
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			Map<String, String> datasourceInfo = dataSourceService.getAllDatasourceInfo();
 			StringBuilder stateBuilder = new StringBuilder();
@@ -126,12 +128,13 @@ public class DatabaseWriteTool extends AbstractBaseTool<DatabaseRequest> {
 			}
 
 			stateBuilder.append("\n=== End Database Write Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get database write tool state", e);
-			return String.format("Database write tool state error: %s", e.getMessage());
+			stateString = String.format("Database write tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	public static DatabaseWriteTool getInstance(DataSourceService dataSourceService, ObjectMapper objectMapper,

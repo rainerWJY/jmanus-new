@@ -26,6 +26,7 @@ import org.springframework.ai.chat.model.ToolContext;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.AsyncToolCallBiFunctionDef;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FunctionRegistryService;
@@ -112,8 +113,8 @@ public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExec
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	@Override

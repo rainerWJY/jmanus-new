@@ -71,6 +71,7 @@ import com.alibaba.cloud.ai.lynxe.tool.SystemErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminableTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -1038,13 +1039,14 @@ public class DynamicAgent extends ReActAgent {
 			if (formInputTool.getInputState() == FormInputTool.InputState.INPUT_RECEIVED) {
 				log.info("User input received for rootPlanId: {} from sub-plan {}", rootPlanId, currentPlanId);
 
+				ToolStateInfo stateInfo = formInputTool.getCurrentToolStateString();
 				UserMessage userMessage = UserMessage.builder()
-					.text("User input received for form: " + formInputTool.getCurrentToolStateString())
+					.text("User input received for form: " + (stateInfo != null ? stateInfo.getStateString() : ""))
 					.build();
 				processUserInputToMemory(userMessage);
 
 				// Update the result in actToolInfoList
-				param.setResult(formInputTool.getCurrentToolStateString());
+				param.setResult(stateInfo != null ? stateInfo.getStateString() : "");
 				return new AgentExecResult(param.getResult(), AgentState.IN_PROGRESS);
 
 			}
@@ -1648,7 +1650,7 @@ public class DynamicAgent extends ReActAgent {
 		this.toolCallbackProvider = toolCallbackProvider;
 	}
 
-	protected String collectEnvData(String toolCallName) {
+	protected ToolStateInfo collectEnvData(String toolCallName) {
 		log.info("🔍 collectEnvData called for tool: {}", toolCallName);
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
 
@@ -1671,26 +1673,41 @@ public class DynamicAgent extends ReActAgent {
 			// Use getCurrentToolStateStringWithErrorHandler which provides unified error
 			// handling
 			// This method is available as a default method in the interface
-			String envData = functionInstance.getCurrentToolStateStringWithErrorHandler();
-			return envData != null ? envData : "";
+			ToolStateInfo envData = functionInstance.getCurrentToolStateStringWithErrorHandler();
+			return envData != null ? envData : new ToolStateInfo(lookupKey, "");
 		}
-		// If corresponding tool callback context is not found, return empty string
+		// If corresponding tool callback context is not found, return empty ToolStateInfo
 		log.warn("⚠️ No context found for tool: {} (lookup key: {})", toolCallName, lookupKey);
-		return "";
+		return new ToolStateInfo(lookupKey, "");
 	}
 
 	public void collectAndSetEnvDataForTools() {
 
 		Map<String, Object> toolEnvDataMap = new HashMap<>();
+		Map<String, ToolStateInfo> deduplicatedStateMap = new HashMap<>();
 
 		Map<String, Object> oldMap = getEnvData();
 		toolEnvDataMap.putAll(oldMap);
 
-		// Overwrite old data with new data
+		// Collect ToolStateInfo objects and deduplicate by key
 		for (String toolKey : availableToolKeys) {
-			String envData = collectEnvData(toolKey);
-			toolEnvDataMap.put(toolKey, envData);
+			ToolStateInfo stateInfo = collectEnvData(toolKey);
+			if (stateInfo != null && stateInfo.getStateString() != null && !stateInfo.getStateString().trim().isEmpty()) {
+				String dedupKey = stateInfo.getKey();
+				// Ignore ToolStateInfo with empty or null key
+				if (dedupKey != null && !dedupKey.trim().isEmpty()) {
+					// Deduplicate: if multiple tools have the same key, keep only the first one
+					if (!deduplicatedStateMap.containsKey(dedupKey)) {
+						deduplicatedStateMap.put(dedupKey, stateInfo);
+					}
+				}
+			}
+			// Still store individual tool data for backward compatibility
+			toolEnvDataMap.put(toolKey, stateInfo);
 		}
+
+		// Store deduplicated state map with a special key
+		toolEnvDataMap.put("_deduplicated_states", deduplicatedStateMap);
 		// log.debug("Collected tool environment data: {}", toolEnvDataMap);
 
 		setEnvData(toolEnvDataMap);
@@ -1699,13 +1716,49 @@ public class DynamicAgent extends ReActAgent {
 	public String convertEnvDataToString() {
 		StringBuilder envDataStringBuilder = new StringBuilder();
 
-		for (String toolKey : availableToolKeys) {
-			Object value = getEnvData().get(toolKey);
-			if (value == null || value.toString().isEmpty()) {
-				continue; // Skip tools with no data
+		// Use deduplicated states if available
+		Map<String, Object> envData = getEnvData();
+		@SuppressWarnings("unchecked")
+		Map<String, ToolStateInfo> deduplicatedStates = (Map<String, ToolStateInfo>) envData.get("_deduplicated_states");
+
+		if (deduplicatedStates != null && !deduplicatedStates.isEmpty()) {
+			// Use deduplicated states
+			for (Map.Entry<String, ToolStateInfo> entry : deduplicatedStates.entrySet()) {
+				ToolStateInfo stateInfo = entry.getValue();
+				String key = entry.getKey();
+				// Ignore ToolStateInfo with empty or null key
+				if (key != null && !key.trim().isEmpty() && stateInfo != null && stateInfo.getStateString() != null
+						&& !stateInfo.getStateString().trim().isEmpty()) {
+					envDataStringBuilder.append(key).append(" context information:\n");
+					envDataStringBuilder.append("    ").append(stateInfo.getStateString()).append("\n");
+				}
 			}
-			envDataStringBuilder.append(toolKey).append(" context information:\n");
-			envDataStringBuilder.append("    ").append(value.toString()).append("\n");
+		}
+		else {
+			// Fallback to individual tool data (backward compatibility)
+			for (String toolKey : availableToolKeys) {
+				Object value = envData.get(toolKey);
+				if (value == null) {
+					continue;
+				}
+				if (value instanceof ToolStateInfo) {
+					ToolStateInfo stateInfo = (ToolStateInfo) value;
+					String key = stateInfo.getKey();
+					// Ignore ToolStateInfo with empty or null key
+					if (key != null && !key.trim().isEmpty() && stateInfo.getStateString() != null
+							&& !stateInfo.getStateString().trim().isEmpty()) {
+						envDataStringBuilder.append(toolKey).append(" context information:\n");
+						envDataStringBuilder.append("    ").append(stateInfo.getStateString()).append("\n");
+					}
+				}
+				else {
+					String valueStr = value.toString();
+					if (!valueStr.isEmpty()) {
+						envDataStringBuilder.append(toolKey).append(" context information:\n");
+						envDataStringBuilder.append("    ").append(valueStr).append("\n");
+					}
+				}
+			}
 		}
 
 		return envDataStringBuilder.toString();

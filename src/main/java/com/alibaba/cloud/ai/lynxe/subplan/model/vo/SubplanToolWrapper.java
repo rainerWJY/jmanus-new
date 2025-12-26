@@ -35,6 +35,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanningCoordinator;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.AsyncToolCallBiFunctionDef;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -228,8 +229,8 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "Ready";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "Ready");
 	}
 
 	// Getter for the wrapped coordinator tool config

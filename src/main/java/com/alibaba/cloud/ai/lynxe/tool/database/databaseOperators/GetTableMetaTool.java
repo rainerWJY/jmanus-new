@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.GetTableMetaAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
@@ -142,8 +143,8 @@ public class GetTableMetaTool extends AbstractBaseTool<GetTableMetaTool.GetTable
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	public static GetTableMetaTool getInstance(DataSourceService dataSourceService, ObjectMapper objectMapper,

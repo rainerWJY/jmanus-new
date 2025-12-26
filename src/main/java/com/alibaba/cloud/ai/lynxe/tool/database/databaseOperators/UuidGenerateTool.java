@@ -23,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -99,19 +100,21 @@ public class UuidGenerateTool extends AbstractBaseTool<UuidGenerateRequest> {
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			StringBuilder stateBuilder = new StringBuilder();
 			stateBuilder.append("\n=== UUID Generate Tool Current State ===\n");
 			stateBuilder.append("Tool is ready to generate UUID strings.\n");
 			stateBuilder.append("Format: Standard UUID v4 (e.g., 550e8400-e29b-41d4-a716-446655440000)\n");
 			stateBuilder.append("\n=== End UUID Generate Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get UUID generate tool state", e);
-			return String.format("UUID generate tool state error: %s", e.getMessage());
+			stateString = String.format("UUID generate tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	public static UuidGenerateTool getInstance(ObjectMapper objectMapper, ToolI18nService toolI18nService) {

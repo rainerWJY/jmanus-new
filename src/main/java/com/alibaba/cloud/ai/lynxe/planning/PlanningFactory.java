@@ -192,6 +192,9 @@ public class PlanningFactory {
 	private ParallelExecutionService parallelExecutionService;
 
 	@Autowired
+	private BrowserUseCommonService browserUseCommonService;
+
+	@Autowired
 	private FunctionRegistryService functionRegistryService;
 
 	@Autowired
@@ -273,19 +276,17 @@ public class PlanningFactory {
 		if (agentInit) {
 			// Add all tool definitions
 			// Refactored browser tools (split from BrowserUseTool)
-			BrowserUseCommonService browserUseToolInstance = BrowserUseCommonService.getInstance(chromeDriverService, innerStorageService,
-					objectMapper, shortUrlService, textFileService, toolI18nService, unifiedDirectoryManager);
-			toolDefinitions.add(new NavigateBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new ClickBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new InputTextBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new KeyEnterBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new ScreenshotBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new NewTabBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new CloseTabBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new SwitchTabBrowserTool(browserUseToolInstance, toolI18nService));
-			toolDefinitions.add(new GetWebContentBrowserTool(browserUseToolInstance, textFileService, toolI18nService));
+			toolDefinitions.add(new NavigateBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new ClickBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new InputTextBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new KeyEnterBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new ScreenshotBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new NewTabBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new CloseTabBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new SwitchTabBrowserTool(browserUseCommonService, toolI18nService));
+			toolDefinitions.add(new GetWebContentBrowserTool(browserUseCommonService, textFileService, toolI18nService));
 			toolDefinitions
-				.add(new DownloadBrowserTool(browserUseToolInstance, unifiedDirectoryManager, toolI18nService));
+				.add(new DownloadBrowserTool(browserUseCommonService, unifiedDirectoryManager, toolI18nService));
 			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService,
 			// innerStorageService, objectMapper,
 			// shortUrlService, textFileService, toolI18nService,

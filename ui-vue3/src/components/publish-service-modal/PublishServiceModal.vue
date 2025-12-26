@@ -616,6 +616,25 @@ watch(canEnableInConversation, canEnable => {
   }
 })
 
+// Watch formData.parameters changes and sync to JSON in real-time
+watch(
+  () => formData.parameters,
+  () => {
+    // Merge parameters and update inputSchema in real-time
+    const mergedParameters = mergeParametersWithBackend()
+    const inputSchema = mergedParameters
+      .filter(param => param.name.trim())
+      .map(param => ({
+        name: param.name.trim(),
+        description: param.description.trim() || '',
+        type: 'string',
+      }))
+    // Update toolConfig.inputSchema in real-time so JSON preview updates immediately
+    templateConfig.setInputSchemaWithGuard(inputSchema)
+  },
+  { deep: true }
+)
+
 // Initialize when component mounts
 onMounted(async () => {
   if (showModal.value) {

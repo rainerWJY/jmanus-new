@@ -20,6 +20,7 @@ import java.util.Map;
 import org.springframework.ai.tool.ToolCallback;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -66,8 +67,8 @@ public class McpTool extends AbstractBaseTool<Map<String, Object>> {
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	@Override

@@ -315,11 +315,15 @@ public class DynamicAgentPlanningTool extends AbstractBaseTool<DynamicAgentPlann
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		if (currentPlan != null) {
-			return "Current dynamic agent plan: " + currentPlan.getPlanExecutionStateStringFormat(false);
+			stateString = "Current dynamic agent plan: " + currentPlan.getPlanExecutionStateStringFormat(false);
 		}
-		return "No active dynamic agent plan";
+		else {
+			stateString = "No active dynamic agent plan";
+		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	@Override

@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.ExecuteSqlAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
@@ -111,7 +112,8 @@ public class ExecuteReadSqlTool extends AbstractBaseTool<ExecuteReadSqlTool.Exec
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			Map<String, String> datasourceInfo = dataSourceService.getAllDatasourceInfo();
 			StringBuilder stateBuilder = new StringBuilder();
@@ -128,12 +130,13 @@ public class ExecuteReadSqlTool extends AbstractBaseTool<ExecuteReadSqlTool.Exec
 			}
 
 			stateBuilder.append("\n=== End Execute Read SQL Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get execute read SQL tool state", e);
-			return String.format("Execute read SQL tool state error: %s", e.getMessage());
+			stateString = String.format("Execute read SQL tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	@Override

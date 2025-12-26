@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.GetDatasourceInfoAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
@@ -120,8 +121,8 @@ public class GetDatasourceInfoTool extends AbstractBaseTool<GetDatasourceInfoToo
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	public static GetDatasourceInfoTool getInstance(DataSourceService dataSourceService, ObjectMapper objectMapper,

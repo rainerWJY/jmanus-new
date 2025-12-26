@@ -15,13 +15,22 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
+import com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.ElementHandle;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -36,24 +45,6 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 
 	public AbstractBrowserTool(BrowserUseCommonService browserUseTool) {
 		this.browserUseTool = browserUseTool;
-	}
-
-	@Override
-	public void setCurrentPlanId(String planId) {
-		super.setCurrentPlanId(planId);
-		// Synchronize planId to BrowserUseTool instance
-		if (browserUseTool != null) {
-			browserUseTool.setCurrentPlanId(planId);
-		}
-	}
-
-	@Override
-	public void setRootPlanId(String rootPlanId) {
-		super.setRootPlanId(rootPlanId);
-		// Synchronize rootPlanId to BrowserUseTool instance
-		if (browserUseTool != null) {
-			browserUseTool.setRootPlanId(rootPlanId);
-		}
 	}
 
 	/**
@@ -119,7 +110,7 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 	 */
 	protected ToolExecuteResult validateDriver() {
 		try {
-			com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper driver = browserUseTool.getDriver();
+			com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper driver = browserUseTool.getDriver(getCurrentPlanId());
 			if (driver == null) {
 				return new ToolExecuteResult("Browser driver is not available");
 			}
@@ -142,10 +133,216 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 		}
 	}
 
+
 	/**
-	 * Convert tool input to BrowserRequestVO
+	 * Get browser use tool instance
+	 * @return BrowserUseCommonService instance
 	 */
-	protected abstract BrowserRequestVO toBrowserRequestVO(T input);
+	protected BrowserUseCommonService getBrowserUseTool() {
+		return browserUseTool;
+	}
+
+	/**
+	 * Get browser operation timeout configuration
+	 * @return Timeout in milliseconds, returns default value of 30 seconds if not configured
+	 */
+	protected Integer getBrowserTimeoutMs() {
+		Integer timeout = browserUseTool.getLynxeProperties().getBrowserRequestTimeout();
+		return (timeout != null ? timeout : 30) * 1000; // Convert to milliseconds
+	}
+
+	/**
+	 * Get browser operation timeout configuration
+	 * @return Timeout in seconds, returns default value of 30 seconds if not configured
+	 */
+	protected Integer getBrowserTimeoutSec() {
+		Integer timeout = browserUseTool.getLynxeProperties().getBrowserRequestTimeout();
+		return timeout != null ? timeout : 30; // Default timeout is 30 seconds
+	}
+
+	/**
+	 * Get reasonable timeout for element operations (capped at 10 seconds)
+	 * This prevents long waits when elements are not found or not ready
+	 * @return Timeout in milliseconds, capped at 10 seconds
+	 */
+	protected Integer getElementTimeoutMs() {
+		return Math.min(getBrowserTimeoutMs(), 10000); // Max 10 seconds for element operations
+	}
+
+	/**
+	 * Simulate human behavior
+	 * @param element Playwright ElementHandle instance
+	 */
+	protected void simulateHumanBehavior(ElementHandle element) {
+		try {
+			// Add random delay
+			Thread.sleep(new Random().nextInt(500) + 200);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	/**
+	 * Get DriverWrapper instance
+	 * @return DriverWrapper
+	 */
+	protected DriverWrapper getDriverWrapper() {
+		return browserUseTool.getDriver(getCurrentPlanId());
+	}
+
+	/**
+	 * Get ShortUrlService instance
+	 * @return ShortUrlService
+	 */
+	protected com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService getShortUrlService() {
+		return browserUseTool.getShortUrlService();
+	}
+
+	/**
+	 * Get current page Page instance
+	 * @return Current Playwright Page instance
+	 */
+	protected Page getCurrentPage() {
+		DriverWrapper driverWrapper = getDriverWrapper();
+		return driverWrapper.getCurrentPage();
+	}
+
+	/**
+	 * Get locator for element by idx (from ARIA snapshot)
+	 * Converts idx to aria-id-num format and uses data-aria-id attribute to locate the element
+	 * @param idx Element idx (from ARIA snapshot)
+	 * @return Locator for the element, or null if not found
+	 */
+	protected Locator getLocatorByIdx(int idx) {
+		Page page = getCurrentPage();
+		if (page == null) {
+			return null;
+		}
+
+		try {
+			// Convert idx to aria-id-num format
+			String dataAriaId = "aria-id-" + idx;
+
+			// Escape single quotes in the value for CSS selector safety
+			String escapedDataAriaId = dataAriaId.replace("'", "\\'");
+
+			// Use data-aria-id attribute to locate the element
+			Locator dataAriaIdLocator = page.locator("[aria-label='" + escapedDataAriaId + "']");
+
+			return dataAriaIdLocator;
+		}
+		catch (Exception e) {
+			log.warn("Failed to get locator by idx {}: {}", idx, e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * Check if element exists by idx
+	 * @param idx Element idx (from ARIA snapshot)
+	 * @return true if element exists, false otherwise
+	 */
+	protected boolean elementExistsByIdx(int idx) {
+		return getLocatorByIdx(idx) != null;
+	}
+
+	/**
+	 * Handle click action and detect if a new tab was opened
+	 * @param pageToClickOn The page where the click happens
+	 * @param clickLambda The lambda that performs the click
+	 * @return Message describing the result of the click action
+	 */
+	protected String clickAndSwitchToNewTabIfOpened(Page pageToClickOn, Runnable clickLambda) {
+		Page newPageFromPopup = null;
+		String originalPageUrl = pageToClickOn.url();
+		BrowserContext context = pageToClickOn.context();
+		List<Page> pagesBeforeClick = context.pages();
+		Set<String> urlsBeforeClick = pagesBeforeClick.stream().map(Page::url).collect(Collectors.toSet());
+
+		try {
+			Integer timeout = getBrowserTimeoutMs();
+			// Use the minimum of configured timeout and 2 seconds for popup detection
+			int popupTimeout = Math.min(timeout, 2000);
+			Page.WaitForPopupOptions popupOptions = new Page.WaitForPopupOptions().setTimeout(popupTimeout);
+
+			log.debug("Using popup timeout: {}ms, browser timeout: {}ms", popupTimeout, timeout);
+
+			newPageFromPopup = pageToClickOn.waitForPopup(popupOptions, clickLambda);
+
+			if (newPageFromPopup != null) {
+				log.info("waitForPopup detected new page: {}", newPageFromPopup.url());
+				if (getDriverWrapper().getCurrentPage() != newPageFromPopup) {
+					getDriverWrapper().setCurrentPage(newPageFromPopup);
+				}
+				return "and opened in new tab: " + newPageFromPopup.url();
+			}
+
+			// Fallback if newPageFromPopup is null but no exception (unlikely for waitForPopup)
+			if (!pageToClickOn.isClosed() && !pageToClickOn.url().equals(originalPageUrl)) {
+				log.info("Page navigated in the same tab (fallback check): {}", pageToClickOn.url());
+				return "and navigated in the same tab to: " + pageToClickOn.url();
+			}
+			return "successfully.";
+
+		}
+		catch (TimeoutError e) {
+			log.warn(
+					"No popup detected by waitForPopup within timeout. Click action was performed. Checking page states...");
+
+			List<Page> pagesAfterTimeout = context.pages();
+			List<Page> newPagesByDiff = pagesAfterTimeout.stream()
+				.filter(p -> !urlsBeforeClick.contains(p.url()))
+				.collect(Collectors.toList());
+
+			if (!newPagesByDiff.isEmpty()) {
+				Page newlyFoundPage = newPagesByDiff.get(0);
+				log.info("New tab found by diffing URLs after waitForPopup timeout: {}", newlyFoundPage.url());
+				getDriverWrapper().setCurrentPage(newlyFoundPage);
+				return "and opened in new tab: " + newlyFoundPage.url();
+			}
+
+			if (!pageToClickOn.isClosed() && !pageToClickOn.url().equals(originalPageUrl)) {
+				if (getDriverWrapper().getCurrentPage() != pageToClickOn) {
+					getDriverWrapper().setCurrentPage(pageToClickOn);
+				}
+				log.info("Page navigated in the same tab after timeout: {}", pageToClickOn.url());
+				return "and navigated in the same tab to: " + pageToClickOn.url();
+			}
+
+			Page currentPageInWrapper = getDriverWrapper().getCurrentPage();
+			if (pageToClickOn.isClosed() && currentPageInWrapper != null && !currentPageInWrapper.isClosed()
+					&& !urlsBeforeClick.contains(currentPageInWrapper.url())) {
+				log.info("Original page closed, current page is now: {}", currentPageInWrapper.url());
+				return "and current page changed to: " + currentPageInWrapper.url();
+			}
+			log.info("No new tab or significant navigation detected after timeout.");
+			return "successfully, but no new tab was detected by waitForPopup or URL diff.";
+		}
+		catch (Exception e) {
+			log.error("Exception during click or popup handling: {}", e.getMessage(), e);
+
+			List<Page> pagesAfterError = context.pages();
+			List<Page> newPagesByDiffAfterError = pagesAfterError.stream()
+				.filter(p -> !urlsBeforeClick.contains(p.url()))
+				.collect(Collectors.toList());
+			if (!newPagesByDiffAfterError.isEmpty()) {
+				Page newlyFoundPage = newPagesByDiffAfterError.get(0);
+				log.info("New tab found by diffing URLs after an error: {}", newlyFoundPage.url());
+				getDriverWrapper().setCurrentPage(newlyFoundPage);
+				return "with error '" + e.getMessage() + "' but opened new tab: " + newlyFoundPage.url();
+			}
+			return "with error: " + e.getMessage();
+		}
+	}
+
+	/**
+	 * Get LynxeProperties from BrowserUseCommonService
+	 * @return LynxeProperties instance
+	 */
+	protected com.alibaba.cloud.ai.lynxe.config.LynxeProperties getLynxeProperties() {
+		return browserUseTool.getLynxeProperties();
+	}
 
 	/**
 	 * Functional interface for action execution

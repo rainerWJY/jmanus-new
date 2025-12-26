@@ -18,11 +18,12 @@ package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.NewTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -61,14 +62,6 @@ public class NewTabBrowserTool extends AbstractBrowserTool<NewTabBrowserTool.New
 	}
 
 	@Override
-	protected BrowserRequestVO toBrowserRequestVO(NewTabInput input) {
-		BrowserRequestVO request = new BrowserRequestVO();
-		request.setAction("new_tab");
-		request.setUrl(input.getUrl());
-		return request;
-	}
-
-	@Override
 	public ToolExecuteResult run(NewTabInput input) {
 		log.info("NewTabBrowserTool request: url={}", input.getUrl());
 		try {
@@ -77,12 +70,42 @@ public class NewTabBrowserTool extends AbstractBrowserTool<NewTabBrowserTool.New
 				return validation;
 			}
 
-			if (input.getUrl() == null || input.getUrl().trim().isEmpty()) {
+			String url = input.getUrl();
+			if (url == null || url.trim().isEmpty()) {
 				return new ToolExecuteResult("Error: url parameter is required");
 			}
 
-			return executeActionWithRetry(() -> new NewTabAction(browserUseTool).execute(toBrowserRequestVO(input)),
-					"new_tab");
+			return executeActionWithRetry(() -> {
+				String finalUrl = url;
+				// Check if URL is a short URL
+				if (ShortUrlService.isShortUrl(finalUrl)) {
+					String realUrl = getShortUrlService().getRealUrlFromShortUrl(getRootPlanId(), finalUrl);
+					if (realUrl == null) {
+						return new ToolExecuteResult("Short URL not found in mapping: " + finalUrl);
+					}
+					finalUrl = realUrl;
+					log.debug("Resolved short URL {} to real URL {}", url, finalUrl);
+				}
+
+				// Auto-complete the URL prefix
+				if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
+					finalUrl = "https://" + finalUrl;
+				}
+
+				// Get current page to access browser context
+				Page currentPage = getCurrentPage();
+
+				// Create a new page (new tab) in the same browser context
+				Page newPage = currentPage.context().newPage();
+
+				// Navigate the new page to the specified URL
+				newPage.navigate(finalUrl);
+
+				// Set the new page as the current page in DriverWrapper
+				getDriverWrapper().setCurrentPage(newPage);
+
+				return new ToolExecuteResult("Opened new tab with URL " + finalUrl);
+			}, "new_tab");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing new_tab: {}", e.getMessage(), e);
@@ -124,8 +147,9 @@ public class NewTabBrowserTool extends AbstractBrowserTool<NewTabBrowserTool.New
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
+		return new ToolStateInfo("browser-service-group", stateString);
 	}
 
 }

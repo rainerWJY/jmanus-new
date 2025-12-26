@@ -15,15 +15,17 @@
  */
 package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.SwitchTabAction;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -63,14 +65,6 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 	}
 
 	@Override
-	protected BrowserRequestVO toBrowserRequestVO(SwitchTabInput input) {
-		BrowserRequestVO request = new BrowserRequestVO();
-		request.setAction("switch_tab");
-		request.setTabId(input.getTabId());
-		return request;
-	}
-
-	@Override
 	public ToolExecuteResult run(SwitchTabInput input) {
 		log.info("SwitchTabBrowserTool request: tab_id={}", input.getTabId());
 		try {
@@ -79,12 +73,39 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 				return validation;
 			}
 
-			if (input.getTabId() == null || input.getTabId() < 0) {
+			Integer tabId = input.getTabId();
+			if (tabId == null || tabId < 0) {
 				return new ToolExecuteResult("Error: tab_id parameter is required and must be non-negative");
 			}
 
-			return executeActionWithRetry(() -> new SwitchTabAction(browserUseTool).execute(toBrowserRequestVO(input)),
-					"switch_tab");
+			return executeActionWithRetry(() -> {
+				Page page = getCurrentPage(); // Get Playwright Page instance
+				List<Page> pages = page.context().pages();
+
+				// Check if tabId is within valid range
+				if (tabId >= pages.size()) {
+					return new ToolExecuteResult(
+							"Tab ID " + tabId + " is out of range. Available tabs: 0 to " + (pages.size() - 1));
+				}
+
+				Page targetPage = pages.get(tabId); // Switch to specified tab
+				if (targetPage == null) {
+					return new ToolExecuteResult("Tab ID " + tabId + " does not exist");
+				}
+
+				// Check if target page is closed
+				if (targetPage.isClosed()) {
+					return new ToolExecuteResult("Tab ID " + tabId + " is closed");
+				}
+
+				// Bring the target page to front to actually activate the tab
+				targetPage.bringToFront();
+
+				// Update the current page in DriverWrapper
+				getDriverWrapper().setCurrentPage(targetPage);
+
+				return new ToolExecuteResult("Successfully switched to tab " + tabId);
+			}, "switch_tab");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing switch_tab: {}", e.getMessage(), e);
@@ -126,8 +147,9 @@ public class SwitchTabBrowserTool extends AbstractBrowserTool<SwitchTabBrowserTo
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
+		return new ToolStateInfo("browser-service-group", stateString);
 	}
 
 }

@@ -18,11 +18,11 @@ package com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.BrowserRequestVO;
-import com.alibaba.cloud.ai.lynxe.tool.browser.actions.ScreenShotAction;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
 import com.microsoft.playwright.TimeoutError;
 
@@ -52,13 +52,6 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 	}
 
 	@Override
-	protected BrowserRequestVO toBrowserRequestVO(ScreenshotInput input) {
-		BrowserRequestVO request = new BrowserRequestVO();
-		request.setAction("screenshot");
-		return request;
-	}
-
-	@Override
 	public ToolExecuteResult run(ScreenshotInput input) {
 		log.info("ScreenshotBrowserTool request");
 		try {
@@ -67,8 +60,13 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 				return validation;
 			}
 
-			return executeActionWithRetry(() -> new ScreenShotAction(browserUseTool).execute(toBrowserRequestVO(input)),
-					"screenshot");
+			return executeActionWithRetry(() -> {
+				Page page = getCurrentPage(); // Get Playwright's Page instance
+				byte[] screenshot = page.screenshot(); // Capture screenshot
+				String base64Screenshot = java.util.Base64.getEncoder().encodeToString(screenshot);
+
+				return new ToolExecuteResult("Screenshot captured (base64 length: " + base64Screenshot.length() + ")");
+			}, "screenshot");
 		}
 		catch (TimeoutError e) {
 			log.error("Timeout error executing screenshot: {}", e.getMessage(), e);
@@ -110,8 +108,9 @@ public class ScreenshotBrowserTool extends AbstractBrowserTool<ScreenshotBrowser
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
+		return new ToolStateInfo("browser-service-group", stateString);
 	}
 
 }

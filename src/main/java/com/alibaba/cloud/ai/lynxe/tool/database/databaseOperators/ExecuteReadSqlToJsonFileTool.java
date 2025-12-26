@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.database.action.ExecuteSqlToJsonFileAction;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
@@ -139,7 +140,8 @@ public class ExecuteReadSqlToJsonFileTool
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			Map<String, String> datasourceInfo = dataSourceService.getAllDatasourceInfo();
 			StringBuilder stateBuilder = new StringBuilder();
@@ -156,12 +158,13 @@ public class ExecuteReadSqlToJsonFileTool
 			}
 
 			stateBuilder.append("\n=== End Execute Read SQL to JSON File Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get execute read SQL to JSON file tool state", e);
-			return String.format("Execute read SQL to JSON file tool state error: %s", e.getMessage());
+			stateString = String.format("Execute read SQL to JSON file tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	@Override

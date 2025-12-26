@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
@@ -315,28 +316,21 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
 		String workingDir;
 		if (rootPlanId != null && !rootPlanId.trim().isEmpty()) {
+			// Only show root-plan directory to LLM
 			workingDir = unifiedDirectoryManager.getRootPlanDirectory(rootPlanId).toString();
 		}
 		else {
 			workingDir = unifiedDirectoryManager.getWorkingDirectoryPath();
 		}
 
-		return String.format("""
-				            Current File Operation State:
-				            - Working Directory:
+		String stateString = String.format("""
+				Current Working Directory:
 				%s
-
-				            - Last File Operation:
-				%s
-
-				            - Last Operation Result:
-				%s
-
-				            """, workingDir, lastCommand.isEmpty() ? "No command executed yet" : lastCommand,
-				lastResult.isEmpty() ? "No result yet" : lastResult);
+				""", workingDir);
+		return new ToolStateInfo(getServiceGroup(), stateString);
 	}
 
 	@Override
