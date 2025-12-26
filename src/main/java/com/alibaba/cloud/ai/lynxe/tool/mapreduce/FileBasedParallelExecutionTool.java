@@ -118,7 +118,7 @@ public class FileBasedParallelExecutionTool extends AbstractBaseTool<FileBasedPa
 
 	@Override
 	public String getName() {
-		return "file_based_parallel_execution_tool";
+		return "file-based-parallel-execution-tool";
 	}
 
 	@Override

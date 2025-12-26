@@ -142,7 +142,7 @@ public class DatabaseTableToExcelTool extends AbstractBaseTool<DatabaseTableToEx
 
 	@Override
 	public String getName() {
-		return "database_table_to_excel";
+		return "database-table-to-excel";
 	}
 
 	@Override

@@ -40,7 +40,7 @@ public class MarkdownConverterTool extends AbstractBaseTool<MarkdownConverterToo
 
 	private static final Logger log = LoggerFactory.getLogger(MarkdownConverterTool.class);
 
-	private static final String TOOL_NAME = "markdown_converter";
+	private static final String TOOL_NAME = "markdown-converter";
 
 	private final UnifiedDirectoryManager directoryManager;
 

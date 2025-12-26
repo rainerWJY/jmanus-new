@@ -48,7 +48,7 @@ public class DatabaseWriteTool extends AbstractBaseTool<DatabaseRequest> {
 		return dataSourceService;
 	}
 
-	private final String name = "database_write_use";
+	private final String name = "database-write-use";
 
 	@Override
 	public String getServiceGroup() {

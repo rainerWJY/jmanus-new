@@ -81,7 +81,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	private static final Logger log = LoggerFactory.getLogger(EnhancedGrep.class);
 
-	private static final String TOOL_NAME = "global_file_enhanced_grep";
+	private static final String TOOL_NAME = "grep-files";
 
 	/**
 	 * Maximum number of results to return (to prevent overwhelming output)

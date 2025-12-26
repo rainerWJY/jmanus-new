@@ -62,7 +62,7 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 
 	private static final Logger log = LoggerFactory.getLogger(MarkdownToDocxTool.class);
 
-	private static final String TOOL_NAME = "markdown_to_docx";
+	private static final String TOOL_NAME = "markdown-to-docx";
 
 	/**
 	 * Pattern to match markdown image syntax: ![alt text](image_path)

@@ -72,7 +72,7 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 	@Override
 	public String getName() {
-		return "image_generate";
+		return "image-generate";
 	}
 
 	@Override
