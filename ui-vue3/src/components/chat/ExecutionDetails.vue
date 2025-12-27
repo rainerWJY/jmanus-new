@@ -273,18 +273,6 @@ const getAgentStatusText = (status?: ExecutionStatus): string => {
   }
 }
 
-const getAgentStatusIcon = (status?: ExecutionStatus): string => {
-  switch (status) {
-    case 'RUNNING':
-      return 'carbon:play'
-    case 'FINISHED':
-      return 'carbon:checkmark'
-    case 'IDLE':
-    default:
-      return 'carbon:dot-mark'
-  }
-}
-
 // Note: Sub-plan status methods are now handled by RecursiveSubPlan component
 
 // Note: Agent preview status methods are now handled by RecursiveSubPlan component
@@ -295,6 +283,14 @@ const handleSubPlanClick = (
   subPlanIndex: number,
   subPlan: PlanExecutionRecord
 ) => {
+  // If clicking on sub-plan header, select the first agent's stepId if available
+  if (agentIndex === -1 && subPlan.agentExecutionSequence?.length) {
+    const firstAgent = subPlan.agentExecutionSequence[0]
+    if (firstAgent.stepId) {
+      emit('step-selected', firstAgent.stepId)
+      return
+    }
+  }
   emit('sub-plan-selected', agentIndex, subPlanIndex, subPlan)
 }
 

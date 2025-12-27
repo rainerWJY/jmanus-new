@@ -18,7 +18,7 @@
     <!-- Sub-plan header -->
     <div
       class="sub-plan-header"
-      @click="handleSubPlanClick"
+      @click.stop="handleSubPlanClick"
       :title="$t('chat.clickToViewExecutionDetails')"
     >
       <div class="sub-plan-info">
@@ -338,7 +338,12 @@ const getNestedSubPlans = (agent: AgentExecutionRecord): ThinkActRecord[] => {
 }
 
 // Event handlers
-const handleSubPlanClick = () => {
+const handleSubPlanClick = (event?: Event) => {
+  console.log('[RecursiveSubPlan] handleSubPlanClick called', {
+    subPlanIndex: props.subPlanIndex,
+    subPlanId: props.subPlan.currentPlanId,
+    eventTarget: event?.target,
+  })
   emit('sub-plan-selected', -1, props.subPlanIndex, props.subPlan)
 }
 
@@ -374,9 +379,10 @@ const handleNestedStepSelected = (stepId: string) => {
   background: rgba(102, 126, 234, 0.05);
   border: 1px solid rgba(102, 126, 234, 0.1);
   border-radius: 6px;
-  padding: 12px;
+  padding: 0;
   margin-bottom: 8px;
   transition: all 0.2s ease;
+  overflow: hidden;
 
   &:hover {
     background: rgba(102, 126, 234, 0.1);
@@ -423,9 +429,16 @@ const handleNestedStepSelected = (stepId: string) => {
     cursor: pointer;
     transition: background 0.2s ease;
     margin-bottom: 8px;
+    user-select: none;
+    position: relative;
+    z-index: 1;
 
     &:hover {
       background: rgba(255, 255, 255, 0.05);
+    }
+
+    &:active {
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .sub-plan-info {
@@ -433,6 +446,7 @@ const handleNestedStepSelected = (stepId: string) => {
       align-items: center;
       gap: 12px;
       flex: 1;
+      pointer-events: none;
 
       .sub-plan-details {
         .sub-plan-title {
@@ -479,6 +493,7 @@ const handleNestedStepSelected = (stepId: string) => {
       display: flex;
       align-items: center;
       gap: 12px;
+      pointer-events: none;
 
       .sub-plan-status-badge {
         padding: 3px 8px;
@@ -511,6 +526,8 @@ const handleNestedStepSelected = (stepId: string) => {
   }
 
   .sub-plan-agents-steps {
+    padding: 12px;
+
     .agents-steps-header {
       color: #aaaaaa;
       font-size: 11px;
