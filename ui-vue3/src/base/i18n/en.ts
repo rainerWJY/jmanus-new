@@ -800,7 +800,7 @@ const words: I18nType = {
     currentFuncAgentExecutionRound: 'Current Func-Agent Execution Round: {round}',
     latestToolInfo: 'Latest Tool Info',
     roundNumber: 'Round Number',
-    roundLabel: 'Round: {round}',
+    roundLabel: 'Round {round}',
     methodName: 'Current Called Method',
     methodArgs: 'Method Args',
     userRequest: 'User Request',

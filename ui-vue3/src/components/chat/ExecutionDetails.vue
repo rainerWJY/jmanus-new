@@ -68,16 +68,6 @@
                 }}
               </div>
               <div class="request-content">
-                <span
-                  v-if="
-                    agentExecution.agentName === 'ConfigurableDynaAgent' &&
-                    agentExecution.latestRoundNumber !== undefined &&
-                    agentExecution.latestRoundNumber !== null
-                  "
-                  class="round-info"
-                >
-                  {{ $t('chat.roundLabel', { round: agentExecution.latestRoundNumber }) }}
-                </span>
                 <span class="click-hint">{{ $t('chat.clickToViewExecutionDetails') }}</span>
               </div>
             </div>
@@ -124,7 +114,16 @@
               @click="toggleToolInfo(agentExecution)"
               :class="{ expanded: isToolInfoExpanded(agentExecution) }"
             >
-              <Icon icon="carbon:code" class="tool-info-icon" />
+              <span
+                v-if="
+                  agentExecution.agentName === 'ConfigurableDynaAgent' &&
+                  agentExecution.latestRoundNumber !== undefined &&
+                  agentExecution.latestRoundNumber !== null
+                "
+                class="tool-info-round-info"
+              >
+                {{ $t('chat.roundLabel', { round: agentExecution.latestRoundNumber }) }}
+              </span>
               <span v-if="agentExecution.latestMethodName" class="tool-info-method-name">
                 {{ agentExecution.latestMethodName }}
               </span>
@@ -575,6 +574,14 @@ const formatToolParameters = (parameters?: string): string => {
               flex-shrink: 0;
             }
 
+            .tool-info-round-info {
+              color: #667eea;
+              font-weight: 500;
+              font-size: 13px;
+              white-space: nowrap;
+              line-height: 1.5;
+            }
+
             .tool-info-method-name {
               flex: 1;
               color: #ffffff;
@@ -583,6 +590,7 @@ const formatToolParameters = (parameters?: string): string => {
               overflow: hidden;
               text-overflow: ellipsis;
               white-space: nowrap;
+              line-height: 1.5;
             }
 
             .tool-info-toggle-icon {
