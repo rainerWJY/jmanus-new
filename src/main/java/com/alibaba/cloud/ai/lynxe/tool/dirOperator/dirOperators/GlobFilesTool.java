@@ -37,9 +37,11 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.SymbolicLinkDetector;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
@@ -99,18 +101,22 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 	private final ToolI18nService toolI18nService;
 
+	private final GitIgnoreMatcher gitIgnoreMatcher;
+
+	private final LynxeProperties lynxeProperties;
+
 	public GlobFilesTool(UnifiedDirectoryManager unifiedDirectoryManager, SymbolicLinkDetector symlinkDetector,
-			ToolI18nService toolI18nService) {
+			ToolI18nService toolI18nService, GitIgnoreMatcher gitIgnoreMatcher, LynxeProperties lynxeProperties) {
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		// Note: symlinkDetector parameter kept for backward compatibility but not used
 		// This tool now explicitly skips symbolic links (like grep/ripgrep)
 		this.toolI18nService = toolI18nService;
+		this.gitIgnoreMatcher = gitIgnoreMatcher;
+		this.lynxeProperties = lynxeProperties;
 	}
 
 	@Override
 	public ToolExecuteResult run(GlobFilesInput input) {
-		log.info("GlobFilesTool input: glob_pattern={}, target_directory={}", input.getGlobPattern(),
-				input.getTargetDirectory());
 		try {
 			String globPattern = input.getGlobPattern();
 			String targetDirectory = input.getTargetDirectory();
@@ -138,6 +144,49 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			return path;
 		}
 	}
+
+	/**
+	 * Determine the root path for ignore file matching. If searching within
+	 * linked_external, use the actual external folder root. Otherwise, use the search
+	 * root.
+	 * @param searchRoot The search root path
+	 * @return Root path for ignore file matching
+	 */
+	private Path determineIgnoreRootPath(Path searchRoot) {
+		if (searchRoot == null) {
+			return null;
+		}
+
+		try {
+			Path normalized = searchRoot.toAbsolutePath().normalize();
+			String pathString = normalized.toString();
+
+			// Check if we're searching within linked_external directory
+			if (pathString.contains("linked_external")) {
+				// Find the linked_external directory in the path
+				Path current = normalized;
+				while (current != null && current.getNameCount() > 0) {
+					if ("linked_external".equals(current.getFileName().toString())) {
+						// This is the linked_external symlink, use its target as the ignore root
+						try {
+							Path realPath = current.toRealPath();
+							return realPath;
+						} catch (IOException e) {
+							return current;
+						}
+					}
+					current = current.getParent();
+				}
+			}
+
+			// Default: use search root
+			return normalized;
+		} catch (Exception e) {
+			log.warn("Error determining ignore root path, using search root: {}", searchRoot, e);
+			return searchRoot;
+		}
+	}
+
 
 	/**
 	 * Normalize directory path by removing plan ID prefixes and relative path indicators
@@ -206,7 +255,35 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 			// Create PathMatcher for glob pattern
 			FileSystem fileSystem = FileSystems.getDefault();
-			PathMatcher matcher = fileSystem.getPathMatcher("glob:" + normalizedPattern);
+			String globPatternStr = "glob:" + normalizedPattern;
+			PathMatcher matcher = fileSystem.getPathMatcher(globPatternStr);
+			
+			// For patterns like **/*tools*, also check if any path component matches
+			// This allows matching files in directories with "tools" in the name
+			// Pattern **/*tools* should match both:
+			// 1. Files with "tools" in filename: **/*tools*
+			// 2. Files in directories with "tools" in name (checked manually)
+			final PathMatcher directoryMatcher;
+			// Extract the wildcard pattern (e.g., "tools" from "**/*tools*")
+			final String wildcardPattern;
+			// Check if pattern matches directory names (contains *word* where word could be in directory)
+			// and doesn't already have /**/ in it (which would already match directories)
+			if (normalizedPattern.matches(".*\\*[^/]+\\*.*") && !normalizedPattern.contains("/**/")) {
+				// Extract the wildcard pattern (e.g., "tools" from "**/*tools*")
+				java.util.regex.Pattern extractPattern = java.util.regex.Pattern.compile("\\*([^/]+)\\*");
+				java.util.regex.Matcher m = extractPattern.matcher(normalizedPattern);
+				if (m.find()) {
+					wildcardPattern = m.group(1); // e.g., "tools"
+				} else {
+					wildcardPattern = null;
+				}
+				// Create directory matcher: convert **/*tools* to **/*tools*/**/*
+				String dirPattern = normalizedPattern.replaceAll("(\\*[^/]+\\*)", "$1/**/*");
+				directoryMatcher = fileSystem.getPathMatcher("glob:" + dirPattern);
+			} else {
+				directoryMatcher = null;
+				wildcardPattern = null;
+			}
 
 			// Find all matching files - NOT following symbolic links (like grep/ripgrep)
 			// This avoids infinite loops from circular symlinks
@@ -218,6 +295,12 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 			// Track visited real paths to prevent circular references when following the root symlink
 			Set<Path> visitedRealPaths = new HashSet<>();
+
+			// Initialize GitIgnoreMatcher if respectGitIgnore is enabled
+			boolean respectGitIgnore = lynxeProperties.getRespectGitIgnore() != null
+					&& lynxeProperties.getRespectGitIgnore();
+			Path ignoreRootPath = determineIgnoreRootPath(searchRoot);
+			gitIgnoreMatcher.initialize(ignoreRootPath, respectGitIgnore);
 
 			SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
 				@Override
@@ -244,11 +327,9 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 						// Check if this is the root (by comparing both original and real paths)
 						boolean isRoot = dir.equals(rootPath) || realPath.equals(rootRealPath);
 						if (!isRoot) {
-							log.debug("Skipping symbolic link directory: {}", dir);
 							return FileVisitResult.SKIP_SUBTREE;
 						}
 						// Root is a symlink - allow but track to prevent cycles
-						log.debug("Following root symbolic link directory: {}", dir);
 					}
 
 					// Check path depth relative to root
@@ -271,6 +352,11 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 						return FileVisitResult.SKIP_SUBTREE;
 					}
 
+					// Check if directory should be skipped based on ignore rules
+					if (respectGitIgnore && gitIgnoreMatcher.shouldSkipDirectory(dir)) {
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
 					return FileVisitResult.CONTINUE;
 				}
 
@@ -278,7 +364,6 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 					// Skip symbolic links (do not follow them, like grep/ripgrep)
 					if (Files.isSymbolicLink(file)) {
-						log.debug("Skipping symbolic link file: {}", file);
 						return FileVisitResult.CONTINUE;
 					}
 
@@ -295,12 +380,51 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 						return FileVisitResult.CONTINUE;
 					}
 
+					// Check if file should be ignored based on ignore rules
+					if (respectGitIgnore && gitIgnoreMatcher.isIgnored(file)) {
+						return FileVisitResult.CONTINUE;
+					}
+
 					// Check if file matches the pattern
 					// Use real paths for relativization to handle symlink root case
 					try {
 						Path fileRealPath = file.toRealPath();
 						Path relativePath = rootRealPath.relativize(fileRealPath);
-						if (matcher.matches(relativePath)) {
+						// Normalize path separators to forward slashes for consistent matching
+						String relativePathStr = relativePath.toString().replace('\\', '/');
+						
+						// Java's PathMatcher works on Path objects
+						// Try matching with the relative path directly first
+						boolean matches = matcher.matches(relativePath);
+						
+						// If that doesn't work, try with a Path created from normalized string
+						// This ensures consistent separator handling across platforms
+						if (!matches) {
+							Path normalizedRelativePath = fileSystem.getPath(relativePathStr);
+							matches = matcher.matches(normalizedRelativePath);
+						}
+						
+						// Also try directory matcher if available (for patterns like **/*tools*)
+						if (!matches && directoryMatcher != null) {
+							matches = directoryMatcher.matches(relativePath);
+							if (!matches) {
+								Path normalizedRelativePath = fileSystem.getPath(relativePathStr);
+								matches = directoryMatcher.matches(normalizedRelativePath);
+							}
+						}
+						
+						// Manual check: if pattern has wildcard (e.g., *tools*), check if any path component contains it
+						if (!matches && wildcardPattern != null) {
+							// Check each component of the path
+							for (Path component : relativePath) {
+								if (component.toString().contains(wildcardPattern)) {
+									matches = true;
+									break;
+								}
+							}
+						}
+						
+						if (matches) {
 							matchingFiles.add(file);
 						}
 					} catch (IOException | IllegalArgumentException e) {
@@ -478,9 +602,7 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 	@Override
 	public void cleanup(String planId) {
-		if (planId != null) {
-			log.info("Cleaning up glob files resources for plan: {}", planId);
-		}
+		// Cleanup resources if needed
 	}
 
 	@Override

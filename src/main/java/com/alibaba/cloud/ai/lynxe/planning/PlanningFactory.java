@@ -326,7 +326,7 @@ public class PlanningFactory {
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
 			// Refactored directory operators (split from DirectoryOperator)
 			toolDefinitions.add(new ListFilesTool(unifiedDirectoryManager, toolI18nService));
-			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService));
+			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			// toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper,
 			// toolI18nService));
 			// toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager,

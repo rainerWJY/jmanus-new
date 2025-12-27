@@ -513,15 +513,47 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		Path ignoreRootPath = determineIgnoreRootPath(root);
 		gitIgnoreMatcher.initialize(ignoreRootPath, respectGitIgnore);
 
-		// Walk directory tree, NOT following symbolic links (like grep/ripgrep)
-		// This avoids infinite loops from circular symlinks
+		// Walk directory tree, following links for root symlink (e.g., linked_external)
+		// but skipping other symlinks to prevent infinite loops
+		Path rootRealPath;
+		try {
+			rootRealPath = root.toRealPath();
+		}
+		catch (IOException e) {
+			rootRealPath = root.toAbsolutePath().normalize();
+		}
+		Path finalRootRealPath = rootRealPath;
+		Set<Path> visitedRealPaths = new HashSet<>();
 		FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-				// Skip symbolic links (do not follow them, like grep/ripgrep)
-				if (Files.isSymbolicLink(dir)) {
-					log.debug("Skipping symbolic link directory: {}", dir);
+				// Get real path for cycle detection
+				Path realPath;
+				try {
+					realPath = dir.toRealPath();
+				}
+				catch (IOException e) {
+					log.warn("Cannot resolve real path for directory: {}, skipping", dir);
 					return FileVisitResult.SKIP_SUBTREE;
+				}
+
+				// Check for cycles using real paths
+				if (visitedRealPaths.contains(realPath)) {
+					log.warn("Cycle detected: already visited {}, skipping", realPath);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+				visitedRealPaths.add(realPath);
+
+				// Allow the root directory even if it's a symlink (e.g., linked_external)
+				// But skip other symlink directories to prevent circular references
+				if (Files.isSymbolicLink(dir)) {
+					// Check if this is the root (by comparing both original and real paths)
+					boolean isRoot = dir.equals(root) || realPath.equals(finalRootRealPath);
+					if (!isRoot) {
+						log.debug("Skipping symbolic link directory: {}", dir);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+					// Root is a symlink - allow but track to prevent cycles
 				}
 
 				// Check path depth relative to root
@@ -628,10 +660,11 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			}
 		};
 
-		// Walk the directory tree with depth limit - do NOT follow symbolic links
-		// (like grep/ripgrep to avoid infinite loops from circular symlinks)
+		// Walk the directory tree with depth limit
+		// Follow links to allow root symlink (e.g., linked_external) but cycle detection
+		// prevents infinite loops from circular symlinks
 		// All exceptions are handled by visitFileFailed
-		Files.walkFileTree(root, java.util.EnumSet.noneOf(FileVisitOption.class), MAX_DEPTH, visitor);
+		Files.walkFileTree(root, java.util.EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
 
 		return files;
 	}
