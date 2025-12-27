@@ -57,16 +57,29 @@
           "
         >
           <div class="agent-info">
-            <Icon :icon="getAgentStatusIcon(agentExecution.status)" class="agent-status-icon" />
             <div class="agent-details">
               <div class="agent-name">
                 {{
                   agentExecution.agentName === 'ConfigurableDynaAgent'
-                    ? $t('chat.funcAgentExecutionDetails')
+                    ? planExecution.title ||
+                      agentExecution.latestMethodName ||
+                      $t('chat.funcAgentExecutionDetails')
                     : agentExecution.agentName || $t('chat.unknownAgent')
                 }}
               </div>
-              <pre class="request-content">{{ agentExecution.agentRequest }}</pre>
+              <div class="request-content">
+                <span
+                  v-if="
+                    agentExecution.agentName === 'ConfigurableDynaAgent' &&
+                    agentExecution.latestRoundNumber !== undefined &&
+                    agentExecution.latestRoundNumber !== null
+                  "
+                  class="round-info"
+                >
+                  {{ $t('chat.roundLabel', { round: agentExecution.latestRoundNumber }) }}
+                </span>
+                {{ $t('chat.clickToViewExecutionDetails') }}
+              </div>
             </div>
           </div>
           <div class="agent-controls">
@@ -78,6 +91,15 @@
 
         <!-- Agent execution info -->
         <div class="agent-execution-info">
+          <!-- User request -->
+          <div v-if="agentExecution.agentRequest" class="agent-request">
+            <div class="request-header">
+              <Icon icon="carbon:chat" class="request-icon" />
+              <span class="request-label">{{ $t('chat.userRequest') }}:</span>
+            </div>
+            <pre class="request-content-text">{{ agentExecution.agentRequest }}</pre>
+          </div>
+
           <!-- Agent result -->
           <div v-if="agentExecution.result" class="agent-result">
             <div class="result-header">
@@ -94,6 +116,35 @@
               <span class="error-label">{{ $t('chat.errorMessage') }}:</span>
             </div>
             <pre class="error-content">{{ agentExecution.errorMessage }}</pre>
+          </div>
+
+          <!-- Latest tool info -->
+          <div
+            v-if="
+              agentExecution.latestMethodName ||
+              agentExecution.latestMethodArgs ||
+              agentExecution.latestRoundNumber
+            "
+            class="agent-tool-info"
+          >
+            <div class="tool-info-header">
+              <Icon icon="carbon:code" class="tool-info-icon" />
+              <span class="tool-info-label">{{ $t('chat.currentLatestExecutionPlan') }}:</span>
+            </div>
+            <div class="tool-info-content">
+              <div v-if="agentExecution.latestMethodName" class="tool-info-item">
+                <Icon icon="carbon:code" class="tool-info-item-icon" />
+                <span class="tool-info-item-label">{{ $t('chat.methodName') }}:</span>
+                <span class="tool-info-item-value">{{ agentExecution.latestMethodName }}</span>
+              </div>
+              <div v-if="agentExecution.latestMethodArgs" class="tool-info-item">
+                <Icon icon="carbon:settings" class="tool-info-item-icon" />
+                <span class="tool-info-item-label">{{ $t('chat.methodArgs') }}:</span>
+                <pre class="tool-info-item-value tool-args-content">{{
+                  formatToolParameters(agentExecution.latestMethodArgs)
+                }}</pre>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -350,22 +401,6 @@ const formatToolParameters = (parameters?: string): string => {
           gap: 12px;
           flex: 1;
 
-          .agent-status-icon {
-            font-size: 18px;
-
-            &.running {
-              color: #667eea;
-            }
-
-            &.completed {
-              color: #22c55e;
-            }
-
-            &.pending {
-              color: #9ca3af;
-            }
-          }
-
           .agent-details {
             .agent-name {
               font-weight: 600;
@@ -376,19 +411,17 @@ const formatToolParameters = (parameters?: string): string => {
 
             .request-content {
               margin: 4px 0 0 0;
-              padding: 8px;
-              background: rgba(0, 0, 0, 0.2);
-              border-radius: 4px;
-              font-family: monospace;
-              font-size: 14px;
-              color: #cccccc;
-              white-space: pre-wrap;
-              word-wrap: break-word;
-              word-break: break-word;
-              overflow-wrap: break-word;
-              max-height: 120px;
-              overflow-y: auto;
-              line-height: 1.4;
+              padding: 4px 0px;
+              color: #aaaaaa;
+              font-size: 12px;
+              font-style: italic;
+
+              .round-info {
+                color: #667eea;
+                font-weight: 500;
+                margin-right: 8px;
+                font-style: normal;
+              }
             }
           }
         }
@@ -428,24 +461,34 @@ const formatToolParameters = (parameters?: string): string => {
         border-top: 1px solid rgba(255, 255, 255, 0.05);
         margin-bottom: 16px;
 
+        .agent-request,
         .agent-result,
-        .agent-error {
+        .agent-error,
+        .agent-tool-info {
           margin-bottom: 12px;
 
           &:last-child {
             margin-bottom: 0;
           }
 
+          .request-header,
           .result-header,
-          .error-header {
+          .error-header,
+          .tool-info-header {
             display: flex;
             align-items: center;
             gap: 6px;
             margin-bottom: 6px;
 
+            .request-icon,
             .result-icon,
-            .error-icon {
+            .error-icon,
+            .tool-info-icon {
               font-size: 14px;
+            }
+
+            .request-icon {
+              color: #667eea;
             }
 
             .result-icon {
@@ -456,14 +499,21 @@ const formatToolParameters = (parameters?: string): string => {
               color: #ef4444;
             }
 
+            .tool-info-icon {
+              color: #667eea;
+            }
+
+            .request-label,
             .result-label,
-            .error-label {
+            .error-label,
+            .tool-info-label {
               color: #ffffff;
               font-size: 13px;
               font-weight: 500;
             }
           }
 
+          .request-content-text,
           .result-content,
           .error-content {
             margin: 0;
@@ -481,6 +531,55 @@ const formatToolParameters = (parameters?: string): string => {
           .error-content {
             color: #ff9999;
             border: 1px solid rgba(239, 68, 68, 0.2);
+          }
+        }
+
+        .agent-tool-info {
+          .tool-info-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+
+            .tool-info-item {
+              display: flex;
+              align-items: flex-start;
+              gap: 6px;
+              padding: 6px;
+              background: rgba(0, 0, 0, 0.2);
+              border-radius: 4px;
+
+              .tool-info-item-icon {
+                font-size: 14px;
+                color: #667eea;
+                margin-top: 2px;
+                flex-shrink: 0;
+              }
+
+              .tool-info-item-label {
+                color: #aaaaaa;
+                font-size: 12px;
+                font-weight: 500;
+                flex-shrink: 0;
+              }
+
+              .tool-info-item-value {
+                color: #cccccc;
+                font-size: 12px;
+                flex: 1;
+                word-break: break-word;
+
+                &.tool-args-content {
+                  margin: 0;
+                  padding: 6px;
+                  background: rgba(0, 0, 0, 0.3);
+                  border-radius: 4px;
+                  font-family: monospace;
+                  white-space: pre-wrap;
+                  max-height: 120px;
+                  overflow-y: auto;
+                }
+              }
+            }
           }
         }
       }

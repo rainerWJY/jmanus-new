@@ -173,6 +173,15 @@ export interface AgentExecutionRecord {
 
   /** Sub-plan execution records for this agent */
   subPlanExecutionRecords?: PlanExecutionRecord[]
+
+  /** Latest tool method name that was called (computed on-demand) */
+  latestMethodName?: string
+
+  /** Latest tool method arguments as JSON string (computed on-demand) */
+  latestMethodArgs?: string
+
+  /** Latest think-act cycle round number (computed on-demand) */
+  latestRoundNumber?: number
 }
 
 /**

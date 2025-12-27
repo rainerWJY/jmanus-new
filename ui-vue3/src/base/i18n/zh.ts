@@ -748,6 +748,14 @@ const words: I18nType = {
     userInputRequired: '需要用户输入',
     funcAgentExecutionDetails: 'Func-Agent 执行详情',
     clickToViewExecutionDetails: '点击查看执行详情',
+    currentFuncAgentExecutionRound: 'Func-Agent 执行轮次：{round}',
+    latestToolInfo: '最新工具信息',
+    roundNumber: '轮次',
+    roundLabel: '轮次：{round}',
+    methodName: '方法名',
+    methodArgs: '方法参数',
+    userRequest: '用户请求',
+    currentLatestExecutionPlan: '当前最新执行计划',
   },
 
   // 输入组件

@@ -797,6 +797,14 @@ const words: I18nType = {
     userInputRequired: 'User Input Required',
     funcAgentExecutionDetails: 'Func-Agent Execution Details',
     clickToViewExecutionDetails: 'Click to view execution details',
+    currentFuncAgentExecutionRound: 'Current Func-Agent Execution Round: {round}',
+    latestToolInfo: 'Latest Tool Info',
+    roundNumber: 'Round Number',
+    roundLabel: 'Round: {round}',
+    methodName: 'Method Name',
+    methodArgs: 'Method Args',
+    userRequest: 'User Request',
+    currentLatestExecutionPlan: 'Current Latest Execution Plan',
   },
 
   // Input component
