@@ -16,9 +16,12 @@
 <template>
   <div class="recursive-sub-plan" :class="getNestingClass()">
     <!-- Sub-plan header -->
-    <div class="sub-plan-header" @click="handleSubPlanClick">
+    <div
+      class="sub-plan-header"
+      @click="handleSubPlanClick"
+      :title="$t('chat.clickToViewExecutionDetails')"
+    >
       <div class="sub-plan-info">
-        <Icon :icon="getSubPlanStatusIcon()" class="sub-plan-status-icon" />
         <div class="sub-plan-details">
           <div class="sub-plan-title">
             {{ subPlan.title || $t('chat.subPlan') }} #{{ subPlanIndex + 1 }}
@@ -26,19 +29,21 @@
               >(L{{ (nestingLevel ?? 0) + 1 }})</span
             >
           </div>
-          <div class="sub-plan-id">{{ subPlan.currentPlanId }}</div>
+          <div class="request-content">
+            <span
+              v-if="getSubPlanRoundNumber() !== undefined && getSubPlanRoundNumber() !== null"
+              class="round-info"
+            >
+              {{ $t('chat.roundLabel', { round: getSubPlanRoundNumber() }) }}
+            </span>
+            <span class="click-hint">{{ $t('chat.clickToViewExecutionDetails') }}</span>
+          </div>
         </div>
       </div>
-    </div>
-
-    <!-- Sub-plan meta (status badge and trigger tool) -->
-    <div class="sub-plan-meta">
-      <div v-if="subPlan.parentActToolCall" class="trigger-tool">
-        <Icon icon="carbon:function" class="trigger-icon" />
-        <span class="trigger-text">{{ subPlan.parentActToolCall.name }}</span>
-      </div>
-      <div class="sub-plan-status-badge" :class="getSubPlanStatusClass()">
-        {{ getSubPlanStatusText() }}
+      <div class="sub-plan-controls">
+        <div class="sub-plan-status-badge" :class="getSubPlanStatusClass()">
+          {{ getSubPlanStatusText() }}
+        </div>
       </div>
     </div>
 
@@ -220,6 +225,18 @@ const getNestingClass = (): string => {
   return `nesting-level-${props.nestingLevel}`
 }
 
+// Get sub-plan round number from the first agent execution
+const getSubPlanRoundNumber = (): number | undefined => {
+  if (!props.subPlan.agentExecutionSequence?.length) {
+    return undefined
+  }
+  // Get the latest round number from the first agent (or any agent with round number)
+  const agentWithRound = props.subPlan.agentExecutionSequence.find(
+    agent => agent.latestRoundNumber !== undefined && agent.latestRoundNumber !== null
+  )
+  return agentWithRound?.latestRoundNumber
+}
+
 // Sub-plan status methods
 const getSubPlanStatusClass = (): string => {
   if (props.subPlan.completed) {
@@ -256,21 +273,6 @@ const getSubPlanStatusText = (): string => {
       return t('chat.status.pending')
     default:
       return t('chat.status.unknown')
-  }
-}
-
-const getSubPlanStatusIcon = (): string => {
-  const statusClass = getSubPlanStatusClass()
-  switch (statusClass) {
-    case 'completed':
-      return 'carbon:checkmark'
-    case 'running':
-      return 'carbon:play'
-    case 'in-progress':
-      return 'carbon:in-progress'
-    case 'pending':
-    default:
-      return 'carbon:dot-mark'
   }
 }
 
@@ -416,40 +418,27 @@ const handleNestedStepSelected = (stepId: string) => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
+    transition: background 0.2s ease;
+    margin-bottom: 8px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
 
     .sub-plan-info {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
       flex: 1;
-
-      .sub-plan-status-icon {
-        font-size: 16px;
-
-        &.completed {
-          color: #22c55e;
-        }
-
-        &.running {
-          color: #667eea;
-        }
-
-        &.in-progress {
-          color: #fbbf24;
-        }
-
-        &.pending {
-          color: #9ca3af;
-        }
-      }
 
       .sub-plan-details {
         .sub-plan-title {
           font-weight: 600;
           color: #ffffff;
-          font-size: 13px;
+          font-size: 14px;
           margin-bottom: 2px;
           display: flex;
           align-items: center;
@@ -465,73 +454,58 @@ const handleNestedStepSelected = (stepId: string) => {
           }
         }
 
-        .sub-plan-id {
+        .request-content {
+          margin: 4px 0 0 0;
+          padding: 4px 0px;
           color: #aaaaaa;
-          font-size: 11px;
-          font-family: monospace;
+          font-size: 12px;
+          font-style: italic;
+
+          .round-info {
+            color: #667eea;
+            font-weight: 500;
+            margin-right: 8px;
+            font-style: normal;
+          }
+
+          .click-hint {
+            font-size: 10px;
+          }
         }
       }
     }
-  }
 
-  .sub-plan-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-
-    .trigger-tool {
+    .sub-plan-controls {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 2px 6px;
-      background: rgba(102, 126, 234, 0.1);
-      border-radius: 4px;
-      font-size: 10px;
-      flex: 1;
-      min-width: 0;
+      gap: 12px;
 
-      .trigger-icon {
-        font-size: 10px;
-        color: #667eea;
-        flex-shrink: 0;
-      }
-
-      .trigger-text {
-        color: #cccccc;
+      .sub-plan-status-badge {
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 11px;
         font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        min-width: 0;
-      }
-    }
+        flex-shrink: 0;
 
-    .sub-plan-status-badge {
-      padding: 2px 6px;
-      border-radius: 8px;
-      font-size: 10px;
-      font-weight: 500;
-      flex-shrink: 0;
+        &.completed {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
 
-      &.completed {
-        background: rgba(34, 197, 94, 0.2);
-        color: #22c55e;
-      }
+        &.running {
+          background: rgba(102, 126, 234, 0.2);
+          color: #667eea;
+        }
 
-      &.running {
-        background: rgba(102, 126, 234, 0.2);
-        color: #667eea;
-      }
+        &.in-progress {
+          background: rgba(251, 191, 36, 0.2);
+          color: #fbbf24;
+        }
 
-      &.in-progress {
-        background: rgba(251, 191, 36, 0.2);
-        color: #fbbf24;
-      }
-
-      &.pending {
-        background: rgba(156, 163, 175, 0.2);
-        color: #9ca3af;
+        &.pending {
+          background: rgba(156, 163, 175, 0.2);
+          color: #9ca3af;
+        }
       }
     }
   }

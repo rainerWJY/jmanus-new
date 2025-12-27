@@ -78,7 +78,7 @@
                 >
                   {{ $t('chat.roundLabel', { round: agentExecution.latestRoundNumber }) }}
                 </span>
-                {{ $t('chat.clickToViewExecutionDetails') }}
+                <span class="click-hint">{{ $t('chat.clickToViewExecutionDetails') }}</span>
               </div>
             </div>
           </div>
@@ -91,15 +91,6 @@
 
         <!-- Agent execution info -->
         <div class="agent-execution-info">
-          <!-- User request -->
-          <div v-if="agentExecution.agentRequest" class="agent-request">
-            <div class="request-header">
-              <Icon icon="carbon:chat" class="request-icon" />
-              <span class="request-label">{{ $t('chat.userRequest') }}:</span>
-            </div>
-            <pre class="request-content-text">{{ agentExecution.agentRequest }}</pre>
-          </div>
-
           <!-- Agent result -->
           <div v-if="agentExecution.result" class="agent-result">
             <div class="result-header">
@@ -121,17 +112,38 @@
           <!-- Latest tool info -->
           <div
             v-if="
+              agentExecution.agentRequest ||
               agentExecution.latestMethodName ||
               agentExecution.latestMethodArgs ||
               agentExecution.latestRoundNumber
             "
             class="agent-tool-info"
           >
-            <div class="tool-info-header">
+            <div
+              class="tool-info-header"
+              @click="toggleToolInfo(agentExecution)"
+              :class="{ expanded: isToolInfoExpanded(agentExecution) }"
+            >
               <Icon icon="carbon:code" class="tool-info-icon" />
-              <span class="tool-info-label">{{ $t('chat.currentLatestExecutionPlan') }}:</span>
+              <span v-if="agentExecution.latestMethodName" class="tool-info-method-name">
+                {{ agentExecution.latestMethodName }}
+              </span>
+              <Icon
+                :icon="
+                  isToolInfoExpanded(agentExecution) ? 'carbon:chevron-up' : 'carbon:chevron-right'
+                "
+                class="tool-info-toggle-icon"
+              />
             </div>
-            <div class="tool-info-content">
+            <div v-if="isToolInfoExpanded(agentExecution)" class="tool-info-content">
+              <!-- User request detail -->
+              <div v-if="agentExecution.agentRequest" class="tool-info-item">
+                <Icon icon="carbon:chat" class="tool-info-item-icon" />
+                <span class="tool-info-item-label">{{ $t('chat.userRequest') }}:</span>
+                <pre class="tool-info-item-value tool-args-content">{{
+                  agentExecution.agentRequest
+                }}</pre>
+              </div>
               <div v-if="agentExecution.latestMethodName" class="tool-info-item">
                 <Icon icon="carbon:code" class="tool-info-item-icon" />
                 <span class="tool-info-item-label">{{ $t('chat.methodName') }}:</span>
@@ -186,6 +198,7 @@ import type {
   PlanExecutionRecord,
 } from '@/types/plan-execution-record'
 import { Icon } from '@iconify/vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import RecursiveSubPlan from './RecursiveSubPlan.vue'
 
@@ -208,6 +221,23 @@ const emit = defineEmits<Emits>()
 
 // Initialize i18n
 const { t } = useI18n()
+
+// Collapsible state for tool info (using agent execution ID as key)
+const toolInfoExpanded = ref<Record<string, boolean>>({})
+
+// Toggle tool info expansion
+const toggleToolInfo = (agentExecution: AgentExecutionRecord) => {
+  const key = agentExecution.id?.toString() || agentExecution.stepId || ''
+  if (key) {
+    toolInfoExpanded.value[key] = !toolInfoExpanded.value[key]
+  }
+}
+
+// Check if tool info is expanded
+const isToolInfoExpanded = (agentExecution: AgentExecutionRecord): boolean => {
+  const key = agentExecution.id?.toString() || agentExecution.stepId || ''
+  return toolInfoExpanded.value[key] || false
+}
 
 // Agent click handler
 const handleAgentClick = (agentExecution: AgentExecutionRecord) => {
@@ -422,6 +452,10 @@ const formatToolParameters = (parameters?: string): string => {
                 margin-right: 8px;
                 font-style: normal;
               }
+
+              .click-hint {
+                font-size: 10px;
+              }
             }
           }
         }
@@ -456,10 +490,9 @@ const formatToolParameters = (parameters?: string): string => {
       }
 
       .agent-execution-info {
-        padding: 16px;
+        padding: 6px 16px;
         background: rgba(0, 0, 0, 0.1);
         border-top: 1px solid rgba(255, 255, 255, 0.05);
-        margin-bottom: 16px;
 
         .agent-request,
         .agent-result,
@@ -479,6 +512,10 @@ const formatToolParameters = (parameters?: string): string => {
             align-items: center;
             gap: 6px;
             margin-bottom: 6px;
+
+            &.expanded {
+              margin-bottom: 8px;
+            }
 
             .request-icon,
             .result-icon,
@@ -510,6 +547,53 @@ const formatToolParameters = (parameters?: string): string => {
               color: #ffffff;
               font-size: 13px;
               font-weight: 500;
+            }
+
+            // Collapsible tool info header styles
+            &.expanded,
+            &:has(.tool-info-toggle-icon) {
+              cursor: pointer;
+              padding: 4px 8px;
+              border-radius: 4px;
+              transition: background 0.2s ease;
+
+              &:hover {
+                background: rgba(255, 255, 255, 0.05);
+              }
+            }
+
+            .tool-info-request {
+              color: #cccccc;
+              font-size: 12px;
+              font-style: italic;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              max-width: 200px;
+            }
+
+            .tool-info-separator {
+              color: #666666;
+              font-size: 12px;
+              margin: 0 6px;
+              flex-shrink: 0;
+            }
+
+            .tool-info-method-name {
+              flex: 1;
+              color: #ffffff;
+              font-size: 13px;
+              font-weight: 500;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+
+            .tool-info-toggle-icon {
+              font-size: 14px;
+              color: #aaaaaa;
+              transition: transform 0.2s ease;
+              flex-shrink: 0;
             }
           }
 
