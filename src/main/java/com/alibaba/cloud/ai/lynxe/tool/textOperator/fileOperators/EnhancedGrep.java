@@ -550,8 +550,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 					// Check if this is the root (by comparing both original and real paths)
 					boolean isRoot = dir.equals(root) || realPath.equals(finalRootRealPath);
 					if (!isRoot) {
-						log.debug("Skipping symbolic link directory: {}", dir);
-						return FileVisitResult.SKIP_SUBTREE;
+					log.debug("Skipping symbolic link directory: {}", dir);
+					return FileVisitResult.SKIP_SUBTREE;
 					}
 					// Root is a symlink - allow but track to prevent cycles
 				}
@@ -778,7 +778,10 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			try {
 				List<MatchResult> matches = searchFile(file, pattern, beforeLines, afterLines, multiline);
 				if (!matches.isEmpty()) {
-					fileMatches.add(new FileMatchInfo(file, matches));
+					FileMatchInfo fileInfo = new FileMatchInfo(file, matches);
+					fileMatches.add(fileInfo);
+					// Count only match lines (not context lines) for total
+					totalMatches += fileInfo.matchCount;
 				}
 			}
 			catch (IOException e) {
@@ -801,9 +804,10 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		boolean hasMoreFiles = fileMatches.size() > MAX_FILES_TO_RETURN;
 
 		// Second pass: output results for top files
+		int outputMatchCount = 0; // Track how many matches we've output (for limiting)
 		for (int i = 0; i < filesToProcess; i++) {
 			FileMatchInfo fileInfo = fileMatches.get(i);
-			if (totalMatches >= maxResults) {
+			if (outputMatchCount >= maxResults) {
 				result.append(String.format("\n... (output limited to %d results)\n", maxResults));
 				break;
 			}
@@ -813,7 +817,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			result.append(relativePath).append("\n");
 
 			for (MatchResult match : fileInfo.matches) {
-				if (totalMatches >= maxResults)
+				if (outputMatchCount >= maxResults)
 					break;
 
 				String marker = match.isMatchLine ? ":" : "-";
@@ -825,7 +829,10 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 					displayContent = processed.getComprehensiveResult();
 				}
 				result.append(String.format("%d%s%s\n", match.lineNumber, marker, displayContent));
-				totalMatches++;
+				// Only count match lines for output limit (not context lines)
+				if (match.isMatchLine) {
+					outputMatchCount++;
+				}
 			}
 			result.append("\n");
 		}
