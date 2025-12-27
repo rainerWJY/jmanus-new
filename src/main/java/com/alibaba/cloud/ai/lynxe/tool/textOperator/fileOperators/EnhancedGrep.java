@@ -110,6 +110,19 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		FILE_TYPE_EXTENSIONS.put("css", List.of(".css", ".scss", ".sass", ".less"));
 		FILE_TYPE_EXTENSIONS.put("html", List.of(".html", ".htm"));
 		FILE_TYPE_EXTENSIONS.put("vue", List.of(".vue"));
+		FILE_TYPE_EXTENSIONS.put("txt", List.of(".txt"));
+		FILE_TYPE_EXTENSIONS.put("properties", List.of(".properties"));
+		FILE_TYPE_EXTENSIONS.put("log", List.of(".log"));
+		FILE_TYPE_EXTENSIONS.put("conf", List.of(".conf"));
+	}
+
+	/**
+	 * Unified set of all text file extensions (derived from FILE_TYPE_EXTENSIONS)
+	 */
+	private static final Set<String> TEXT_FILE_EXTENSIONS = new HashSet<>();
+	static {
+		// Add all extensions from FILE_TYPE_EXTENSIONS
+		FILE_TYPE_EXTENSIONS.values().forEach(TEXT_FILE_EXTENSIONS::addAll);
 	}
 
 	/**
@@ -640,13 +653,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	 */
 	private boolean isTextFile(Path path) {
 		String fileName = path.getFileName().toString().toLowerCase();
-		return fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".java")
-				|| fileName.endsWith(".py") || fileName.endsWith(".js") || fileName.endsWith(".ts")
-				|| fileName.endsWith(".jsx") || fileName.endsWith(".tsx") || fileName.endsWith(".json")
-				|| fileName.endsWith(".xml") || fileName.endsWith(".yaml") || fileName.endsWith(".yml")
-				|| fileName.endsWith(".properties") || fileName.endsWith(".log") || fileName.endsWith(".conf")
-				|| fileName.endsWith(".sh") || fileName.endsWith(".css") || fileName.endsWith(".html")
-				|| fileName.endsWith(".vue");
+		return TEXT_FILE_EXTENSIONS.stream().anyMatch(fileName::endsWith);
 	}
 
 	/**

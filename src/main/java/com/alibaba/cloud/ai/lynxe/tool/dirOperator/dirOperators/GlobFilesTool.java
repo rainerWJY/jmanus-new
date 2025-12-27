@@ -17,14 +17,22 @@ package com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemLoopException;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +54,16 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 	private static final Logger log = LoggerFactory.getLogger(GlobFilesTool.class);
 
 	private static final String TOOL_NAME = "glob-files";
+
+	/**
+	 * Maximum depth for directory traversal to prevent excessive recursion
+	 */
+	private static final int MAX_DEPTH = 100;
+
+	/**
+	 * Maximum path length to prevent path explosion issues
+	 */
+	private static final int MAX_PATH_LENGTH = 1000;
 
 	/**
 	 * Input class for glob files operations
@@ -79,14 +97,13 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
-	private final SymbolicLinkDetector symlinkDetector;
-
 	private final ToolI18nService toolI18nService;
 
 	public GlobFilesTool(UnifiedDirectoryManager unifiedDirectoryManager, SymbolicLinkDetector symlinkDetector,
 			ToolI18nService toolI18nService) {
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
-		this.symlinkDetector = symlinkDetector;
+		// Note: symlinkDetector parameter kept for backward compatibility but not used
+		// This tool now explicitly skips symbolic links (like grep/ripgrep)
 		this.toolI18nService = toolI18nService;
 	}
 
@@ -107,6 +124,18 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 		catch (Exception e) {
 			log.error("GlobFilesTool execution failed", e);
 			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Get real path of a path, or return the original path if resolution fails
+	 */
+	private Path getRealPathOrFallback(Path path) {
+		try {
+			return path.toRealPath();
+		} catch (IOException e) {
+			log.warn("Cannot resolve real path for: {}, using as-is", path);
+			return path;
 		}
 	}
 
@@ -179,16 +208,143 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			FileSystem fileSystem = FileSystems.getDefault();
 			PathMatcher matcher = fileSystem.getPathMatcher("glob:" + normalizedPattern);
 
-			// Find all matching files using safe traversal
+			// Find all matching files - NOT following symbolic links (like grep/ripgrep)
+			// This avoids infinite loops from circular symlinks
 			List<Path> matchingFiles = new ArrayList<>();
-			Files.walkFileTree(searchRoot, symlinkDetector.createSafeFileVisitor(searchRoot, (file, attrs) -> {
-				// Check if file matches the pattern
-				Path relativePath = searchRoot.relativize(file);
-				if (matcher.matches(relativePath)) {
-					matchingFiles.add(file);
+			Path rootPath = searchRoot;
+
+			// Get real path of root for relativization (handles symlink root case)
+			final Path rootRealPath = getRealPathOrFallback(rootPath);
+
+			// Track visited real paths to prevent circular references when following the root symlink
+			Set<Path> visitedRealPaths = new HashSet<>();
+
+			SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+				@Override
+				public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+					// Get real path for cycle detection and comparison
+					Path realPath;
+					try {
+						realPath = dir.toRealPath();
+					} catch (IOException e) {
+						log.warn("Cannot resolve real path for directory: {}, skipping", dir);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					// Check for cycles using real paths
+					if (visitedRealPaths.contains(realPath)) {
+						log.warn("Cycle detected: already visited {}, skipping", realPath);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+					visitedRealPaths.add(realPath);
+
+					// Allow the root directory even if it's a symlink (e.g., linked_external)
+					// But skip other symlink directories to prevent circular references
+					if (Files.isSymbolicLink(dir)) {
+						// Check if this is the root (by comparing both original and real paths)
+						boolean isRoot = dir.equals(rootPath) || realPath.equals(rootRealPath);
+						if (!isRoot) {
+							log.debug("Skipping symbolic link directory: {}", dir);
+							return FileVisitResult.SKIP_SUBTREE;
+						}
+						// Root is a symlink - allow but track to prevent cycles
+						log.debug("Following root symbolic link directory: {}", dir);
+					}
+
+					// Check path depth relative to root
+					try {
+						int depth = rootRealPath.relativize(dir.toRealPath()).getNameCount();
+						if (depth > MAX_DEPTH) {
+							log.warn("Path depth {} exceeds maximum ({}). Skipping directory: {}", depth, MAX_DEPTH, dir);
+							return FileVisitResult.SKIP_SUBTREE;
+						}
+					} catch (IOException | IllegalArgumentException e) {
+						log.warn("Cannot calculate depth for directory: {}, skipping", dir);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					// Check path length to prevent path explosion
+					String pathString = dir.toString();
+					if (pathString.length() > MAX_PATH_LENGTH) {
+						log.warn("Path length {} exceeds maximum ({}). Skipping directory: {}", pathString.length(),
+								MAX_PATH_LENGTH, dir);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					return FileVisitResult.CONTINUE;
 				}
-			}, null // No special directory handling needed
-			));
+
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					// Skip symbolic links (do not follow them, like grep/ripgrep)
+					if (Files.isSymbolicLink(file)) {
+						log.debug("Skipping symbolic link file: {}", file);
+						return FileVisitResult.CONTINUE;
+					}
+
+					// Check path length for files as well
+					String pathString = file.toString();
+					if (pathString.length() > MAX_PATH_LENGTH) {
+						log.warn("File path length {} exceeds maximum ({}). Skipping file: {}", pathString.length(),
+								MAX_PATH_LENGTH, file);
+						return FileVisitResult.CONTINUE;
+					}
+
+					// Skip if not a regular file
+					if (!Files.isRegularFile(file)) {
+						return FileVisitResult.CONTINUE;
+					}
+
+					// Check if file matches the pattern
+					// Use real paths for relativization to handle symlink root case
+					try {
+						Path fileRealPath = file.toRealPath();
+						Path relativePath = rootRealPath.relativize(fileRealPath);
+						if (matcher.matches(relativePath)) {
+							matchingFiles.add(file);
+						}
+					} catch (IOException | IllegalArgumentException e) {
+						log.warn("Cannot relativize file path: {}, skipping pattern matching", file);
+						// Still try to match using the original path as fallback
+						try {
+							Path relativePath = rootPath.relativize(file);
+							if (matcher.matches(relativePath)) {
+								matchingFiles.add(file);
+							}
+						} catch (IllegalArgumentException e2) {
+							log.warn("Cannot relativize file path even with original root: {}, skipping", file);
+						}
+					}
+
+					return FileVisitResult.CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+					// Handle circular symlinks by skipping the problematic directory
+					// (This should rarely happen now since we don't follow symlinks, but kept for safety)
+					if (exc instanceof FileSystemLoopException) {
+						log.warn("Circular symlink detected: {}. Skipping this directory and continuing.", file);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					// Check if path is too long (might cause issues)
+					String pathString = file.toString();
+					if (pathString.length() > MAX_PATH_LENGTH) {
+						log.warn("Path too long ({} chars): {}. Skipping and continuing.", pathString.length(), file);
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					// For other IO errors, log and continue
+					log.warn("Error accessing file/directory: {}. Skipping and continuing.", file, exc);
+					return FileVisitResult.SKIP_SUBTREE;
+				}
+			};
+
+			// Walk the directory tree with depth limit
+			// Follow links to allow root symlink (e.g., linked_external) but cycle detection
+			// prevents infinite loops from circular symlinks
+			Files.walkFileTree(searchRoot, EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
 
 			// Sort by modification time (most recently modified first)
 			matchingFiles.sort(Comparator.comparing((Path path) -> {
@@ -217,7 +373,14 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 				result.append(String.format("Found %d file(s):\n\n", matchingFiles.size()));
 				for (Path path : matchingFiles) {
 					try {
-						Path relativePath = searchRoot.relativize(path);
+						// Use real paths for relativization to handle symlink root case
+						Path relativePath;
+						try {
+							relativePath = rootRealPath.relativize(path.toRealPath());
+						} catch (IOException | IllegalArgumentException e) {
+							// Fallback to original path if real path resolution fails
+							relativePath = rootPath.relativize(path);
+						}
 						String relativePathStr = relativePath.toString().replace('\\', '/');
 						long size = Files.size(path);
 						String sizeStr = formatFileSize(size);
@@ -227,9 +390,19 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					}
 					catch (IOException e) {
 						log.warn("Error reading file info: {}", path, e);
-						Path relativePath = searchRoot.relativize(path);
-						String relativePathStr = relativePath.toString().replace('\\', '/');
-						result.append(String.format("%s (error reading file info)\n", relativePathStr));
+						// Try to get relative path for display even if file info read fails
+						try {
+							Path relativePath;
+							try {
+								relativePath = rootRealPath.relativize(path.toRealPath());
+							} catch (IOException | IllegalArgumentException e2) {
+								relativePath = rootPath.relativize(path);
+							}
+							String relativePathStr = relativePath.toString().replace('\\', '/');
+							result.append(String.format("%s (error reading file info)\n", relativePathStr));
+						} catch (IllegalArgumentException e2) {
+							result.append(String.format("%s (error reading file info)\n", path.getFileName()));
+						}
 					}
 				}
 			}
