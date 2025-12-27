@@ -676,14 +676,14 @@ const formatToolParameters = (parameters?: string): string => {
           margin-bottom: 12px;
 
           .sub-plans-icon {
-            font-size: 16px;
+            font-size: 11px;
             color: #667eea;
           }
 
           .sub-plans-title {
             color: #ffffff;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 11px;
           }
         }
 

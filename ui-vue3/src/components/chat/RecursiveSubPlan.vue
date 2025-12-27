@@ -47,148 +47,35 @@
       </div>
     </div>
 
-    <!-- Sub-plan agent execution steps -->
-    <div v-if="subPlan.agentExecutionSequence?.length" class="sub-plan-agents-steps">
-      <div class="agents-steps-header">
-        <span class="agents-label">{{ $t('chat.agentExecutions') }}:</span>
+    <!-- Direct sub-plans from all agents -->
+    <div v-if="allDirectSubPlans.length > 0" class="direct-sub-plans">
+      <div class="direct-sub-plans-header">
+        <Icon icon="carbon:tree-view" class="direct-icon" />
+        <span class="direct-label">
+          {{ $t('chat.subPlanExecutions') }} ({{ allDirectSubPlans.length }})
+        </span>
       </div>
-      <div class="agents-steps-list">
-        <div
-          v-for="(agent, agentIndex) in subPlan.agentExecutionSequence"
-          :key="agent.id || agentIndex"
-          class="agent-step-item"
-          :class="getAgentPreviewStatusClass(agent.status)"
-          @click="handleSubPlanAgentClick(agentIndex, agent)"
-          :title="
-            agent.agentName === 'ConfigurableDynaAgent'
-              ? $t('chat.clickToViewExecutionDetails')
-              : ''
-          "
-        >
-          <div class="agent-step-header">
-            <Icon :icon="getAgentPreviewStatusIcon(agent.status)" class="agent-icon" />
-            <span class="agent-name">
-              {{
-                agent.agentName === 'ConfigurableDynaAgent'
-                  ? $t('chat.funcAgentExecutionDetails')
-                  : agent.agentName || $t('chat.unknownAgent')
-              }}
-            </span>
-            <div class="agent-status-badge" :class="getAgentPreviewStatusClass(agent.status)">
-              {{ getAgentStatusText(agent.status) }}
-            </div>
-          </div>
-
-          <!-- Agent execution info for sub-plan agents -->
-          <div class="sub-agent-execution-info">
-            <!-- Agent result -->
-            <div v-if="agent.result" class="agent-result">
-              <div class="result-header">
-                <Icon icon="carbon:checkmark" class="result-icon" />
-                <span class="result-label">{{ $t('chat.agentResult') }}:</span>
-              </div>
-              <pre class="result-content">{{ agent.result }}</pre>
-            </div>
-
-            <!-- Error message -->
-            <div v-if="agent.errorMessage" class="agent-error">
-              <div class="error-header">
-                <Icon icon="carbon:warning" class="error-icon" />
-                <span class="error-label">{{ $t('chat.errorMessage') }}:</span>
-              </div>
-              <pre class="error-content">{{ agent.errorMessage }}</pre>
-            </div>
-
-            <!-- Think-act steps with nested sub-plans -->
-            <div v-if="agent.thinkActSteps?.length" class="think-act-preview">
-              <div class="think-act-header">
-                <Icon icon="carbon:thinking" class="think-act-icon" />
-                <span class="think-act-label"
-                  >{{ $t('chat.thinkActSteps') }} ({{ agent.thinkActSteps.length }})</span
-                >
-              </div>
-              <div class="think-act-steps-preview">
-                <div
-                  v-for="(step, stepIndex) in agent.thinkActSteps.slice(0, maxVisibleSteps ?? 2)"
-                  :key="step.id || stepIndex"
-                  class="think-act-step-preview"
-                  @click.stop="handleThinkActStepClick(agentIndex, stepIndex, agent)"
-                >
-                  <span class="step-number">#{{ stepIndex + 1 }}</span>
-                  <span class="step-description">{{
-                    step.actionDescription || $t('chat.thinking')
-                  }}</span>
-                  <Icon icon="carbon:arrow-right" class="step-arrow" />
-                </div>
-                <div v-if="agent.thinkActSteps.length > (maxVisibleSteps ?? 2)" class="more-steps">
-                  <span class="more-steps-text">
-                    {{
-                      $t('chat.andMoreSteps', {
-                        count: agent.thinkActSteps.length - (maxVisibleSteps ?? 2),
-                      })
-                    }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Nested sub-plans from think-act steps -->
-            <div v-if="hasNestedSubPlans(agent)" class="nested-sub-plans">
-              <div class="nested-sub-plans-header">
-                <Icon icon="carbon:tree-view-alt" class="nested-icon" />
-                <span class="nested-label">{{ $t('chat.nestedSubPlans') }}</span>
-              </div>
-              <div class="nested-sub-plans-list">
-                <RecursiveSubPlan
-                  v-for="(nestedStep, nestedStepIndex) in getNestedSubPlans(agent)"
-                  :key="nestedStep.id || nestedStepIndex"
-                  :sub-plan="nestedStep.subPlanExecutionRecord!"
-                  :sub-plan-index="nestedStepIndex"
-                  :nesting-level="(nestingLevel ?? 0) + 1"
-                  :max-nesting-depth="maxNestingDepth ?? 3"
-                  :max-visible-steps="maxVisibleSteps ?? 2"
-                  @sub-plan-selected="handleNestedSubPlanSelected"
-                  @step-selected="handleNestedStepSelected"
-                />
-              </div>
-            </div>
-
-            <!-- Direct sub-plans from agent -->
-            <div v-if="agent.subPlanExecutionRecords?.length" class="direct-sub-plans">
-              <div class="direct-sub-plans-header">
-                <Icon icon="carbon:tree-view" class="direct-icon" />
-                <span class="direct-label">{{ $t('chat.directSubPlans') }}</span>
-              </div>
-              <div class="direct-sub-plans-list">
-                <RecursiveSubPlan
-                  v-for="(directSubPlan, directIndex) in agent.subPlanExecutionRecords"
-                  :key="directSubPlan.currentPlanId || directIndex"
-                  :sub-plan="directSubPlan"
-                  :sub-plan-index="directIndex"
-                  :nesting-level="(nestingLevel ?? 0) + 1"
-                  :max-nesting-depth="maxNestingDepth ?? 3"
-                  :max-visible-steps="maxVisibleSteps ?? 2"
-                  @sub-plan-selected="handleNestedSubPlanSelected"
-                  @step-selected="handleNestedStepSelected"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="direct-sub-plans-list">
+        <RecursiveSubPlan
+          v-for="(directSubPlan, directIndex) in allDirectSubPlans"
+          :key="directSubPlan.currentPlanId || directIndex"
+          :sub-plan="directSubPlan"
+          :sub-plan-index="directIndex"
+          :nesting-level="(nestingLevel ?? 0) + 1"
+          :max-nesting-depth="maxNestingDepth ?? 3"
+          :max-visible-steps="maxVisibleSteps ?? 2"
+          @sub-plan-selected="handleNestedSubPlanSelected"
+          @step-selected="handleNestedStepSelected"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type {
-  AgentExecutionRecord,
-  ExecutionStatus,
-  PlanExecutionRecord,
-  ThinkActRecord,
-} from '@/types/plan-execution-record'
+import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { Icon } from '@iconify/vue'
-import {} from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 interface Props {
@@ -291,51 +178,18 @@ const getSubPlanStatusText = (): string => {
 //   return props.subPlan.agentExecutionSequence.filter(agent => agent.status === 'FINISHED').length
 // }
 
-// Agent preview status methods
-const getAgentPreviewStatusClass = (status?: ExecutionStatus): string => {
-  switch (status) {
-    case 'FINISHED':
-      return 'completed'
-    case 'RUNNING':
-      return 'running'
-    case 'IDLE':
-    default:
-      return 'pending'
+// Collect all direct sub-plans from all agents
+const allDirectSubPlans = computed(() => {
+  const subPlans: PlanExecutionRecord[] = []
+  if (props.subPlan.agentExecutionSequence) {
+    for (const agent of props.subPlan.agentExecutionSequence) {
+      if (agent.subPlanExecutionRecords) {
+        subPlans.push(...agent.subPlanExecutionRecords)
+      }
+    }
   }
-}
-
-const getAgentPreviewStatusIcon = (status?: ExecutionStatus): string => {
-  switch (status) {
-    case 'FINISHED':
-      return 'carbon:checkmark'
-    case 'RUNNING':
-      return 'carbon:play'
-    case 'IDLE':
-    default:
-      return 'carbon:dot-mark'
-  }
-}
-
-const getAgentStatusText = (status?: ExecutionStatus): string => {
-  switch (status) {
-    case 'RUNNING':
-      return t('chat.status.executing')
-    case 'FINISHED':
-      return t('chat.status.completed')
-    case 'IDLE':
-    default:
-      return t('chat.status.pending')
-  }
-}
-
-// Nested sub-plans detection
-const hasNestedSubPlans = (agent: AgentExecutionRecord): boolean => {
-  return agent.thinkActSteps?.some(step => step.subPlanExecutionRecord) ?? false
-}
-
-const getNestedSubPlans = (agent: AgentExecutionRecord): ThinkActRecord[] => {
-  return agent.thinkActSteps?.filter(step => step.subPlanExecutionRecord) ?? []
-}
+  return subPlans
+})
 
 // Event handlers
 const handleSubPlanClick = (event?: Event) => {
@@ -345,20 +199,6 @@ const handleSubPlanClick = (event?: Event) => {
     eventTarget: event?.target,
   })
   emit('sub-plan-selected', -1, props.subPlanIndex, props.subPlan)
-}
-
-const handleSubPlanAgentClick = (agentIndex: number, agent: AgentExecutionRecord) => {
-  const stepId = agent.stepId ?? `subplan-${props.subPlanIndex}-agent-${agentIndex}`
-  emit('step-selected', stepId)
-}
-
-const handleThinkActStepClick = (
-  agentIndex: number,
-  _stepIndex: number,
-  agent: AgentExecutionRecord
-) => {
-  const stepId = agent.stepId ?? `subplan-${props.subPlanIndex}-agent-${agentIndex}`
-  emit('step-selected', stepId)
 }
 
 const handleNestedSubPlanSelected = (
@@ -752,20 +592,25 @@ const handleNestedStepSelected = (stepId: string) => {
             .direct-sub-plans-header {
               display: flex;
               align-items: center;
-              gap: 6px;
-              margin-bottom: 8px;
+              gap: 8px;
+              margin-bottom: 12px;
 
               .nested-icon,
               .direct-icon {
-                font-size: 12px;
-                color: #fbbf24;
+                font-size: 11px;
+                color: #667eea;
               }
 
-              .nested-label,
-              .direct-label {
+              .nested-label {
                 color: #aaaaaa;
                 font-size: 11px;
                 font-weight: 500;
+              }
+
+              .direct-label {
+                color: #ffffff;
+                font-size: 11px;
+                font-weight: 600;
               }
             }
 
