@@ -801,7 +801,7 @@ const words: I18nType = {
     latestToolInfo: 'Latest Tool Info',
     roundNumber: 'Round Number',
     roundLabel: 'Round {round}',
-    methodName: 'Current Called Method',
+    methodName: 'Current Method',
     methodArgs: 'Method Args',
     userRequest: 'User Request',
     currentLatestExecutionPlan: 'Current Latest Execution Plan',

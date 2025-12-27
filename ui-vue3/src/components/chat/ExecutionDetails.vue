@@ -587,9 +587,7 @@ const formatToolParameters = (parameters?: string): string => {
               color: #ffffff;
               font-size: 13px;
               font-weight: 500;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
+              word-break: break-word;
               line-height: 1.5;
             }
 

@@ -25,17 +25,8 @@
         <div class="sub-plan-details">
           <div class="sub-plan-title">
             {{ subPlan.title || $t('chat.subPlan') }} #{{ subPlanIndex + 1 }}
-            <span v-if="(nestingLevel ?? 0) > 0" class="nesting-level"
-              >(L{{ (nestingLevel ?? 0) + 1 }})</span
-            >
           </div>
           <div class="request-content">
-            <span
-              v-if="getSubPlanRoundNumber() !== undefined && getSubPlanRoundNumber() !== null"
-              class="round-info"
-            >
-              {{ $t('chat.roundLabel', { round: getSubPlanRoundNumber() }) }}
-            </span>
             <span class="click-hint">{{ $t('chat.clickToViewExecutionDetails') }}</span>
           </div>
         </div>
@@ -43,6 +34,62 @@
       <div class="sub-plan-controls">
         <div class="sub-plan-status-badge" :class="getSubPlanStatusClass()">
           {{ getSubPlanStatusText() }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent tool info -->
+    <div
+      v-if="
+        firstAgent &&
+        (firstAgent.agentRequest ||
+          firstAgent.latestMethodName ||
+          firstAgent.latestMethodArgs ||
+          firstAgent.latestRoundNumber)
+      "
+      class="agent-tool-info"
+    >
+      <div
+        class="tool-info-header"
+        @click="toggleToolInfo"
+        :class="{ expanded: isToolInfoExpanded }"
+      >
+        <span
+          v-if="
+            firstAgent.agentName === 'ConfigurableDynaAgent' &&
+            firstAgent.latestRoundNumber !== undefined &&
+            firstAgent.latestRoundNumber !== null
+          "
+          class="tool-info-round-info"
+        >
+          {{ $t('chat.roundLabel', { round: firstAgent.latestRoundNumber }) }}
+        </span>
+        <span v-if="firstAgent.latestMethodName" class="tool-info-method-name">
+          {{ firstAgent.latestMethodName }}
+        </span>
+        <Icon
+          :icon="isToolInfoExpanded ? 'carbon:chevron-up' : 'carbon:chevron-right'"
+          class="tool-info-toggle-icon"
+        />
+      </div>
+      <div v-if="isToolInfoExpanded" class="tool-info-content">
+        <!-- User request detail -->
+        <div v-if="firstAgent.agentRequest" class="tool-info-item">
+          <Icon icon="carbon:chat" class="tool-info-item-icon" />
+          <span class="tool-info-item-label">{{ $t('chat.userRequest') }}:</span>
+          <pre class="tool-info-item-value tool-args-content">{{ firstAgent.agentRequest }}</pre>
+        </div>
+        <div v-if="firstAgent.latestMethodName" class="tool-info-item">
+          <Icon icon="carbon:code" class="tool-info-item-icon" />
+          <span class="tool-info-item-label">{{ $t('chat.methodName') }}:</span>
+          <span class="tool-info-item-value">{{ firstAgent.latestMethodName }}</span>
+        </div>
+        <div v-if="firstAgent.latestMethodArgs" class="tool-info-item">
+          <Icon icon="carbon:settings" class="tool-info-item-icon" />
+          <span class="tool-info-item-label">{{ $t('chat.methodArgs') }}:</span>
+          <pre class="tool-info-item-value tool-args-content">{{
+            formatToolParameters(firstAgent.latestMethodArgs)
+          }}</pre>
         </div>
       </div>
     </div>
@@ -73,9 +120,9 @@
 </template>
 
 <script setup lang="ts">
-import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import type { AgentExecutionRecord, PlanExecutionRecord } from '@/types/plan-execution-record'
 import { Icon } from '@iconify/vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 interface Props {
@@ -110,18 +157,6 @@ const { t } = useI18n()
 // Helper functions
 const getNestingClass = (): string => {
   return `nesting-level-${props.nestingLevel}`
-}
-
-// Get sub-plan round number from the first agent execution
-const getSubPlanRoundNumber = (): number | undefined => {
-  if (!props.subPlan.agentExecutionSequence?.length) {
-    return undefined
-  }
-  // Get the latest round number from the first agent (or any agent with round number)
-  const agentWithRound = props.subPlan.agentExecutionSequence.find(
-    agent => agent.latestRoundNumber !== undefined && agent.latestRoundNumber !== null
-  )
-  return agentWithRound?.latestRoundNumber
 }
 
 // Sub-plan status methods
@@ -178,6 +213,11 @@ const getSubPlanStatusText = (): string => {
 //   return props.subPlan.agentExecutionSequence.filter(agent => agent.status === 'FINISHED').length
 // }
 
+// Get first agent for tool info display
+const firstAgent = computed((): AgentExecutionRecord | undefined => {
+  return props.subPlan.agentExecutionSequence?.[0]
+})
+
 // Collect all direct sub-plans from all agents
 const allDirectSubPlans = computed(() => {
   const subPlans: PlanExecutionRecord[] = []
@@ -190,6 +230,29 @@ const allDirectSubPlans = computed(() => {
   }
   return subPlans
 })
+
+// Collapsible state for tool info
+const toolInfoExpanded = ref(false)
+
+// Toggle tool info expansion
+const toggleToolInfo = () => {
+  toolInfoExpanded.value = !toolInfoExpanded.value
+}
+
+// Check if tool info is expanded
+const isToolInfoExpanded = computed(() => toolInfoExpanded.value)
+
+// Format tool parameters
+const formatToolParameters = (parameters?: string): string => {
+  if (!parameters) return ''
+
+  try {
+    const parsed = JSON.parse(parameters)
+    return JSON.stringify(parsed, null, 2)
+  } catch {
+    return parameters
+  }
+}
 
 // Event handlers
 const handleSubPlanClick = (event?: Event) => {
@@ -362,6 +425,136 @@ const handleNestedStepSelected = (stepId: string) => {
           color: #9ca3af;
         }
       }
+    }
+  }
+
+  .agent-tool-info {
+    margin-top: 8px;
+    margin-bottom: 8px;
+
+    .tool-info-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      &.expanded {
+        margin-bottom: 8px;
+      }
+
+      .tool-info-round-info {
+        color: #667eea;
+        font-weight: 500;
+        font-size: 13px;
+        white-space: nowrap;
+        line-height: 1.5;
+      }
+
+      .tool-info-method-name {
+        flex: 1;
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 500;
+        word-break: break-word;
+        line-height: 1.5;
+      }
+
+      .tool-info-toggle-icon {
+        font-size: 14px;
+        color: #aaaaaa;
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      &.expanded .tool-info-toggle-icon {
+        transform: rotate(90deg);
+      }
+    }
+
+    .tool-info-content {
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 4px;
+      margin-top: 4px;
+
+      .tool-info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .tool-info-item-icon {
+          font-size: 14px;
+          color: #667eea;
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+
+        .tool-info-item-label {
+          color: #aaaaaa;
+          font-size: 12px;
+          font-weight: 500;
+          min-width: 80px;
+          flex-shrink: 0;
+        }
+
+        .tool-info-item-value {
+          flex: 1;
+          color: #ffffff;
+          font-size: 12px;
+          margin: 0;
+
+          &.tool-args-content {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+        }
+      }
+    }
+  }
+
+  .direct-sub-plans {
+    margin-top: 8px;
+    margin-bottom: 8px;
+
+    .direct-sub-plans-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+
+      .direct-icon {
+        font-size: 11px;
+        color: #667eea;
+      }
+
+      .direct-label {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 11px;
+      }
+    }
+
+    .direct-sub-plans-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
   }
 
@@ -584,19 +777,16 @@ const handleNestedStepSelected = (stepId: string) => {
             }
           }
 
-          .nested-sub-plans,
-          .direct-sub-plans {
+          .nested-sub-plans {
             margin-top: 12px;
 
-            .nested-sub-plans-header,
-            .direct-sub-plans-header {
+            .nested-sub-plans-header {
               display: flex;
               align-items: center;
               gap: 8px;
               margin-bottom: 12px;
 
-              .nested-icon,
-              .direct-icon {
+              .nested-icon {
                 font-size: 11px;
                 color: #667eea;
               }
@@ -606,16 +796,9 @@ const handleNestedStepSelected = (stepId: string) => {
                 font-size: 11px;
                 font-weight: 500;
               }
-
-              .direct-label {
-                color: #ffffff;
-                font-size: 11px;
-                font-weight: 600;
-              }
             }
 
-            .nested-sub-plans-list,
-            .direct-sub-plans-list {
+            .nested-sub-plans-list {
               display: flex;
               flex-direction: column;
               gap: 6px;
