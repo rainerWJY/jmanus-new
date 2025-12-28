@@ -28,6 +28,7 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.observation.ChatModelObservationConvention;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.model.tool.DefaultToolExecutionEligibilityPredicate;
@@ -115,7 +116,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	 */
 	private ChatClient buildUnifiedChatClient(String modelName, DynamicModelEntity model, OpenAiChatOptions options) {
 		// Use the existing openAiChatModel method which calls openAiApi()
-		OpenAiChatModel chatModel = openAiChatModel(modelName, model, options);
+		ChatModel chatModel = openAiChatModel(modelName, model, options);
 
 		var builder = ChatClient.builder(chatModel)
 			.defaultAdvisors(new SimpleLoggerAdvisor())
@@ -359,7 +360,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		var openAiApi = openAiApi(restClientBuilderProvider.getIfAvailable(RestClient::builder),
 				webClientBuilderProvider.getIfAvailable(WebClient::builder), dynamicModelEntity);
 		OpenAiChatOptions options = OpenAiChatOptions.fromOptions(defaultOptions);
-		var chatModel = OpenAiChatModel.builder()
+		OpenAiChatModel chatModel = OpenAiChatModel.builder()
 			.openAiApi(openAiApi)
 			.defaultOptions(options)
 			// .toolCallingManager(toolCallingManager)
