@@ -355,7 +355,7 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		if (headers == null) {
 			headers = new HashMap<>();
 		}
-		headers.put("User-Agent", "Lynxe/4.8.0");
+		headers.put("User-Agent", "Lynxe/4.10.0");
 		defaultOptions.setHttpHeaders(headers);
 		var openAiApi = openAiApi(restClientBuilderProvider.getIfAvailable(RestClient::builder),
 				webClientBuilderProvider.getIfAvailable(WebClient::builder), dynamicModelEntity);
