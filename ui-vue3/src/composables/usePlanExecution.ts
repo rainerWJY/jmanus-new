@@ -26,7 +26,7 @@ import { reactive, readonly, ref } from 'vue'
  */
 export function usePlanExecution() {
   // Polling configuration
-  const POLL_INTERVAL = 1000 // 1 second polling interval for responsive updates
+  const POLL_INTERVAL = 5000 // 5 second polling interval to reduce refresh frequency
   const MAX_RETRY_ATTEMPTS = 10 // Maximum retry attempts for plan not found
   const POST_COMPLETION_POLL_COUNT = 10 // Continue polling after completion to ensure summary is fetched
 
