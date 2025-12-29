@@ -1472,14 +1472,25 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		// Step 2: Filter messages to keep only assistant message and tool_call message
+		// Also preserve compression summary messages (UserMessages with special metadata)
 		List<Message> messagesToAdd = new ArrayList<>();
 		for (Message message : messages) {
 			// exclude all system message
 			if (message instanceof SystemMessage) {
 				continue;
 			}
-			// exclude env data message
+			// exclude env data message, but preserve compression summary messages
 			if (message instanceof UserMessage) {
+				// Check if this is a compression summary message that should be preserved
+				Object compressionSummaryFlag = message.getMetadata()
+					.get(ConversationMemoryLimitService.COMPRESSION_SUMMARY_METADATA_KEY);
+				if (compressionSummaryFlag != null && Boolean.TRUE.equals(compressionSummaryFlag)) {
+					// This is a compression summary, preserve it in agent memory
+					messagesToAdd.add(message);
+					log.debug("Preserving compression summary message in agent memory for planId: {}",
+							getCurrentPlanId());
+				}
+				// Other UserMessages are excluded (env data messages)
 				continue;
 			}
 			// only keep assistant message and tool_call message
