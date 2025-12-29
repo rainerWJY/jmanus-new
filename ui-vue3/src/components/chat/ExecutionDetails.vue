@@ -87,7 +87,7 @@
               <Icon icon="carbon:checkmark" class="result-icon" />
               <span class="result-label">{{ $t('chat.agentResult') }}:</span>
             </div>
-            <pre class="result-content">{{ agentExecution.result }}</pre>
+            <pre class="result-content">{{ formatExecutionResult(agentExecution.result) }}</pre>
           </div>
 
           <!-- Error message -->
@@ -301,15 +301,49 @@ const handleStepSelected = (stepId: string) => {
 
 // Helper methods
 
+/**
+ * Truncate long text by keeping start and end, replacing middle with ellipsis
+ * @param text - The text to truncate
+ * @param maxLength - Maximum length before truncation (default: 20000)
+ * @param startLength - Length to keep at the start (default: 10000)
+ * @param endLength - Length to keep at the end (default: 10000)
+ * @returns Truncated text if exceeds maxLength, original text otherwise
+ */
+const truncateLongText = (
+  text: string,
+  maxLength = 20000,
+  startLength = 10000,
+  endLength = 10000
+): string => {
+  if (!text || text.length <= maxLength) {
+    return text
+  }
+  const ellipsis = '\n\n... [Content truncated, middle part removed] ...\n\n'
+  const start = text.substring(0, startLength)
+  const end = text.substring(text.length - endLength)
+  return start + ellipsis + end
+}
+
 const formatToolParameters = (parameters?: string): string => {
   if (!parameters) return ''
 
   try {
     const parsed = JSON.parse(parameters)
-    return JSON.stringify(parsed, null, 2)
+    const formatted = JSON.stringify(parsed, null, 2)
+    return truncateLongText(formatted)
   } catch {
-    return parameters
+    return truncateLongText(parameters)
   }
+}
+
+/**
+ * Format execution result text, truncating if too long
+ * @param result - The result text to format
+ * @returns Formatted and truncated result text
+ */
+const formatExecutionResult = (result?: string): string => {
+  if (!result) return ''
+  return truncateLongText(result)
 }
 </script>
 

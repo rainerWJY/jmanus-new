@@ -213,7 +213,7 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Calculate total character count of all rounds
-		int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+		int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 		// Calculate target retention: 40% of total content
 		int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -237,7 +237,7 @@ public class ConversationMemoryLimitService {
 		// Start from the newest round and work backwards
 		for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 			DialogRound round = dialogRounds.get(i);
-			int roundChars = round.getTotalChars();
+			int roundChars = round.getTotalChars(objectMapper);
 
 			// Always keep at least the newest round (even if it exceeds 40%)
 			if (i == dialogRounds.size() - 1) {
@@ -534,12 +534,24 @@ public class ConversationMemoryLimitService {
 			return messages;
 		}
 
-		public int getTotalChars() {
+	public int getTotalChars(ObjectMapper objectMapper) {
+		if (messages == null || messages.isEmpty()) {
+			return 0;
+		}
+		try {
+			// Serialize messages to JSON to get accurate character count
+			String json = objectMapper.writeValueAsString(messages);
+			return json.length();
+		}
+		catch (Exception e) {
+			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+			// Fallback to simple text length calculation
 			return messages.stream().mapToInt(msg -> {
 				String text = msg.getText();
 				return text != null ? text.length() : 0;
 			}).sum();
 		}
+	}
 
 	}
 
@@ -575,7 +587,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Calculate total character count of all rounds
-			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -598,7 +610,7 @@ public class ConversationMemoryLimitService {
 			// Start from the newest round and work backwards
 			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 				DialogRound round = dialogRounds.get(i);
-				int roundChars = round.getTotalChars();
+				int roundChars = round.getTotalChars(objectMapper);
 
 				// Always keep at least the newest round (even if it exceeds 40%)
 				if (i == dialogRounds.size() - 1) {
@@ -702,7 +714,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Calculate total character count of all rounds
-			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -724,7 +736,7 @@ public class ConversationMemoryLimitService {
 			// Start from the newest round and work backwards
 			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 				DialogRound round = dialogRounds.get(i);
-				int roundChars = round.getTotalChars();
+				int roundChars = round.getTotalChars(objectMapper);
 
 				// Always keep at least the newest round (even if it exceeds 40%)
 				if (i == dialogRounds.size() - 1) {
@@ -771,7 +783,7 @@ public class ConversationMemoryLimitService {
 			// confirmation (as AssistantMessage), then most recent round
 			// This maintains the user-assistant message pair pattern similar to
 			// state_snapshot storage
-			List<Message> compressedMessages = new ArrayList<>();
+ 			List<Message> compressedMessages = new ArrayList<>();
 
 			if (summaryMessage != null) {
 				// Add summary as UserMessage (like state_snapshot)
