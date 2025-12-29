@@ -48,7 +48,6 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Grep Tool - Powerful text search tool based on ripgrep (rg) for precise text/regex
@@ -269,8 +268,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 	 */
 	private static class MatchResult {
 
-		String filePath;
-
 		int lineNumber;
 
 		String lineContent;
@@ -278,7 +275,6 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 		boolean isMatchLine; // true for match, false for context
 
 		public MatchResult(String filePath, int lineNumber, String lineContent, boolean isMatchLine) {
-			this.filePath = filePath;
 			this.lineNumber = lineNumber;
 			this.lineContent = lineContent;
 			this.isMatchLine = isMatchLine;
@@ -288,18 +284,15 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	private final TextFileService textFileService;
 
-	private final ObjectMapper objectMapper;
-
 	private final ToolI18nService toolI18nService;
 
 	private final GitIgnoreMatcher gitIgnoreMatcher;
 
 	private final LynxeProperties lynxeProperties;
 
-	public EnhancedGrep(TextFileService textFileService, ObjectMapper objectMapper, ToolI18nService toolI18nService,
+	public EnhancedGrep(TextFileService textFileService, ToolI18nService toolI18nService,
 			GitIgnoreMatcher gitIgnoreMatcher, LynxeProperties lynxeProperties) {
 		this.textFileService = textFileService;
-		this.objectMapper = objectMapper;
 		this.toolI18nService = toolI18nService;
 		this.gitIgnoreMatcher = gitIgnoreMatcher;
 		this.lynxeProperties = lynxeProperties;

@@ -86,16 +86,11 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 		this.innerStorageService = innerStorageService;
 	}
 
-	private String lastCommand = "";
-
-	private String lastResult = "";
-
 	@Override
 	public ToolExecuteResult run(BashInput input) {
 		String command = input.getCommand();
 		log.info("Bash command: {}", command);
 		log.info("Current operating system: {}", osName);
-		this.lastCommand = command;
 
 		// Validate command paths to ensure they stay within root-plan-folder
 		if (rootPlanId != null && !rootPlanId.trim().isEmpty()) {
@@ -138,7 +133,6 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 
 			List<String> result = executor.execute(commandList, workingDir);
 			String resultContent = String.join("\n", result);
-			this.lastResult = resultContent;
 
 			// Process result through SmartContentSavingService to handle large outputs
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {

@@ -92,8 +92,6 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 
 	private final TextFileService textFileService;
 
-	private final SmartContentSavingService innerStorageService;
-
 	private final ShortUrlService shortUrlService;
 
 	private final ToolI18nService toolI18nService;
@@ -101,7 +99,6 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 	public ReplaceFileOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
 			ShortUrlService shortUrlService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
-		this.innerStorageService = innerStorageService;
 		this.shortUrlService = shortUrlService;
 		this.toolI18nService = toolI18nService;
 	}

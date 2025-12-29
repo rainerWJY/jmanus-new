@@ -321,8 +321,7 @@ public class PlanningFactory {
 				.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
 			toolDefinitions
 				.add(new WriteFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
-			toolDefinitions.add(new EnhancedGrep(textFileService, objectMapper, toolI18nService, gitIgnoreMatcher,
-					lynxeProperties));
+			toolDefinitions.add(new EnhancedGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			// Refactored file splitter (split action only, count removed)
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
 			// Refactored directory operators (split from DirectoryOperator)

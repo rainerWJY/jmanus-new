@@ -68,8 +68,6 @@ public class DeleteFileOperator extends AbstractBaseTool<DeleteFileOperator.Dele
 
 	private final TextFileService textFileService;
 
-	private final SmartContentSavingService innerStorageService;
-
 	private final ShortUrlService shortUrlService;
 
 	private final ToolI18nService toolI18nService;
@@ -77,7 +75,6 @@ public class DeleteFileOperator extends AbstractBaseTool<DeleteFileOperator.Dele
 	public DeleteFileOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
 			ShortUrlService shortUrlService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
-		this.innerStorageService = innerStorageService;
 		this.shortUrlService = shortUrlService;
 		this.toolI18nService = toolI18nService;
 	}

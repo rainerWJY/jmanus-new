@@ -40,29 +40,14 @@ public class BrowserUseCommonService {
 
 	private final ChromeDriverService chromeDriverService;
 
-	private final SmartContentSavingService innerStorageService;
-
-	private final ObjectMapper objectMapper;
-
 	private final com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService;
-
-	private final TextFileService textFileService;
-
-	private final ToolI18nService toolI18nService;
-
-	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
 	public BrowserUseCommonService(ChromeDriverService chromeDriverService,
 			SmartContentSavingService innerStorageService, ObjectMapper objectMapper,
 			com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService shortUrlService, TextFileService textFileService,
 			ToolI18nService toolI18nService, UnifiedDirectoryManager unifiedDirectoryManager) {
 		this.chromeDriverService = chromeDriverService;
-		this.innerStorageService = innerStorageService;
-		this.objectMapper = objectMapper;
 		this.shortUrlService = shortUrlService;
-		this.textFileService = textFileService;
-		this.toolI18nService = toolI18nService;
-		this.unifiedDirectoryManager = unifiedDirectoryManager;
 	}
 
 	/**

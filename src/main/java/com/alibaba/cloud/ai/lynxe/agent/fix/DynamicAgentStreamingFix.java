@@ -33,9 +33,10 @@ import reactor.core.publisher.Flux;
 
 /**
  * StreamAdvisor to fix duplicate tool calls in streaming responses.
- * 
+ *
  * This advisor merges tool calls with the same ID that are split across multiple chunks
- * in streaming responses. It ensures that each tool call has complete fields (id, name, arguments).
+ * in streaming responses. It ensures that each tool call has complete fields (id, name,
+ * arguments).
  */
 public class DynamicAgentStreamingFix implements StreamAdvisor {
 
@@ -44,7 +45,7 @@ public class DynamicAgentStreamingFix implements StreamAdvisor {
 			StreamAdvisorChain streamAdvisorChain) {
 
 		Flux<ChatClientResponse> responseFlux = streamAdvisorChain.nextStream(chatClientRequest);
-        
+
 		// Fix tool calls in each chunk
 		return responseFlux.map(response -> {
 			if (response.chatResponse() != null && response.chatResponse().hasToolCalls()) {
@@ -56,30 +57,25 @@ public class DynamicAgentStreamingFix implements StreamAdvisor {
 	}
 
 	private ChatResponse mergeToolCalls(ChatResponse chatResponse) {
-		List<Generation> fixedGenerations = chatResponse.getResults().stream()
-			.map(generation -> {
-				AssistantMessage output = generation.getOutput();
+		List<Generation> fixedGenerations = chatResponse.getResults().stream().map(generation -> {
+			AssistantMessage output = generation.getOutput();
 
-				if (output.hasToolCalls()) {
-					List<AssistantMessage.ToolCall> mergedToolCalls = mergeToolCalls(output.getToolCalls());
+			if (output.hasToolCalls()) {
+				List<AssistantMessage.ToolCall> mergedToolCalls = mergeToolCalls(output.getToolCalls());
 
-					AssistantMessage fixedOutput = AssistantMessage.builder()
-						.content(output.getText())
-						.properties(output.getMetadata())
-						.toolCalls(mergedToolCalls)
-						.build();
+				AssistantMessage fixedOutput = AssistantMessage.builder()
+					.content(output.getText())
+					.properties(output.getMetadata())
+					.toolCalls(mergedToolCalls)
+					.build();
 
-					return new Generation(fixedOutput, generation.getMetadata());
-				}
+				return new Generation(fixedOutput, generation.getMetadata());
+			}
 
-				return generation;
-			})
-			.toList();
+			return generation;
+		}).toList();
 
-		return ChatResponse.builder()
-			.from(chatResponse)
-			.generations(fixedGenerations)
-			.build();
+		return ChatResponse.builder().from(chatResponse).generations(fixedGenerations).build();
 	}
 
 	private List<AssistantMessage.ToolCall> mergeToolCalls(List<AssistantMessage.ToolCall> toolCalls) {
@@ -136,4 +132,3 @@ public class DynamicAgentStreamingFix implements StreamAdvisor {
 	}
 
 }
-

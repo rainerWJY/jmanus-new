@@ -117,8 +117,6 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 
 	private final TextFileService textFileService;
 
-	private final SmartContentSavingService innerStorageService;
-
 	private final ShortUrlService shortUrlService;
 
 	private final ToolI18nService toolI18nService;
@@ -126,7 +124,6 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 	public ReadFileOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
 			ShortUrlService shortUrlService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
-		this.innerStorageService = innerStorageService;
 		this.shortUrlService = shortUrlService;
 		this.toolI18nService = toolI18nService;
 	}

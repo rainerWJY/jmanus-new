@@ -78,10 +78,7 @@ public class McpCacheManager {
 
 		private final AtomicInteger pendingRequests;
 
-		private final String serverName;
-
-		public ConnectionWrapper(String serverName, McpServiceEntity serviceEntity) {
-			this.serverName = serverName;
+		public ConnectionWrapper(McpServiceEntity serviceEntity) {
 			this.serviceEntity = serviceEntity;
 			this.state = new AtomicReference<>(
 					serviceEntity != null ? ConnectionState.CONNECTED : ConnectionState.RECONNECTING);
@@ -111,10 +108,6 @@ public class McpCacheManager {
 
 		public AtomicInteger getPendingRequests() {
 			return pendingRequests;
-		}
-
-		public String getServerName() {
-			return serverName;
 		}
 
 	}
@@ -253,7 +246,7 @@ public class McpCacheManager {
 		}
 
 		// Create placeholder wrapper with RECONNECTING state
-		ConnectionWrapper placeholder = new ConnectionWrapper(serverName, null);
+		ConnectionWrapper placeholder = new ConnectionWrapper(null);
 		placeholder.setState(ConnectionState.CONNECTED, ConnectionState.RECONNECTING);
 		connections.putIfAbsent(serverName, placeholder);
 

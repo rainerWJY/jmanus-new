@@ -81,8 +81,6 @@ public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteF
 
 	private final TextFileService textFileService;
 
-	private final SmartContentSavingService innerStorageService;
-
 	private final ShortUrlService shortUrlService;
 
 	private final ToolI18nService toolI18nService;
@@ -90,7 +88,6 @@ public class WriteFileOperator extends AbstractBaseTool<WriteFileOperator.WriteF
 	public WriteFileOperator(TextFileService textFileService, SmartContentSavingService innerStorageService,
 			ShortUrlService shortUrlService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
-		this.innerStorageService = innerStorageService;
 		this.shortUrlService = shortUrlService;
 		this.toolI18nService = toolI18nService;
 	}
