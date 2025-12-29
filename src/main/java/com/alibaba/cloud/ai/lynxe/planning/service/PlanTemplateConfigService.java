@@ -369,10 +369,10 @@ public class PlanTemplateConfigService {
 			}
 
 			// Priority: Use inputSchema from frontend toolConfig if provided
-			// This preserves user-defined parameter descriptions set in PublishServiceModal
+			// This preserves user-defined parameter descriptions set in
+			// PublishServiceModal
 			PlanTemplateConfigVO.ToolConfigVO toolConfig = configVO.getToolConfig();
-			if (toolConfig != null && toolConfig.getInputSchema() != null
-					&& !toolConfig.getInputSchema().isEmpty()) {
+			if (toolConfig != null && toolConfig.getInputSchema() != null && !toolConfig.getInputSchema().isEmpty()) {
 				// Use frontend-provided inputSchema, preserving user-set descriptions
 				try {
 					String inputSchemaJson = convertInputSchemaListToJson(toolConfig.getInputSchema());
@@ -382,7 +382,8 @@ public class PlanTemplateConfigService {
 					// Count parameters for logging
 					int parameterCount = 0;
 					try {
-						com.fasterxml.jackson.databind.JsonNode inputSchemaNode = objectMapper.readTree(inputSchemaJson);
+						com.fasterxml.jackson.databind.JsonNode inputSchemaNode = objectMapper
+							.readTree(inputSchemaJson);
 						if (inputSchemaNode.isArray()) {
 							parameterCount = inputSchemaNode.size();
 						}
@@ -402,8 +403,10 @@ public class PlanTemplateConfigService {
 				}
 			}
 
-			// Fallback: Auto-generate inputSchema from plan JSON only if frontend didn't provide one
-			// This ensures backward compatibility and handles cases where new parameters are added to plan JSON
+			// Fallback: Auto-generate inputSchema from plan JSON only if frontend didn't
+			// provide one
+			// This ensures backward compatibility and handles cases where new parameters
+			// are added to plan JSON
 			if (savedTemplate.getInputSchema() == null || savedTemplate.getInputSchema().isEmpty()
 					|| savedTemplate.getInputSchema().equals("[]")) {
 				try {
@@ -414,7 +417,8 @@ public class PlanTemplateConfigService {
 					// Count parameters for logging
 					int parameterCount = 0;
 					try {
-						com.fasterxml.jackson.databind.JsonNode inputSchemaNode = objectMapper.readTree(inputSchemaJson);
+						com.fasterxml.jackson.databind.JsonNode inputSchemaNode = objectMapper
+							.readTree(inputSchemaJson);
 						if (inputSchemaNode.isArray()) {
 							parameterCount = inputSchemaNode.size();
 						}
@@ -634,7 +638,8 @@ public class PlanTemplateConfigService {
 				existingEntity.setToolDescription(toolDescription);
 
 				// Priority: Use inputSchema from frontend toolConfig if provided
-				// This preserves user-defined parameter descriptions set in PublishServiceModal
+				// This preserves user-defined parameter descriptions set in
+				// PublishServiceModal
 				if (toolConfig.getInputSchema() != null && !toolConfig.getInputSchema().isEmpty()) {
 					// Use frontend-provided inputSchema, preserving user-set descriptions
 					String inputSchemaJson = convertInputSchemaListToJson(toolConfig.getInputSchema());
@@ -658,8 +663,10 @@ public class PlanTemplateConfigService {
 							id, parameterCount);
 				}
 				else {
-					// Fallback: Auto-generate inputSchema from plan JSON only if frontend didn't provide one
-					// This ensures backward compatibility and handles cases where new parameters are added to plan JSON
+					// Fallback: Auto-generate inputSchema from plan JSON only if frontend
+					// didn't provide one
+					// This ensures backward compatibility and handles cases where new
+					// parameters are added to plan JSON
 					try {
 						String inputSchemaJson = generateInputSchemaFromPlanTemplate(configVO.getPlanTemplateId());
 						existingEntity.setInputSchema(inputSchemaJson);
@@ -674,7 +681,8 @@ public class PlanTemplateConfigService {
 							}
 						}
 						catch (Exception e) {
-							log.warn("Failed to parse inputSchema JSON for parameter count logging: {}", e.getMessage(), e);
+							log.warn("Failed to parse inputSchema JSON for parameter count logging: {}", e.getMessage(),
+									e);
 						}
 
 						log.info(
@@ -682,8 +690,7 @@ public class PlanTemplateConfigService {
 								id, configVO.getPlanTemplateId(), parameterCount);
 					}
 					catch (Exception e) {
-						log.warn(
-								"Failed to auto-generate inputSchema for coordinator tool {}, using empty array: {}",
+						log.warn("Failed to auto-generate inputSchema for coordinator tool {}, using empty array: {}",
 								id, e.getMessage());
 						// Fallback to empty array if auto-generation fails
 						existingEntity.setInputSchema("[]");

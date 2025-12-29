@@ -114,8 +114,8 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 				if (tabId != null && tabId >= 0) {
 					// Close specific tab by ID
 					if (tabId >= openPages.size()) {
-						return new ToolExecuteResult(
-								"Error: Tab ID " + tabId + " is out of range. Available tabs: 0 to " + (openPages.size() - 1));
+						return new ToolExecuteResult("Error: Tab ID " + tabId
+								+ " is out of range. Available tabs: 0 to " + (openPages.size() - 1));
 					}
 
 					Page targetPage = openPages.get(tabId);
@@ -129,10 +129,12 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 				// Check if this is the last remaining page
 				boolean isLastPage = (openPages.size() == 1);
 
-				// If closing the last remaining page, navigate to about:blank instead of closing
+				// If closing the last remaining page, navigate to about:blank instead of
+				// closing
 				if (isLastPage && pageToClose == currentPage) {
 					try {
-						// Navigate to about:blank directly (better than closing and creating new page)
+						// Navigate to about:blank directly (better than closing and
+						// creating new page)
 						pageToClose.navigate("about:blank");
 						log.debug("Navigated last tab to about:blank instead of closing");
 						return new ToolExecuteResult("Successfully navigated to blank page (last tab preserved)");
@@ -143,7 +145,8 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 					}
 				}
 
-				// If closing current page and it's not the last page, find another open page to switch to
+				// If closing current page and it's not the last page, find another open
+				// page to switch to
 				Page newCurrentPage = null;
 				if (pageToClose == currentPage && !isLastPage) {
 					newCurrentPage = findFirstOpenPageExcept(currentPage, openPages);
@@ -162,7 +165,8 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 						log.warn("Page close() was called but page is not yet closed");
 					}
 
-					// If we closed the current page (but not the last one), switch to another page
+					// If we closed the current page (but not the last one), switch to
+					// another page
 					if (newCurrentPage != null) {
 						getDriverWrapper().setCurrentPage(newCurrentPage);
 						log.debug("Switched to page: {}", newCurrentPage.url());
@@ -176,9 +180,10 @@ public class CloseTabBrowserTool extends AbstractBrowserTool<CloseTabBrowserTool
 				}
 				catch (PlaywrightException e) {
 					// Handle specific Playwright exceptions
-					if (e.getMessage() != null && (e.getMessage().contains("Target page, context or browser has been closed")
-							|| e.getMessage().contains("Browser has been closed")
-							|| e.getMessage().contains("Context has been closed"))) {
+					if (e.getMessage() != null
+							&& (e.getMessage().contains("Target page, context or browser has been closed")
+									|| e.getMessage().contains("Browser has been closed")
+									|| e.getMessage().contains("Context has been closed"))) {
 						log.warn("Page was already closed or context/browser was closed: {}", e.getMessage());
 
 						// Try to find another open page

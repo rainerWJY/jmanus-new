@@ -41,6 +41,7 @@ public class GetTableMetaTool extends AbstractBaseTool<GetTableMetaTool.GetTable
 	public static class GetTableMetaInput {
 
 		private String text;
+
 		private String datasourceName;
 
 		// Getters and setters
@@ -114,8 +115,7 @@ public class GetTableMetaTool extends AbstractBaseTool<GetTableMetaTool.GetTable
 			GetTableMetaAction metaAction = new GetTableMetaAction(objectMapper);
 			ToolExecuteResult result = metaAction.execute(request, dataSourceService);
 			if (result == null || result.getOutput() == null || result.getOutput().trim().isEmpty()
-					|| result.getOutput().equals("[]")
-					|| result.getOutput().contains("No matching tables found")) {
+					|| result.getOutput().equals("[]") || result.getOutput().contains("No matching tables found")) {
 				DatabaseRequest allReq = new DatabaseRequest();
 				allReq.setAction("get_table_meta");
 				allReq.setText(null);
@@ -153,4 +153,3 @@ public class GetTableMetaTool extends AbstractBaseTool<GetTableMetaTool.GetTable
 	}
 
 }
-

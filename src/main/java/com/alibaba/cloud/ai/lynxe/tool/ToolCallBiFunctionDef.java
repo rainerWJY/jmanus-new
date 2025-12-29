@@ -93,7 +93,8 @@ public interface ToolCallBiFunctionDef<I> extends BiFunction<I, ToolContext, Too
 	 * Get the current tool state info with unified error handling This default
 	 * implementation wraps getCurrentToolStateString() with error handling to ensure
 	 * exceptions don't interrupt the execution flow
-	 * @return ToolStateInfo object, or error message wrapped in ToolStateInfo if an exception occurs
+	 * @return ToolStateInfo object, or error message wrapped in ToolStateInfo if an
+	 * exception occurs
 	 */
 	public ToolStateInfo getCurrentToolStateStringWithErrorHandler();
 

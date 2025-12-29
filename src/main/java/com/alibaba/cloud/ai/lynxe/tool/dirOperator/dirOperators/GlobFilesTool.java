@@ -139,7 +139,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 	private Path getRealPathOrFallback(Path path) {
 		try {
 			return path.toRealPath();
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			log.warn("Cannot resolve real path for: {}, using as-is", path);
 			return path;
 		}
@@ -167,11 +168,13 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 				Path current = normalized;
 				while (current != null && current.getNameCount() > 0) {
 					if ("linked_external".equals(current.getFileName().toString())) {
-						// This is the linked_external symlink, use its target as the ignore root
+						// This is the linked_external symlink, use its target as the
+						// ignore root
 						try {
 							Path realPath = current.toRealPath();
 							return realPath;
-						} catch (IOException e) {
+						}
+						catch (IOException e) {
 							return current;
 						}
 					}
@@ -181,12 +184,12 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 
 			// Default: use search root
 			return normalized;
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			log.warn("Error determining ignore root path, using search root: {}", searchRoot, e);
 			return searchRoot;
 		}
 	}
-
 
 	/**
 	 * Normalize directory path by removing plan ID prefixes and relative path indicators
@@ -257,7 +260,7 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			FileSystem fileSystem = FileSystems.getDefault();
 			String globPatternStr = "glob:" + normalizedPattern;
 			PathMatcher matcher = fileSystem.getPathMatcher(globPatternStr);
-			
+
 			// For patterns like **/*tools*, also check if any path component matches
 			// This allows matching files in directories with "tools" in the name
 			// Pattern **/*tools* should match both:
@@ -266,7 +269,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			final PathMatcher directoryMatcher;
 			// Extract the wildcard pattern (e.g., "tools" from "**/*tools*")
 			final String wildcardPattern;
-			// Check if pattern matches directory names (contains *word* where word could be in directory)
+			// Check if pattern matches directory names (contains *word* where word could
+			// be in directory)
 			// and doesn't already have /**/ in it (which would already match directories)
 			if (normalizedPattern.matches(".*\\*[^/]+\\*.*") && !normalizedPattern.contains("/**/")) {
 				// Extract the wildcard pattern (e.g., "tools" from "**/*tools*")
@@ -274,13 +278,15 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 				java.util.regex.Matcher m = extractPattern.matcher(normalizedPattern);
 				if (m.find()) {
 					wildcardPattern = m.group(1); // e.g., "tools"
-				} else {
+				}
+				else {
 					wildcardPattern = null;
 				}
 				// Create directory matcher: convert **/*tools* to **/*tools*/**/*
 				String dirPattern = normalizedPattern.replaceAll("(\\*[^/]+\\*)", "$1/**/*");
 				directoryMatcher = fileSystem.getPathMatcher("glob:" + dirPattern);
-			} else {
+			}
+			else {
 				directoryMatcher = null;
 				wildcardPattern = null;
 			}
@@ -293,7 +299,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			// Get real path of root for relativization (handles symlink root case)
 			final Path rootRealPath = getRealPathOrFallback(rootPath);
 
-			// Track visited real paths to prevent circular references when following the root symlink
+			// Track visited real paths to prevent circular references when following the
+			// root symlink
 			Set<Path> visitedRealPaths = new HashSet<>();
 
 			// Initialize GitIgnoreMatcher if respectGitIgnore is enabled
@@ -309,7 +316,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					Path realPath;
 					try {
 						realPath = dir.toRealPath();
-					} catch (IOException e) {
+					}
+					catch (IOException e) {
 						log.warn("Cannot resolve real path for directory: {}, skipping", dir);
 						return FileVisitResult.SKIP_SUBTREE;
 					}
@@ -321,10 +329,12 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					}
 					visitedRealPaths.add(realPath);
 
-					// Allow the root directory even if it's a symlink (e.g., linked_external)
+					// Allow the root directory even if it's a symlink (e.g.,
+					// linked_external)
 					// But skip other symlink directories to prevent circular references
 					if (Files.isSymbolicLink(dir)) {
-						// Check if this is the root (by comparing both original and real paths)
+						// Check if this is the root (by comparing both original and real
+						// paths)
 						boolean isRoot = dir.equals(rootPath) || realPath.equals(rootRealPath);
 						if (!isRoot) {
 							return FileVisitResult.SKIP_SUBTREE;
@@ -336,10 +346,12 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					try {
 						int depth = rootRealPath.relativize(dir.toRealPath()).getNameCount();
 						if (depth > MAX_DEPTH) {
-							log.warn("Path depth {} exceeds maximum ({}). Skipping directory: {}", depth, MAX_DEPTH, dir);
+							log.warn("Path depth {} exceeds maximum ({}). Skipping directory: {}", depth, MAX_DEPTH,
+									dir);
 							return FileVisitResult.SKIP_SUBTREE;
 						}
-					} catch (IOException | IllegalArgumentException e) {
+					}
+					catch (IOException | IllegalArgumentException e) {
 						log.warn("Cannot calculate depth for directory: {}, skipping", dir);
 						return FileVisitResult.SKIP_SUBTREE;
 					}
@@ -390,21 +402,24 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					try {
 						Path fileRealPath = file.toRealPath();
 						Path relativePath = rootRealPath.relativize(fileRealPath);
-						// Normalize path separators to forward slashes for consistent matching
+						// Normalize path separators to forward slashes for consistent
+						// matching
 						String relativePathStr = relativePath.toString().replace('\\', '/');
-						
+
 						// Java's PathMatcher works on Path objects
 						// Try matching with the relative path directly first
 						boolean matches = matcher.matches(relativePath);
-						
-						// If that doesn't work, try with a Path created from normalized string
+
+						// If that doesn't work, try with a Path created from normalized
+						// string
 						// This ensures consistent separator handling across platforms
 						if (!matches) {
 							Path normalizedRelativePath = fileSystem.getPath(relativePathStr);
 							matches = matcher.matches(normalizedRelativePath);
 						}
-						
-						// Also try directory matcher if available (for patterns like **/*tools*)
+
+						// Also try directory matcher if available (for patterns like
+						// **/*tools*)
 						if (!matches && directoryMatcher != null) {
 							matches = directoryMatcher.matches(relativePath);
 							if (!matches) {
@@ -412,8 +427,9 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 								matches = directoryMatcher.matches(normalizedRelativePath);
 							}
 						}
-						
-						// Manual check: if pattern has wildcard (e.g., *tools*), check if any path component contains it
+
+						// Manual check: if pattern has wildcard (e.g., *tools*), check if
+						// any path component contains it
 						if (!matches && wildcardPattern != null) {
 							// Check each component of the path
 							for (Path component : relativePath) {
@@ -423,11 +439,12 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 								}
 							}
 						}
-						
+
 						if (matches) {
 							matchingFiles.add(file);
 						}
-					} catch (IOException | IllegalArgumentException e) {
+					}
+					catch (IOException | IllegalArgumentException e) {
 						log.warn("Cannot relativize file path: {}, skipping pattern matching", file);
 						// Still try to match using the original path as fallback
 						try {
@@ -435,7 +452,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 							if (matcher.matches(relativePath)) {
 								matchingFiles.add(file);
 							}
-						} catch (IllegalArgumentException e2) {
+						}
+						catch (IllegalArgumentException e2) {
 							log.warn("Cannot relativize file path even with original root: {}, skipping", file);
 						}
 					}
@@ -446,7 +464,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 				@Override
 				public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
 					// Handle circular symlinks by skipping the problematic directory
-					// (This should rarely happen now since we don't follow symlinks, but kept for safety)
+					// (This should rarely happen now since we don't follow symlinks, but
+					// kept for safety)
 					if (exc instanceof FileSystemLoopException) {
 						log.warn("Circular symlink detected: {}. Skipping this directory and continuing.", file);
 						return FileVisitResult.SKIP_SUBTREE;
@@ -466,7 +485,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 			};
 
 			// Walk the directory tree with depth limit
-			// Follow links to allow root symlink (e.g., linked_external) but cycle detection
+			// Follow links to allow root symlink (e.g., linked_external) but cycle
+			// detection
 			// prevents infinite loops from circular symlinks
 			Files.walkFileTree(searchRoot, EnumSet.of(FileVisitOption.FOLLOW_LINKS), MAX_DEPTH, visitor);
 
@@ -501,7 +521,8 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 						Path relativePath;
 						try {
 							relativePath = rootRealPath.relativize(path.toRealPath());
-						} catch (IOException | IllegalArgumentException e) {
+						}
+						catch (IOException | IllegalArgumentException e) {
 							// Fallback to original path if real path resolution fails
 							relativePath = rootPath.relativize(path);
 						}
@@ -514,17 +535,20 @@ public class GlobFilesTool extends AbstractBaseTool<GlobFilesTool.GlobFilesInput
 					}
 					catch (IOException e) {
 						log.warn("Error reading file info: {}", path, e);
-						// Try to get relative path for display even if file info read fails
+						// Try to get relative path for display even if file info read
+						// fails
 						try {
 							Path relativePath;
 							try {
 								relativePath = rootRealPath.relativize(path.toRealPath());
-							} catch (IOException | IllegalArgumentException e2) {
+							}
+							catch (IOException | IllegalArgumentException e2) {
 								relativePath = rootPath.relativize(path);
 							}
 							String relativePathStr = relativePath.toString().replace('\\', '/');
 							result.append(String.format("%s (error reading file info)\n", relativePathStr));
-						} catch (IllegalArgumentException e2) {
+						}
+						catch (IllegalArgumentException e2) {
 							result.append(String.format("%s (error reading file info)\n", path.getFileName()));
 						}
 					}

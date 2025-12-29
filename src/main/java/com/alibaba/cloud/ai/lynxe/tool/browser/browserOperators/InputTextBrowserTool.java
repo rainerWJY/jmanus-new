@@ -104,7 +104,7 @@ public class InputTextBrowserTool extends AbstractBrowserTool<InputTextBrowserTo
 					Locator.PressSequentiallyOptions options = new Locator.PressSequentiallyOptions().setDelay(100)
 						.setTimeout(timeoutMs);
 					elementLocator.pressSequentially(text, options);
-			}
+				}
 				catch (Exception e) {
 					// If fill fails, try direct fill
 					try {
@@ -125,7 +125,8 @@ public class InputTextBrowserTool extends AbstractBrowserTool<InputTextBrowserTo
 					}
 				}
 
-				// Wait 500ms after input to allow page to update and JavaScript events to process
+				// Wait 500ms after input to allow page to update and JavaScript events to
+				// process
 				try {
 					Thread.sleep(500);
 				}

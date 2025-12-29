@@ -95,7 +95,8 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 				int randomNumber = ThreadLocalRandom.current().nextInt(100, 10000);
 				String fileName = sanitizedTitle + "_" + randomNumber + ".yaml";
 
-				// Get directory path - use rootPlanId if available, otherwise use currentPlanId
+				// Get directory path - use rootPlanId if available, otherwise use
+				// currentPlanId
 				String rootPlanId = getRootPlanId();
 
 				if (rootPlanId == null || rootPlanId.trim().isEmpty()) {
@@ -182,9 +183,11 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 
 		// Remove or replace invalid characters for filenames
 		String sanitized = fileName.trim()
-			.replaceAll("[<>:\"/\\|?*]", "_") // Replace invalid characters with underscore
+			.replaceAll("[<>:\"/\\|?*]", "_") // Replace invalid characters with
+												// underscore
 			.replaceAll("\\s+", "_") // Replace whitespace with underscore
-			.replaceAll("_{2,}", "_") // Replace multiple underscores with single underscore
+			.replaceAll("_{2,}", "_") // Replace multiple underscores with single
+										// underscore
 			.replaceAll("^_+|_+$", ""); // Remove leading/trailing underscores
 
 		// Limit length to avoid filesystem issues

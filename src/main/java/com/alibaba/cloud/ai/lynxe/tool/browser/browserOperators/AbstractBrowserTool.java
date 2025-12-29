@@ -110,7 +110,8 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 	 */
 	protected ToolExecuteResult validateDriver() {
 		try {
-			com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper driver = browserUseTool.getDriver(getCurrentPlanId());
+			com.alibaba.cloud.ai.lynxe.tool.browser.service.DriverWrapper driver = browserUseTool
+				.getDriver(getCurrentPlanId());
 			if (driver == null) {
 				return new ToolExecuteResult("Browser driver is not available");
 			}
@@ -133,7 +134,6 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 		}
 	}
 
-
 	/**
 	 * Get browser use tool instance
 	 * @return BrowserUseCommonService instance
@@ -144,7 +144,8 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 
 	/**
 	 * Get browser operation timeout configuration
-	 * @return Timeout in milliseconds, returns default value of 30 seconds if not configured
+	 * @return Timeout in milliseconds, returns default value of 30 seconds if not
+	 * configured
 	 */
 	protected Integer getBrowserTimeoutMs() {
 		Integer timeout = browserUseTool.getLynxeProperties().getBrowserRequestTimeout();
@@ -161,12 +162,13 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 	}
 
 	/**
-	 * Get reasonable timeout for element operations (capped at 10 seconds)
-	 * This prevents long waits when elements are not found or not ready
+	 * Get reasonable timeout for element operations (capped at 10 seconds) This prevents
+	 * long waits when elements are not found or not ready
 	 * @return Timeout in milliseconds, capped at 10 seconds
 	 */
 	protected Integer getElementTimeoutMs() {
-		return Math.min(getBrowserTimeoutMs(), 10000); // Max 10 seconds for element operations
+		return Math.min(getBrowserTimeoutMs(), 10000); // Max 10 seconds for element
+														// operations
 	}
 
 	/**
@@ -209,8 +211,8 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 	}
 
 	/**
-	 * Get locator for element by idx (from ARIA snapshot)
-	 * Converts idx to aria-id-num format and uses data-aria-id attribute to locate the element
+	 * Get locator for element by idx (from ARIA snapshot) Converts idx to aria-id-num
+	 * format and uses data-aria-id attribute to locate the element
 	 * @param idx Element idx (from ARIA snapshot)
 	 * @return Locator for the element, or null if not found
 	 */
@@ -278,7 +280,8 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 				return "and opened in new tab: " + newPageFromPopup.url();
 			}
 
-			// Fallback if newPageFromPopup is null but no exception (unlikely for waitForPopup)
+			// Fallback if newPageFromPopup is null but no exception (unlikely for
+			// waitForPopup)
 			if (!pageToClickOn.isClosed() && !pageToClickOn.url().equals(originalPageUrl)) {
 				log.info("Page navigated in the same tab (fallback check): {}", pageToClickOn.url());
 				return "and navigated in the same tab to: " + pageToClickOn.url();

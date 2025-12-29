@@ -102,7 +102,8 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 						log.info("Attempting fallback: standard locator.click() for element at index {}", index);
 						// Fallback method: Use standard locator.click()
 						try {
-							// Use a reasonable timeout for element operations (max 10 seconds)
+							// Use a reasonable timeout for element operations (max 10
+							// seconds)
 							int elementTimeout = getElementTimeoutMs();
 							log.debug("Using element timeout: {}ms for fallback click operations", elementTimeout);
 
@@ -140,12 +141,13 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 									"Both primary (mouse simulation) and fallback (locator.click) methods failed for element with idx {}: Primary error: {}, Fallback error: {}",
 									index, e.getMessage(), fallbackException.getMessage());
 							throw new RuntimeException("Primary method (mouse simulation) failed: " + e.getMessage()
-									+ ". Fallback method (locator.click) also failed: " + fallbackException.getMessage(),
-									e);
+									+ ". Fallback method (locator.click) also failed: "
+									+ fallbackException.getMessage(), e);
 						}
 					}
 				});
-				return new ToolExecuteResult("Successfully clicked element at index " + index + " " + clickResultMessage);
+				return new ToolExecuteResult(
+						"Successfully clicked element at index " + index + " " + clickResultMessage);
 			}, "click");
 		}
 		catch (TimeoutError e) {
@@ -163,8 +165,8 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 	}
 
 	/**
-	 * Primary method: Simulate mouse movement to element center and click
-	 * This method moves the mouse to the center of the element and performs a click
+	 * Primary method: Simulate mouse movement to element center and click This method
+	 * moves the mouse to the center of the element and performs a click
 	 * @param page The Playwright Page instance
 	 * @param locator The Locator for the element
 	 * @param index The element index for logging

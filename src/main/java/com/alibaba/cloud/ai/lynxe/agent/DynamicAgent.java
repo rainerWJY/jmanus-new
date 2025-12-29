@@ -1692,11 +1692,13 @@ public class DynamicAgent extends ReActAgent {
 		// Collect ToolStateInfo objects and deduplicate by key
 		for (String toolKey : availableToolKeys) {
 			ToolStateInfo stateInfo = collectEnvData(toolKey);
-			if (stateInfo != null && stateInfo.getStateString() != null && !stateInfo.getStateString().trim().isEmpty()) {
+			if (stateInfo != null && stateInfo.getStateString() != null
+					&& !stateInfo.getStateString().trim().isEmpty()) {
 				String dedupKey = stateInfo.getKey();
 				// Ignore ToolStateInfo with empty or null key
 				if (dedupKey != null && !dedupKey.trim().isEmpty()) {
-					// Deduplicate: if multiple tools have the same key, keep only the first one
+					// Deduplicate: if multiple tools have the same key, keep only the
+					// first one
 					if (!deduplicatedStateMap.containsKey(dedupKey)) {
 						deduplicatedStateMap.put(dedupKey, stateInfo);
 					}
@@ -1719,7 +1721,8 @@ public class DynamicAgent extends ReActAgent {
 		// Use deduplicated states if available
 		Map<String, Object> envData = getEnvData();
 		@SuppressWarnings("unchecked")
-		Map<String, ToolStateInfo> deduplicatedStates = (Map<String, ToolStateInfo>) envData.get("_deduplicated_states");
+		Map<String, ToolStateInfo> deduplicatedStates = (Map<String, ToolStateInfo>) envData
+			.get("_deduplicated_states");
 
 		if (deduplicatedStates != null && !deduplicatedStates.isEmpty()) {
 			// Use deduplicated states

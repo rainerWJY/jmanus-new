@@ -123,7 +123,8 @@ public abstract class AbstractBaseTool<I> implements ToolCallBiFunctionDef<I> {
 	 * Get the current tool state info with unified error handling This method wraps
 	 * getCurrentToolStateString() with error handling to ensure exceptions don't
 	 * interrupt the execution flow
-	 * @return ToolStateInfo object, or error message wrapped in ToolStateInfo if an exception occurs
+	 * @return ToolStateInfo object, or error message wrapped in ToolStateInfo if an
+	 * exception occurs
 	 */
 	public ToolStateInfo getCurrentToolStateStringWithErrorHandler() {
 		try {
@@ -143,7 +144,8 @@ public abstract class AbstractBaseTool<I> implements ToolCallBiFunctionDef<I> {
 			return stateInfo;
 		}
 		catch (Exception e) {
-			// Handle any exception gracefully - return error message wrapped in ToolStateInfo
+			// Handle any exception gracefully - return error message wrapped in
+			// ToolStateInfo
 			// This ensures the flow continues even if tool state retrieval fails
 			String toolName = getName();
 			String serviceGroup = getServiceGroup();

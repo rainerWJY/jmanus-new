@@ -194,7 +194,8 @@ public class UploadedFileLoaderTool extends AbstractBaseTool<UploadedFileLoaderT
 						}
 						else {
 							log.debug("No files found in uploads directory for plan: {}", currentPlanId);
-							stateString = "Uploaded Files State: No files in uploads directory for plan " + currentPlanId;
+							stateString = "Uploaded Files State: No files in uploads directory for plan "
+									+ currentPlanId;
 						}
 					}
 				}
@@ -232,8 +233,8 @@ public class UploadedFileLoaderTool extends AbstractBaseTool<UploadedFileLoaderT
 				stateString = "Uploaded Files State: IO error reading uploads directory - " + e.getMessage();
 			}
 			catch (Exception e) {
-				log.error("💥 Unexpected error in getCurrentToolStateString for plan {}: {}", currentPlanId, e.getMessage(),
-						e);
+				log.error("💥 Unexpected error in getCurrentToolStateString for plan {}: {}", currentPlanId,
+						e.getMessage(), e);
 				stateString = "Uploaded Files State: Unexpected error - " + e.getMessage();
 			}
 		}

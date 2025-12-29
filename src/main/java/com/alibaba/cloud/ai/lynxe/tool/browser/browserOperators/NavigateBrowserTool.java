@@ -101,8 +101,10 @@ public class NavigateBrowserTool extends AbstractBrowserTool<NavigateBrowserTool
 				// Before calling page.content(), ensure the page is fully loaded
 				page.waitForLoadState(LoadState.DOMCONTENTLOADED, new WaitForLoadStateOptions().setTimeout(timeoutMs));
 
-				// Save storage state after navigation to persist cookies, localStorage, etc.
-				// Following Playwright best practices: use storage state instead of manual cookie
+				// Save storage state after navigation to persist cookies, localStorage,
+				// etc.
+				// Following Playwright best practices: use storage state instead of
+				// manual cookie
 				// management
 				try {
 					getBrowserUseTool().getDriver(getCurrentPlanId()).saveStorageState();

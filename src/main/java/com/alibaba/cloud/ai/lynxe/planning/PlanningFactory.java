@@ -284,7 +284,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new NewTabBrowserTool(browserUseCommonService, toolI18nService));
 			toolDefinitions.add(new CloseTabBrowserTool(browserUseCommonService, toolI18nService));
 			toolDefinitions.add(new SwitchTabBrowserTool(browserUseCommonService, toolI18nService));
-			toolDefinitions.add(new GetWebContentBrowserTool(browserUseCommonService, textFileService, toolI18nService));
+			toolDefinitions
+				.add(new GetWebContentBrowserTool(browserUseCommonService, textFileService, toolI18nService));
 			toolDefinitions
 				.add(new DownloadBrowserTool(browserUseCommonService, unifiedDirectoryManager, toolI18nService));
 			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService,
@@ -326,7 +327,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
 			// Refactored directory operators (split from DirectoryOperator)
 			toolDefinitions.add(new ListFilesTool(unifiedDirectoryManager, toolI18nService));
-			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService, gitIgnoreMatcher, lynxeProperties));
+			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService,
+					gitIgnoreMatcher, lynxeProperties));
 			// toolDefinitions.add(new FileSplitterTool(textFileService, objectMapper,
 			// toolI18nService));
 			// toolDefinitions.add(new DirectoryOperator(unifiedDirectoryManager,

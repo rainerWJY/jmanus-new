@@ -47,7 +47,7 @@ import jakarta.annotation.PreDestroy;
 
 @Service
 @Primary
-public class ChromeDriverService{
+public class ChromeDriverService {
 
 	private static final Logger log = LoggerFactory.getLogger(ChromeDriverService.class);
 

@@ -92,7 +92,8 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 					locator.press("Enter", new Locator.PressOptions().setTimeout(getBrowserTimeoutMs()));
 
 					// Wait for page to process the action and update content
-					// This is especially important for search actions that trigger AJAX requests
+					// This is especially important for search actions that trigger AJAX
+					// requests
 					Page page = getCurrentPage();
 					try {
 						// Wait for network idle to ensure search requests complete
@@ -114,7 +115,8 @@ public class KeyEnterBrowserTool extends AbstractBrowserTool<KeyEnterBrowserTool
 							+ " to be ready for Enter key press. " + e.getMessage());
 				}
 				catch (Exception e) {
-					return new ToolExecuteResult("Failed to press Enter on element at index " + index + ": " + e.getMessage());
+					return new ToolExecuteResult(
+							"Failed to press Enter on element at index " + index + ": " + e.getMessage());
 				}
 				return new ToolExecuteResult("Successfully pressed Enter key at index " + index);
 			}, "key_enter");

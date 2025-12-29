@@ -398,7 +398,8 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 			}
 			catch (JsonProcessingException e) {
 				log.error("Error serializing currentFormDefinition for state string", e);
-				stateString = String.format("FormInputTool Status: Error serializing input items. Current input state: %s",
+				stateString = String.format(
+						"FormInputTool Status: Error serializing input items. Current input state: %s",
 						inputState.toString());
 			}
 		}

@@ -133,7 +133,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 					}
 					catch (java.util.concurrent.TimeoutException e) {
 						log.warn("No download was triggered within timeout period");
-						return new ToolExecuteResult("No download was triggered after clicking element with index " + index
+						return new ToolExecuteResult("No download was triggered after clicking element with index "
+								+ index
 								+ ". The element might not be a download link or the download might have been blocked.");
 					}
 

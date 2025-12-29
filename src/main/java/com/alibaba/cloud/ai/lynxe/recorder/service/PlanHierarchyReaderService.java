@@ -305,18 +305,17 @@ public class PlanHierarchyReaderService {
 			// Compute latestMethodName and latestMethodArgs from latest ThinkActRecord
 			if (thinkActEntities != null && !thinkActEntities.isEmpty()) {
 				ThinkActRecordEntity latestThinkAct = thinkActEntities.get(thinkActEntities.size() - 1);
-				if (latestThinkAct.getActToolInfoList() != null
-						&& !latestThinkAct.getActToolInfoList().isEmpty()) {
+				if (latestThinkAct.getActToolInfoList() != null && !latestThinkAct.getActToolInfoList().isEmpty()) {
 					ActToolInfoEntity latestTool = latestThinkAct.getActToolInfoList()
 						.get(latestThinkAct.getActToolInfoList().size() - 1);
 					vo.setLatestMethodName(latestTool.getName());
-					vo.setLatestMethodArgs(latestTool.getParameters()); // Already JSON string
+					vo.setLatestMethodArgs(latestTool.getParameters()); // Already JSON
+																		// string
 				}
 			}
 		}
 		catch (Exception e) {
-			logger.warn("Failed to compute latest tool info for agent execution record with id: {}", entity.getId(),
-					e);
+			logger.warn("Failed to compute latest tool info for agent execution record with id: {}", entity.getId(), e);
 			// Set defaults on error
 			vo.setLatestRoundNumber(0);
 		}

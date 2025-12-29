@@ -547,11 +547,12 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 				// Allow the root directory even if it's a symlink (e.g., linked_external)
 				// But skip other symlink directories to prevent circular references
 				if (Files.isSymbolicLink(dir)) {
-					// Check if this is the root (by comparing both original and real paths)
+					// Check if this is the root (by comparing both original and real
+					// paths)
 					boolean isRoot = dir.equals(root) || realPath.equals(finalRootRealPath);
 					if (!isRoot) {
-					log.debug("Skipping symbolic link directory: {}", dir);
-					return FileVisitResult.SKIP_SUBTREE;
+						log.debug("Skipping symbolic link directory: {}", dir);
+						return FileVisitResult.SKIP_SUBTREE;
 					}
 					// Root is a symlink - allow but track to prevent cycles
 				}
@@ -641,7 +642,8 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
 				// Handle circular symlinks by skipping the problematic directory
-				// (This should rarely happen now since we don't follow symlinks, but kept for safety)
+				// (This should rarely happen now since we don't follow symlinks, but kept
+				// for safety)
 				if (exc instanceof FileSystemLoopException) {
 					log.warn("Circular symlink detected: {}. Skipping this directory and continuing.", file);
 					return FileVisitResult.SKIP_SUBTREE;

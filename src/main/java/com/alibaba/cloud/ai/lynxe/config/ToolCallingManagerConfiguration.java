@@ -43,10 +43,12 @@ import io.micrometer.observation.ObservationRegistry;
 public class ToolCallingManagerConfiguration {
 
 	/**
-	 * Configure DynamicAgentStreamingFix Bean (StreamAdvisor for fixing duplicate tool calls)
+	 * Configure DynamicAgentStreamingFix Bean (StreamAdvisor for fixing duplicate tool
+	 * calls)
 	 *
-	 * This advisor merges tool calls with the same ID that are split across multiple chunks
-	 * in streaming responses. It ensures that each tool call has complete fields (id, name, arguments).
+	 * This advisor merges tool calls with the same ID that are split across multiple
+	 * chunks in streaming responses. It ensures that each tool call has complete fields
+	 * (id, name, arguments).
 	 */
 	@Bean
 	@ConditionalOnMissingBean
