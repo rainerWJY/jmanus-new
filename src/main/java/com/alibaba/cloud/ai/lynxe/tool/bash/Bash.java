@@ -101,9 +101,15 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				log.warn("Command path validation failed: {}", e.getMessage());
 				String errorMessage = "Error: " + e.getMessage() + ". All paths must be within the root-plan-folder.";
 				// Process error message through SmartContentSavingService
-				if (innerStorageService != null) {
+				if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 						.processContent(rootPlanId, errorMessage, "bash_path_validation_error");
+					return new ToolExecuteResult(processedResult.getComprehensiveResult());
+				}
+				// If rootPlanId is not available, still try to process if service is available
+				if (innerStorageService != null) {
+					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
+						.processContent("default", errorMessage, "bash_path_validation_error");
 					return new ToolExecuteResult(processedResult.getComprehensiveResult());
 				}
 				return new ToolExecuteResult(errorMessage);
@@ -134,20 +140,27 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 			List<String> result = executor.execute(commandList, workingDir);
 			String resultContent = String.join("\n", result);
 
+			// Handle empty result - return meaningful message instead of empty string
+			if (resultContent == null || resultContent.trim().isEmpty()) {
+				resultContent = "Command executed successfully with no output.";
+			}
+
 			// Process result through SmartContentSavingService to handle large outputs
+			// Only process if rootPlanId is available (required for file saving)
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(rootPlanId, resultContent, "bash");
 				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 
-			// Fallback: return JSON format if innerStorageService is not available
+			// Fallback: return JSON format if innerStorageService is not available or rootPlanId is missing
 			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
 		}
 		catch (Exception e) {
 			log.error("Error executing bash command", e);
 			String errorMessage = "Error executing command: " + e.getMessage();
 			// Process error message through SmartContentSavingService
+			// Only process if rootPlanId is available (required for file saving)
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(rootPlanId, errorMessage, "bash_execution_error");

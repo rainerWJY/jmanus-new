@@ -62,9 +62,16 @@ public class SmartContentSavingService {
 
 		private final String summary;
 
+		private final int totalLines;
+
 		public SmartProcessResult(String fileName, String summary) {
+			this(fileName, summary, 0);
+		}
+
+		public SmartProcessResult(String fileName, String summary, int totalLines) {
 			this.fileName = fileName;
 			this.summary = summary;
+			this.totalLines = totalLines;
 		}
 
 		public String getFileName() {
@@ -75,6 +82,10 @@ public class SmartContentSavingService {
 			return summary;
 		}
 
+		public int getTotalLines() {
+			return totalLines;
+		}
+
 		/**
 		 * Get comprehensive result that combines summary and file name into a single
 		 * string
@@ -82,8 +93,17 @@ public class SmartContentSavingService {
 		 */
 		public String getComprehensiveResult() {
 			if (fileName != null && !fileName.isEmpty()) {
-				// Content was saved to file, return summary with file reference
-				return summary + "\n\n[Full output saved to: " + fileName + "]";
+				// Content was saved to file, return summary with detailed file reference
+				String fileInfo;
+				if (totalLines > 0) {
+					fileInfo = String.format(
+							"\n\n文件总行数有 %d 行，内容过长，你可以读取 %s 来获取完整内容。",
+							totalLines, fileName);
+				}
+				else {
+					fileInfo = String.format("\n\n内容过长，你可以读取 %s 来获取完整内容。", fileName);
+				}
+				return summary + fileInfo;
 			}
 			// Content was returned directly
 			return summary;
@@ -91,7 +111,8 @@ public class SmartContentSavingService {
 
 		@Override
 		public String toString() {
-			return String.format("SmartProcessResult{fileName='%s', summary='%s'}", fileName, summary);
+			return String.format("SmartProcessResult{fileName='%s', summary='%s', totalLines=%d}", fileName, summary,
+					totalLines);
 		}
 
 	}
@@ -120,13 +141,17 @@ public class SmartContentSavingService {
 
 		// Check if content is empty
 		if (content.trim().isEmpty()) {
-			log.warn("processContent called with empty content: planId={}, callingMethod={}", planId, callingMethod);
-			return new SmartProcessResult(null, "");
+			log.debug("processContent called with empty content: planId={}, callingMethod={}", planId, callingMethod);
+			// Return meaningful message instead of empty string to avoid frontend showing "N/A"
+			return new SmartProcessResult(null, "Command executed successfully with no output.");
 		}
 
 		// Check if content exceeds threshold
 		if (content.length() > CONTENT_LENGTH_THRESHOLD) {
 			try {
+				// Calculate total lines in content
+				int totalLines = countLines(content);
+
 				// Generate filename: callingMethod + 5-digit random number + .md
 				int randomNum = ThreadLocalRandom.current().nextInt(10000, 100000);
 				String fileName = callingMethod + randomNum + ".md";
@@ -140,13 +165,14 @@ public class SmartContentSavingService {
 
 				// Save full content to file
 				Files.writeString(filePath, content);
-				log.info("Saved long content ({} chars) to file: {}", content.length(), filePath);
+				log.info("Saved long content ({} chars, {} lines) to file: {}", content.length(), totalLines,
+						filePath);
 
 				// Generate truncated summary: first 250 chars + "...[truncated]..." +
 				// last 200 chars
 				String truncatedSummary = generateTruncatedSummary(content);
 
-				return new SmartProcessResult(fileName, truncatedSummary);
+				return new SmartProcessResult(fileName, truncatedSummary, totalLines);
 			}
 			catch (IOException e) {
 				log.error("Failed to save content to file for planId={}, callingMethod={}", planId, callingMethod, e);
@@ -174,6 +200,25 @@ public class SmartContentSavingService {
 		String prefix = content.substring(0, TRUNCATE_PREFIX_LENGTH);
 		String suffix = content.substring(content.length() - TRUNCATE_SUFFIX_LENGTH);
 		return prefix + "...[truncated]..." + suffix;
+	}
+
+	/**
+	 * Count the number of lines in content
+	 * @param content Content to count lines for
+	 * @return Number of lines
+	 */
+	private int countLines(String content) {
+		if (content == null || content.isEmpty()) {
+			return 0;
+		}
+		// Count newline characters and add 1 for the last line (if content doesn't end with newline)
+		int lines = 1; // At least one line
+		for (int i = 0; i < content.length(); i++) {
+			if (content.charAt(i) == '\n') {
+				lines++;
+			}
+		}
+		return lines;
 	}
 
 }
