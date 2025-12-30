@@ -38,6 +38,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanInterface;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.StepResult;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
 import com.alibaba.cloud.ai.lynxe.runtime.service.FileUploadService;
+import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 
 /**
@@ -69,6 +70,20 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	protected final UnifiedDirectoryManager unifiedDirectoryManager;
 
+	protected PlanIdDispatcher planIdDispatcher;
+
+	/**
+	 * Generate a unique step ID for tracking execution steps using PlanIdDispatcher.
+	 * @return unique step ID
+	 */
+	protected String generateStepId() {
+		if (planIdDispatcher != null) {
+			return planIdDispatcher.generateStepId();
+		}else{
+			throw new IllegalStateException("PlanIdDispatcher is not available");
+		}
+	}
+
 	// Define static final strings for the keys used in executorParams
 	public static final String PLAN_STATUS_KEY = "planStatus";
 
@@ -83,7 +98,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	public AbstractPlanExecutor(List<DynamicAgentEntity> agents, PlanExecutionRecorder recorder, LlmService llmService,
 			LynxeProperties lynxeProperties, LevelBasedExecutorPool levelBasedExecutorPool,
 			FileUploadService fileUploadService, AgentInterruptionHelper agentInterruptionHelper,
-			UnifiedDirectoryManager unifiedDirectoryManager) {
+			UnifiedDirectoryManager unifiedDirectoryManager, PlanIdDispatcher planIdDispatcher) {
 		this.agents = agents;
 		this.recorder = recorder;
 		this.llmService = llmService;
@@ -92,6 +107,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		this.fileUploadService = fileUploadService;
 		this.agentInterruptionHelper = agentInterruptionHelper;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
+		this.planIdDispatcher = planIdDispatcher;
 	}
 
 	/**

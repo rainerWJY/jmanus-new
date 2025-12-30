@@ -97,7 +97,7 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 			ConversationMemoryLimitService conversationMemoryLimitService,
 			ServiceGroupIndexService serviceGroupIndexService, UnifiedDirectoryManager unifiedDirectoryManager) {
 		super(agents, recorder, llmService, lynxeProperties, levelBasedExecutorPool, fileUploadService,
-				agentInterruptionHelper, unifiedDirectoryManager);
+				agentInterruptionHelper, unifiedDirectoryManager, planIdDispatcher);
 		this.planningFactory = planningFactory;
 		this.toolCallingManager = toolCallingManager;
 		this.userInputService = userInputService;
