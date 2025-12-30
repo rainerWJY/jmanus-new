@@ -708,7 +708,9 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 				return ResponseEntity.notFound().build();
 			}
 
-			logger.info("Successfully retrieved agent execution detail for stepId: {}", stepId);
+			String json = objectMapper.writeValueAsString(detail);
+			logger.info("Successfully retrieved agent execution detail for stepId: {} with json: {}", stepId, json);
+		
 			return ResponseEntity.ok(detail);
 		}
 		catch (Exception e) {
