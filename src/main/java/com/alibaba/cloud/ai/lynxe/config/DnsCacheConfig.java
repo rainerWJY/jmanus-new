@@ -54,6 +54,9 @@ public class DnsCacheConfig {
 	@Autowired(required = false)
 	private Environment environment;
 
+	@Value("${lynxe.proxy.enabled:false}")
+	private boolean proxyEnabled;
+
 	@Value("${lynxe.proxy.httpProxyHost:}")
 	private String httpProxyHost;
 
@@ -130,6 +133,12 @@ public class DnsCacheConfig {
 	 * @return HttpClient with proxy configuration if available
 	 */
 	private HttpClient configureProxy(HttpClient httpClient) {
+		// Check if proxy is enabled
+		if (!proxyEnabled) {
+			log.debug("Proxy is disabled, skipping proxy configuration");
+			return httpClient;
+		}
+
 		// Get proxy configuration from yml or environment variables
 		String httpHost = getProxyConfig("lynxe.proxy.httpProxyHost", httpProxyHost, "HTTP_PROXY", true);
 		String httpPort = getProxyConfig("lynxe.proxy.httpProxyPort", httpProxyPort, "HTTP_PROXY", false);

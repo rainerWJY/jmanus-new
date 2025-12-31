@@ -82,6 +82,9 @@ lynxe:
     # 文件类型验证策略：code (代码配置) 或 config (配置文件)
     validation-strategy: code
   proxy:
+    # Whether to enable proxy (default: false)
+    # Set to true to enable proxy configuration
+    enabled: false
     # HTTP proxy host (e.g., proxy.example.com)
     # Leave empty to use system proxy or environment variables
     httpProxyHost: 
