@@ -1051,6 +1051,8 @@ public class DynamicAgent extends ReActAgent {
 
 	/**
 	 * Parse tool arguments from JSON string to Map
+	 * This method extracts valid JSON from the arguments string, removing any descriptive text
+	 * that the LLM might have included.
 	 */
 	@SuppressWarnings("unchecked")
 	private Map<String, Object> parseToolArguments(String arguments) {
@@ -1058,9 +1060,12 @@ public class DynamicAgent extends ReActAgent {
 			return new HashMap<>();
 		}
 
+		// Try to extract valid JSON from the arguments string
+		String cleanedArguments = extractJsonFromString(arguments);
+
 		try {
 			// Try to parse as JSON
-			Object parsed = objectMapper.readValue(arguments, Object.class);
+			Object parsed = objectMapper.readValue(cleanedArguments, Object.class);
 			if (parsed instanceof Map) {
 				return (Map<String, Object>) parsed;
 			}
@@ -1075,6 +1080,122 @@ public class DynamicAgent extends ReActAgent {
 			log.warn("Failed to parse tool arguments as JSON: {}. Using empty map.", arguments);
 			return new HashMap<>();
 		}
+	}
+
+	/**
+	 * Extract valid JSON from a string that may contain descriptive text.
+	 * This method finds the first valid JSON object or array in the string.
+	 * 
+	 * @param input The input string that may contain descriptive text and JSON
+	 * @return The extracted JSON string, or the original string if no JSON is found
+	 */
+	private String extractJsonFromString(String input) {
+		if (input == null || input.trim().isEmpty()) {
+			return input;
+		}
+
+		String trimmed = input.trim();
+
+		// First, try to parse the entire string as JSON
+		try {
+			objectMapper.readTree(trimmed);
+			return trimmed;
+		}
+		catch (Exception e) {
+			// Not valid JSON, continue to extraction
+		}
+
+		// Try to find JSON object boundaries
+		int startIndex = findJsonStart(trimmed);
+		if (startIndex == -1) {
+			// No JSON found, return original
+			return trimmed;
+		}
+
+		int endIndex = findJsonEnd(trimmed, startIndex);
+		if (endIndex == -1) {
+			// No valid end found, return original
+			return trimmed;
+		}
+
+		String extracted = trimmed.substring(startIndex, endIndex + 1);
+		
+		// Validate the extracted JSON
+		try {
+			objectMapper.readTree(extracted);
+			return extracted;
+		}
+		catch (Exception e) {
+			// Extracted string is not valid JSON, return original
+			return trimmed;
+		}
+	}
+
+	/**
+	 * Find the start index of a JSON object or array in the string.
+	 * 
+	 * @param input The input string
+	 * @return The index of '{' or '[', or -1 if not found
+	 */
+	private int findJsonStart(String input) {
+		for (int i = 0; i < input.length(); i++) {
+			char c = input.charAt(i);
+			if (c == '{' || c == '[') {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	/**
+	 * Find the end index of a JSON object or array, handling nested structures.
+	 * 
+	 * @param input The input string
+	 * @param startIndex The start index of the JSON structure
+	 * @return The index of the matching closing brace/bracket, or -1 if not found
+	 */
+	private int findJsonEnd(String input, int startIndex) {
+		char startChar = input.charAt(startIndex);
+		char endChar = (startChar == '{') ? '}' : ']';
+		
+		int depth = 1;
+		boolean inString = false;
+		boolean escaped = false;
+		
+		for (int i = startIndex + 1; i < input.length(); i++) {
+			char c = input.charAt(i);
+			
+			if (escaped) {
+				escaped = false;
+				continue;
+			}
+			
+			if (c == '\\') {
+				escaped = true;
+				continue;
+			}
+			
+			if (c == '"') {
+				inString = !inString;
+				continue;
+			}
+			
+			if (inString) {
+				continue;
+			}
+			
+			if (c == startChar) {
+				depth++;
+			}
+			else if (c == endChar) {
+				depth--;
+				if (depth == 0) {
+					return i;
+				}
+			}
+		}
+		
+		return -1;
 	}
 
 	/**
