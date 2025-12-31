@@ -319,3 +319,7 @@ agent_execution_record (id=1905)
 - **Eager Fetch**: `findByParentExecutionIdWithActToolInfo()` uses `LEFT JOIN FETCH` to avoid N+1 query problem
 - **VO Conversion**: Database entities (PO) are converted to Value Objects (VO) for API response, separating persistence layer from API layer
 
+
+
+
+
