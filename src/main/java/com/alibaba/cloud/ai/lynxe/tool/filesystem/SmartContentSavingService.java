@@ -97,11 +97,11 @@ public class SmartContentSavingService {
 				String fileInfo;
 				if (totalLines > 0) {
 					fileInfo = String.format(
-							"\n\n文件总行数有 %d 行，内容过长，你可以读取 %s 来获取完整内容。",
+							"\n\nThe file has %d total lines, content is too long. You can read %s to get the complete content.",
 							totalLines, fileName);
 				}
 				else {
-					fileInfo = String.format("\n\n内容过长，你可以读取 %s 来获取完整内容。", fileName);
+					fileInfo = String.format("\n\nContent is too long. You can read %s to get the complete content.", fileName);
 				}
 				return summary + fileInfo;
 			}

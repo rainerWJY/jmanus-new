@@ -157,8 +157,8 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 				}
 
 				String errorMessage = String.format(
-						"元素未找到或不可见 (index: %d, visibility: %s)。请检查页面：元素可能不在当前视图中，或被其他元素遮挡，或页面已发生变化。Element not found or not visible (index: %d, visibility: %s). Please check the page: the element may not be in the current viewport, may be obscured by other elements, or the page may have changed.",
-						index, visibilityInfo, index, visibilityInfo);
+						"Element not found or not visible (index: %d, visibility: %s). Please check the page: the element may not be in the current viewport, may be obscured by other elements, or the page may have changed.",
+						index, visibilityInfo);
 				log.error(errorMessage);
 				throw new RuntimeException(errorMessage);
 			}
@@ -196,8 +196,8 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 		}
 		catch (TimeoutError e) {
 			String errorMessage = String.format(
-					"获取元素边界框超时 (index: %d)。元素可能未加载完成或不在当前页面。请检查页面状态。Timeout getting element bounding box (index: %d). The element may not be fully loaded or may not be on the current page. Please check the page state.",
-					index, index);
+					"Timeout getting element bounding box (index: %d). The element may not be fully loaded or may not be on the current page. Please check the page state.",
+					index);
 			log.error("Timeout getting bounding box for mouse simulation on element with idx {}: {}", index,
 					e.getMessage());
 			throw new RuntimeException(errorMessage, e);
