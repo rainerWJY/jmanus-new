@@ -87,15 +87,15 @@ lynxe:
     enabled: false
     # HTTP proxy host (e.g., proxy.example.com)
     # Leave empty to use system proxy or environment variables
-    httpProxyHost: 
+    httpProxyHost: 127.0.0.1
     # HTTP proxy port (e.g., 8080)
-    httpProxyPort: 
+    httpProxyPort: 6789
     # HTTPS proxy host (e.g., proxy.example.com)
     # If not set, httpProxyHost will be used for HTTPS as well
-    httpsProxyHost: 
+    httpsProxyHost: 127.0.0.1
     # HTTPS proxy port (e.g., 8080)
     # If not set, httpProxyPort will be used for HTTPS as well
-    httpsProxyPort: 
+    httpsProxyPort: 6789
     # Proxy username (optional, for authenticated proxies)
     proxyUsername: 
     # Proxy password (optional, for authenticated proxies)
