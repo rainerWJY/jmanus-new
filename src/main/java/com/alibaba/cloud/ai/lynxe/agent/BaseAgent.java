@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -278,85 +279,88 @@ public abstract class BaseAgent {
 		this.initSettingData = Collections.unmodifiableMap(new HashMap<>(initialAgentSetting));
 	}
 
-	public AgentExecResult run() {
+	public CompletableFuture<AgentExecResult> run() {
 		currentStep = 0;
 		List<AgentExecResult> results = new ArrayList<>();
-		AgentExecResult lastStepResult = null;
-
-		try {
-			while (currentStep < maxSteps) {
-				currentStep++;
-				log.info("Executing round {}/{}", currentStep, maxSteps);
-
-				AgentExecResult stepResult = step();
-				lastStepResult = stepResult;
-
-				// Check if agent should terminate
-				AgentState stepState = stepResult.getState();
-				if (stepState == AgentState.COMPLETED || stepState == AgentState.INTERRUPTED
-						|| stepState == AgentState.FAILED) {
-					String stateDescription = stepState == AgentState.COMPLETED ? "completed"
-							: stepState == AgentState.INTERRUPTED ? "interrupted" : "failed";
-					log.info("Agent execution {} at round {}/{}", stateDescription, currentStep, maxSteps);
-					results.add(stepResult);
-
-					// Handle final processing based on state
-					if (stepState == AgentState.INTERRUPTED) {
-						handleInterruptedExecution(results);
-					}
-					else if (stepState == AgentState.FAILED) {
-						handleFailedExecution(results);
-					}
-					else {
-						handleCompletedExecution(results);
-					}
-					break; // Exit the loop
+		
+		// Use recursive async chain to execute steps one by one
+		return runStepRecursive(1, results)
+			.exceptionally(e -> {
+				log.error("Agent execution failed", e);
+				
+				// Wrap exception with SystemErrorReportTool
+				AgentExecResult errorResult = handleExceptionWithSystemErrorReport(e, results);
+				return new AgentExecResult(errorResult.getResult(), errorResult.getState(), results);
+			})
+			.thenApply(finalResult -> {
+				// Record execution at the end
+				if (currentPlanId != null && planExecutionRecorder != null) {
+					planExecutionRecorder.recordCompleteAgentExecution(step);
 				}
-
+				return finalResult;
+			});
+	}
+	
+	/**
+	 * Recursive helper method to execute steps one by one asynchronously
+	 * @param stepNum Current step number
+	 * @param results Accumulated results from previous steps
+	 * @return CompletableFuture with the final AgentExecResult
+	 */
+	private CompletableFuture<AgentExecResult> runStepRecursive(int stepNum, List<AgentExecResult> results) {
+		// Check if we've exceeded max steps
+		if (stepNum > maxSteps) {
+			log.info("Agent reached max rounds ({}), generating final summary and terminating", maxSteps);
+			String finalSummary = generateFinalSummary();
+			
+			// Call TerminateTool with the summary
+			String result = terminateWithSummary(finalSummary);
+			
+			// Create final result for max steps reached
+			AgentExecResult finalResult = new AgentExecResult(result, AgentState.COMPLETED);
+			results.add(finalResult);
+			
+			return CompletableFuture.completedFuture(
+				new AgentExecResult(finalResult.getResult(), finalResult.getState(), results));
+		}
+		
+		// Execute current step
+		currentStep = stepNum;
+		log.info("Executing round {}/{}", currentStep, maxSteps);
+		
+		return step().thenCompose(stepResult -> {
+			// Check if agent should terminate
+			AgentState stepState = stepResult.getState();
+			if (stepState == AgentState.COMPLETED || stepState == AgentState.INTERRUPTED
+					|| stepState == AgentState.FAILED) {
+				String stateDescription = stepState == AgentState.COMPLETED ? "completed"
+						: stepState == AgentState.INTERRUPTED ? "interrupted" : "failed";
+				log.info("Agent execution {} at round {}/{}", stateDescription, currentStep, maxSteps);
 				results.add(stepResult);
+				
+				// Handle final processing based on state
+				if (stepState == AgentState.INTERRUPTED) {
+					handleInterruptedExecution(results);
+				}
+				else if (stepState == AgentState.FAILED) {
+					handleFailedExecution(results);
+				}
+				else {
+					handleCompletedExecution(results);
+				}
+				
+				// Return terminal result
+				return CompletableFuture.completedFuture(
+					new AgentExecResult(stepResult.getResult(), stepResult.getState(), results));
 			}
-
-			// If max steps reached, generate summary and terminate
-			// Skip if already in a terminal state (COMPLETED, INTERRUPTED, or FAILED)
-			if (currentStep >= maxSteps && (lastStepResult == null || (lastStepResult.getState() != AgentState.COMPLETED
-					&& lastStepResult.getState() != AgentState.INTERRUPTED
-					&& lastStepResult.getState() != AgentState.FAILED))) {
-				log.info("Agent reached max rounds ({}), generating final summary and terminating", maxSteps);
-				String finalSummary = generateFinalSummary();
-
-				// Call TerminateTool with the summary
-				String result = terminateWithSummary(finalSummary);
-
-				// Create final result for max steps reached
-				lastStepResult = new AgentExecResult(result, AgentState.COMPLETED);
-				results.add(lastStepResult);
-			}
-
-		}
-		catch (Exception e) {
-			log.error("Agent execution failed", e);
-
-			// Wrap exception with SystemErrorReportTool
-			lastStepResult = handleExceptionWithSystemErrorReport(e, results);
-		}
-		finally {
-			// Record execution at the end
-			if (currentPlanId != null && planExecutionRecorder != null) {
-				planExecutionRecorder.recordCompleteAgentExecution(step);
-			}
-		}
-
-		// Return the last round's AgentExecResult with the complete results list
-		if (lastStepResult != null) {
-			return new AgentExecResult(lastStepResult.getResult(), lastStepResult.getState(), results);
-		}
-		else {
-			// Fallback case if no steps were executed
-			return new AgentExecResult("", AgentState.COMPLETED, results);
-		}
+			
+			// Add result and continue to next step
+			results.add(stepResult);
+			return runStepRecursive(stepNum + 1, results);
+		});
 	}
 
-	protected abstract AgentExecResult step();
+	protected abstract CompletableFuture<AgentExecResult> step();
 
 	/**
 	 * Handle interrupted execution - perform final cleanup and recording
@@ -397,7 +401,7 @@ public abstract class BaseAgent {
 	 * @param results The results list to update
 	 * @return AgentExecResult with error information
 	 */
-	protected AgentExecResult handleExceptionWithSystemErrorReport(Exception exception, List<AgentExecResult> results) {
+	protected AgentExecResult handleExceptionWithSystemErrorReport(Throwable exception, List<AgentExecResult> results) {
 		log.error("Handling exception with SystemErrorReportTool", exception);
 
 		try {

@@ -27,7 +27,7 @@ import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.stereotype.Service;
 
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory.ToolCallBackContext;
-import com.alibaba.cloud.ai.lynxe.runtime.executor.LevelBasedExecutorPool;
+import com.alibaba.cloud.ai.lynxe.runtime.executor.ExecutorPoolProvider;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.tool.AsyncToolCallBiFunctionDef;
@@ -49,15 +49,15 @@ public class ParallelExecutionService {
 
 	private final PlanIdDispatcher planIdDispatcher;
 
-	private final LevelBasedExecutorPool levelBasedExecutorPool;
+	private final ExecutorPoolProvider executorPoolProvider;
 
 	private final ServiceGroupIndexService serviceGroupIndexService;
 
 	public ParallelExecutionService(ObjectMapper objectMapper, PlanIdDispatcher planIdDispatcher,
-			LevelBasedExecutorPool levelBasedExecutorPool, ServiceGroupIndexService serviceGroupIndexService) {
+			ExecutorPoolProvider executorPoolProvider, ServiceGroupIndexService serviceGroupIndexService) {
 		this.objectMapper = objectMapper;
 		this.planIdDispatcher = planIdDispatcher;
-		this.levelBasedExecutorPool = levelBasedExecutorPool;
+		this.executorPoolProvider = executorPoolProvider;
 		this.serviceGroupIndexService = serviceGroupIndexService;
 	}
 
@@ -226,9 +226,9 @@ public class ParallelExecutionService {
 				: Map.of("toolcallId", toolCallId, "planDepth", propagatedPlanDepth));
 
 		// Execute the tool
-		if (levelBasedExecutorPool != null) {
+		if (executorPoolProvider != null) {
 			if (isAsyncTool) {
-				// Async tool with level-based executor
+				// Async tool with executor pool provider
 				@SuppressWarnings("unchecked")
 				AsyncToolCallBiFunctionDef<Object> asyncTool = (AsyncToolCallBiFunctionDef<Object>) functionInstance;
 				return asyncTool.applyAsync(convertedInput, executionContext).thenApply(result -> {
@@ -251,8 +251,8 @@ public class ParallelExecutionService {
 				});
 			}
 			else {
-				// Sync tool with level-based executor
-				return levelBasedExecutorPool.submitTask(depthLevel, () -> {
+				// Sync tool with executor pool provider
+				return executorPoolProvider.submitTask(depthLevel, () -> {
 					try {
 						@SuppressWarnings("unchecked")
 						ToolExecuteResult result = ((ToolCallBiFunctionDef<Object>) functionInstance)
@@ -393,13 +393,26 @@ public class ParallelExecutionService {
 		}
 
 		// Wait for all non-terminate tools to complete (happen-before relationship)
+		// Since allOf ensures all futures are complete, we can safely get results
 		CompletableFuture<List<Map<String, Object>>> otherResultsFuture = CompletableFuture
 			.allOf(otherFutures.toArray(new CompletableFuture[0]))
 			.thenApply(v -> {
 				List<Map<String, Object>> results = new ArrayList<>();
 				for (CompletableFuture<Map<String, Object>> future : otherFutures) {
 					try {
-						results.add(future.join());
+						// Future is already completed due to allOf, so getNow() won't block
+						// Use getNow with null default - if future is not done, something is wrong
+						Map<String, Object> result = future.getNow(null);
+						if (result != null) {
+							results.add(result);
+						}
+						else {
+							logger.warn("Future result is null, creating error result");
+							Map<String, Object> errorResult = new HashMap<>();
+							errorResult.put("status", "ERROR");
+							errorResult.put("error", "Future result is null");
+							results.add(errorResult);
+						}
 					}
 					catch (Exception e) {
 						logger.error("Error getting result from future: {}", e.getMessage(), e);
@@ -460,7 +473,19 @@ public class ParallelExecutionService {
 				List<Map<String, Object>> terminateResults = new ArrayList<>();
 				for (CompletableFuture<Map<String, Object>> future : terminateFutures) {
 					try {
-						terminateResults.add(future.join());
+						// Future is already completed due to allOf, so getNow() won't block
+						// Use getNow with null default - if future is not done, something is wrong
+						Map<String, Object> result = future.getNow(null);
+						if (result != null) {
+							terminateResults.add(result);
+						}
+						else {
+							logger.warn("Terminate future result is null, creating error result");
+							Map<String, Object> errorResult = new HashMap<>();
+							errorResult.put("status", "ERROR");
+							errorResult.put("error", "Future result is null");
+							terminateResults.add(errorResult);
+						}
 					}
 					catch (Exception e) {
 						logger.error("Error getting terminate tool result from future: {}", e.getMessage(), e);
