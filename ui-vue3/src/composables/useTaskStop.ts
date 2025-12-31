@@ -16,7 +16,7 @@
 
 import { DirectApiService } from '@/api/direct-api-service'
 import { useTaskStore } from '@/stores/task'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 /**
  * Composable for handling task stop functionality
@@ -76,10 +76,15 @@ export function useTaskStop() {
           ) {
             taskStore.currentTask.isRunning = false
           }
+          // Reset stopping flag before returning
+          isStopping.value = false
           return true // Consider this a success since task is already stopped
         }
       } catch (statusError) {
-        console.warn('[useTaskStop] Failed to check task status, proceeding with stop:', statusError)
+        console.warn(
+          '[useTaskStop] Failed to check task status, proceeding with stop:',
+          statusError
+        )
         // Continue with stop attempt even if status check fails
       }
 
