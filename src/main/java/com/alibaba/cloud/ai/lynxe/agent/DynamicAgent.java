@@ -852,17 +852,41 @@ public class DynamicAgent extends ReActAgent {
 	private Map<String, Object> executeFormInputTool(ExecutionTask task) {
 		FormInputTool formInputTool = (FormInputTool) task.toolCallBackContext.getFunctionInstance();
 
-		// Use existing handleFormInputTool logic
-		AgentExecResult formResult = handleFormInputTool(formInputTool, task.param);
+		try {
+			// Parse tool arguments to UserFormInput object
+			FormInputTool.UserFormInput formInput;
+			if (task.toolCall.arguments() != null && !task.toolCall.arguments().trim().isEmpty()) {
+				formInput = objectMapper.readValue(task.toolCall.arguments(), FormInputTool.UserFormInput.class);
+			}
+			else {
+				log.warn("FormInputTool called with empty arguments, creating empty form");
+				formInput = new FormInputTool.UserFormInput();
+			}
 
-		// Convert to unified result format
-		Map<String, Object> result = new HashMap<>();
-		result.put("index", task.index);
-		result.put("status", "SUCCESS");
-		result.put("output", formResult.getResult());
-		result.put("agentState", formResult.getState().name());
+			// Call run() first to set the state to AWAITING_USER_INPUT
+			// This is necessary because FormInputTool is a singleton and may have a stale state
+			formInputTool.run(formInput);
 
-		return result;
+			// Now handle the form input tool logic
+			AgentExecResult formResult = handleFormInputTool(formInputTool, task.param);
+
+			// Convert to unified result format
+			Map<String, Object> result = new HashMap<>();
+			result.put("index", task.index);
+			result.put("status", "SUCCESS");
+			result.put("output", formResult.getResult());
+			result.put("agentState", formResult.getState().name());
+
+			return result;
+		}
+		catch (Exception e) {
+			log.error("Error executing FormInputTool: {}", e.getMessage(), e);
+			Map<String, Object> errorResult = new HashMap<>();
+			errorResult.put("index", task.index);
+			errorResult.put("status", "ERROR");
+			errorResult.put("error", "Error executing FormInputTool: " + e.getMessage());
+			return errorResult;
+		}
 	}
 
 	/**
@@ -969,9 +993,7 @@ public class DynamicAgent extends ReActAgent {
 
 		// Build conversationHistory
 		List<Message> conversationHistory = new ArrayList<>();
-		if (userPrompt != null && userPrompt.getInstructions() != null) {
-			conversationHistory.addAll(userPrompt.getInstructions());
-		}
+		conversationHistory.addAll(agentMessages);
 		conversationHistory.add(assistantMessage);
 		conversationHistory.add(toolResponseMessage);
 
@@ -1077,7 +1099,9 @@ public class DynamicAgent extends ReActAgent {
 
 				UserMessage userMessage = UserMessage.builder().text("Input timeout occurred for form: ").build();
 				processUserInputToMemory(userMessage);
-				userInputService.removeFormInputTool(rootPlanId);
+				// Don't remove FormInputTool immediately on timeout - allow late submissions
+				// The tool will be cleaned up when the plan execution completes or when explicitly removed
+				// userInputService.removeFormInputTool(rootPlanId);
 				param.setResult("Input timeout occurred");
 
 				return new AgentExecResult("Input timeout occurred.", AgentState.IN_PROGRESS);

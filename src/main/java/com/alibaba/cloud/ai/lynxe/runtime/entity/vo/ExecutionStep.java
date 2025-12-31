@@ -96,6 +96,10 @@ public class ExecutionStep {
 		return stepId;
 	}
 
+	public void setStepId(String stepId) {
+		this.stepId = stepId;
+	}
+
 	public String getTerminateColumns() {
 		return terminateColumns;
 	}

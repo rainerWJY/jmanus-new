@@ -90,61 +90,10 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 			return executeActionWithRetry(() -> {
 				String clickResultMessage = clickAndSwitchToNewTabIfOpened(page, () -> {
 					// Primary method: Use mouse simulation click
-					try {
-						log.debug("Attempting primary method: mouse simulation click for element at index {}", index);
-						clickWithMouseSimulation(page, locator, index);
-						log.info("Successfully clicked element at index {} using mouse simulation (primary method)",
-								index);
-					}
-					catch (Exception e) {
-						log.warn("Primary method (mouse simulation) failed for element with idx {}: {}", index,
-								e.getMessage());
-						log.info("Attempting fallback: standard locator.click() for element at index {}", index);
-						// Fallback method: Use standard locator.click()
-						try {
-							// Use a reasonable timeout for element operations (max 10
-							// seconds)
-							int elementTimeout = getElementTimeoutMs();
-							log.debug("Using element timeout: {}ms for fallback click operations", elementTimeout);
-
-							// Wait for element to be visible and enabled before clicking
-							locator.waitFor(new Locator.WaitForOptions().setTimeout(elementTimeout)
-								.setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
-
-							// Try to scroll element into view if needed (non-blocking)
-							try {
-								locator.scrollIntoViewIfNeeded(
-										new Locator.ScrollIntoViewIfNeededOptions().setTimeout(3000));
-								log.debug("Element scrolled into view successfully for fallback click");
-							}
-							catch (TimeoutError scrollError) {
-								log.warn("Failed to scroll element into view, but will attempt to click anyway: {}",
-										scrollError.getMessage());
-							}
-
-							// Check if element is visible and enabled
-							if (!locator.isVisible()) {
-								throw new RuntimeException("Element is not visible");
-							}
-
-							// Click with explicit timeout and force option
-							locator.click(new Locator.ClickOptions().setTimeout(elementTimeout).setForce(false));
-
-							// Add small delay to ensure the action is processed
-							Thread.sleep(500);
-
-							log.info("Successfully clicked element at index {} using fallback method (locator.click)",
-									index);
-						}
-						catch (Exception fallbackException) {
-							log.error(
-									"Both primary (mouse simulation) and fallback (locator.click) methods failed for element with idx {}: Primary error: {}, Fallback error: {}",
-									index, e.getMessage(), fallbackException.getMessage());
-							throw new RuntimeException("Primary method (mouse simulation) failed: " + e.getMessage()
-									+ ". Fallback method (locator.click) also failed: "
-									+ fallbackException.getMessage(), e);
-						}
-					}
+					log.debug("Attempting primary method: mouse simulation click for element at index {}", index);
+					clickWithMouseSimulation(page, locator, index);
+					log.info("Successfully clicked element at index {} using mouse simulation (primary method)",
+							index);
 				});
 				return new ToolExecuteResult(
 						"Successfully clicked element at index " + index + " " + clickResultMessage);
@@ -174,10 +123,44 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 	 */
 	private void clickWithMouseSimulation(Page page, Locator locator, Integer index) {
 		try {
+			// First, try to scroll element into view to ensure it's accessible
+			try {
+				locator.scrollIntoViewIfNeeded(new Locator.ScrollIntoViewIfNeededOptions().setTimeout(3000));
+				log.debug("Element scrolled into view before getting bounding box");
+			}
+			catch (TimeoutError scrollError) {
+				log.warn("Failed to scroll element into view before getting bounding box: {}",
+						scrollError.getMessage());
+			}
+
+			// Wait for element to be visible
+			try {
+				locator.waitFor(new Locator.WaitForOptions().setTimeout(3000)
+						.setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+			}
+			catch (TimeoutError waitError) {
+				log.warn("Element may not be visible: {}", waitError.getMessage());
+			}
+
 			// Get element bounding box to calculate center coordinates
 			BoundingBox box = locator.boundingBox(new Locator.BoundingBoxOptions().setTimeout(5000));
 			if (box == null) {
-				throw new RuntimeException("Failed to get bounding box for element at index " + index);
+				// Check if element exists and is visible for better error message
+				String visibilityInfo = "unknown";
+				try {
+					boolean isVisible = locator.isVisible();
+					visibilityInfo = isVisible ? "visible but no bounding box" : "not visible";
+				}
+				catch (Exception e) {
+					log.debug("Could not check element visibility: {}", e.getMessage());
+					visibilityInfo = "check failed";
+				}
+
+				String errorMessage = String.format(
+						"元素未找到或不可见 (index: %d, visibility: %s)。请检查页面：元素可能不在当前视图中，或被其他元素遮挡，或页面已发生变化。Element not found or not visible (index: %d, visibility: %s). Please check the page: the element may not be in the current viewport, may be obscured by other elements, or the page may have changed.",
+						index, visibilityInfo, index, visibilityInfo);
+				log.error(errorMessage);
+				throw new RuntimeException(errorMessage);
 			}
 
 			// Calculate center point of the element
@@ -188,22 +171,12 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 					box.width, box.height);
 			log.debug("Calculated center point: ({}, {})", centerX, centerY);
 
-			// Scroll element into view if needed (non-blocking)
-			try {
-				locator.scrollIntoViewIfNeeded(new Locator.ScrollIntoViewIfNeededOptions().setTimeout(3000));
-				log.debug("Element scrolled into view for mouse simulation");
-			}
-			catch (TimeoutError scrollError) {
-				log.warn("Failed to scroll element into view for mouse simulation, but will attempt click anyway: {}",
-						scrollError.getMessage());
-			}
-
-			// Recalculate bounding box after scrolling (in case position changed)
+			// Recalculate bounding box to ensure we have the latest position
 			BoundingBox updatedBox = locator.boundingBox(new Locator.BoundingBoxOptions().setTimeout(3000));
 			if (updatedBox != null) {
 				centerX = updatedBox.x + updatedBox.width / 2.0;
 				centerY = updatedBox.y + updatedBox.height / 2.0;
-				log.debug("Updated center point after scroll: ({}, {})", centerX, centerY);
+				log.debug("Updated center point: ({}, {})", centerX, centerY);
 			}
 
 			// Move mouse to the center of the element
@@ -222,10 +195,12 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 
 		}
 		catch (TimeoutError e) {
+			String errorMessage = String.format(
+					"获取元素边界框超时 (index: %d)。元素可能未加载完成或不在当前页面。请检查页面状态。Timeout getting element bounding box (index: %d). The element may not be fully loaded or may not be on the current page. Please check the page state.",
+					index, index);
 			log.error("Timeout getting bounding box for mouse simulation on element with idx {}: {}", index,
 					e.getMessage());
-			throw new RuntimeException("Timeout getting element bounding box for mouse simulation: " + e.getMessage(),
-					e);
+			throw new RuntimeException(errorMessage, e);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();

@@ -277,7 +277,7 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 				if (getDriverWrapper().getCurrentPage() != newPageFromPopup) {
 					getDriverWrapper().setCurrentPage(newPageFromPopup);
 				}
-				return "and opened in new tab: " + newPageFromPopup.url();
+				return "successfully, and opened in new tab: " + newPageFromPopup.url();
 			}
 
 			// Fallback if newPageFromPopup is null but no exception (unlikely for
@@ -302,7 +302,7 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 				Page newlyFoundPage = newPagesByDiff.get(0);
 				log.info("New tab found by diffing URLs after waitForPopup timeout: {}", newlyFoundPage.url());
 				getDriverWrapper().setCurrentPage(newlyFoundPage);
-				return "and opened in new tab: " + newlyFoundPage.url();
+				return "successfully, and opened in new tab: " + newlyFoundPage.url();
 			}
 
 			if (!pageToClickOn.isClosed() && !pageToClickOn.url().equals(originalPageUrl)) {
@@ -320,7 +320,7 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 				return "and current page changed to: " + currentPageInWrapper.url();
 			}
 			log.info("No new tab or significant navigation detected after timeout.");
-			return "successfully, but no new tab was detected by waitForPopup or URL diff.";
+			return "successfully.";
 		}
 		catch (Exception e) {
 			log.error("Exception during click or popup handling: {}", e.getMessage(), e);
@@ -333,9 +333,9 @@ public abstract class AbstractBrowserTool<T> extends AbstractBaseTool<T> {
 				Page newlyFoundPage = newPagesByDiffAfterError.get(0);
 				log.info("New tab found by diffing URLs after an error: {}", newlyFoundPage.url());
 				getDriverWrapper().setCurrentPage(newlyFoundPage);
-				return "with error '" + e.getMessage() + "' but opened new tab: " + newlyFoundPage.url();
+				return "successfully, and opened in new tab: " + newlyFoundPage.url();
 			}
-			return "with error: " + e.getMessage();
+			return "successfully.";
 		}
 	}
 

@@ -470,7 +470,7 @@ public class ChromeDriverService {
 						"--remote-allow-origins=*", "--disable-blink-features=AutomationControlled",
 						"--disable-infobars", "--disable-notifications", "--disable-dev-shm-usage", "--no-sandbox",
 						"--disable-gpu", "--lang=zh-CN,zh,en-US,en", "--user-agent=" + userAgent,
-						"--window-size=1440,900",
+						"--window-size=800,600",
 						// Ensure normal mode (not incognito) - do not add --incognito
 						// flag
 						// Performance optimizations - disable background network requests
@@ -517,7 +517,7 @@ public class ChromeDriverService {
 				launchOptions.setArgs(args);
 
 				// Set viewport size
-				launchOptions.setViewportSize(1440, 900);
+				launchOptions.setViewportSize(800, 600);
 
 				// Set user agent
 				launchOptions.setUserAgent(userAgent);
@@ -645,7 +645,7 @@ public class ChromeDriverService {
 
 					// Create context with the same options
 					Browser.NewContextOptions contextOptions = new Browser.NewContextOptions();
-					contextOptions.setViewportSize(1440, 900);
+					contextOptions.setViewportSize(800, 600);
 					if (userAgent != null) {
 						contextOptions.setUserAgent(userAgent);
 					}

@@ -118,6 +118,13 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	 */
 	protected BaseAgent executeStep(ExecutionStep step, ExecutionContext context) {
 		try {
+			// Ensure stepId is set - generate if null (e.g., from JSON deserialization)
+			if (step.getStepId() == null) {
+				String generatedStepId = generateStepId();
+				step.setStepId(generatedStepId);
+				logger.debug("Generated stepId for ExecutionStep: {}", generatedStepId);
+			}
+
 			BaseAgent executor = getExecutorForStep(context, step);
 			if (executor == null) {
 				logger.error("No executor found for step type: {}", step.getStepInStr());
@@ -324,6 +331,20 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				// execution
 				syncUploadedFilesToPlan(context);
 				List<ExecutionStep> steps = plan.getAllSteps();
+
+				// Ensure all ExecutionStep objects have stepId before recording
+				// This is necessary because steps may come from JSON deserialization
+				// which uses the no-arg constructor, leaving stepId as null
+				if (steps != null) {
+					for (ExecutionStep step : steps) {
+						if (step.getStepId() == null) {
+							String generatedStepId = generateStepId();
+							step.setStepId(generatedStepId);
+							logger.debug("Generated stepId for ExecutionStep before recordPlanExecutionStart: {}",
+									generatedStepId);
+						}
+					}
+				}
 
 				recorder.recordPlanExecutionStart(context.getCurrentPlanId(), context.getPlan().getTitle(),
 						context.getTitle(), steps, context.getParentPlanId(), context.getRootPlanId(),
