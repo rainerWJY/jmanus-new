@@ -43,8 +43,8 @@ defineOptions({
   name: 'ToastNotification',
 })
 
-import { onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
+import { onUnmounted, ref, watch } from 'vue'
 
 // Interface for exposing toast methods
 interface ToastInstance {
@@ -102,7 +102,7 @@ const handleToastKeydown = (event: KeyboardEvent) => {
 }
 
 // Add keyboard event listener when toast is shown
-watch(visible, (isVisible) => {
+watch(visible, isVisible => {
   if (isVisible) {
     // Add event listener when toast opens
     document.addEventListener('keydown', handleToastKeydown)
