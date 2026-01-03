@@ -140,7 +140,7 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 			List<String> selectedToolKeys = step.getSelectedToolKeys();
 
 			// Convert selectedToolKeys from serviceGroup.toolName to
-			// serviceGroup_toolName format
+			// serviceGroup-toolName format
 			List<String> convertedToolKeys = convertSelectedToolKeys(selectedToolKeys);
 
 			BaseAgent executor = createConfigurableDynaAgent(context.getPlan().getCurrentPlanId(),
@@ -195,11 +195,11 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 	}
 
 	/**
-	 * Convert selectedToolKeys from serviceGroup.toolName format to serviceGroup_toolName
+	 * Convert selectedToolKeys from serviceGroup.toolName format to serviceGroup-toolName
 	 * format
 	 * @param selectedToolKeys List of tool keys in serviceGroup.toolName format (from
 	 * frontend)
-	 * @return List of tool keys in serviceGroup_toolName format (for backend lookup)
+	 * @return List of tool keys in serviceGroup-toolName format (for backend lookup)
 	 */
 	private List<String> convertSelectedToolKeys(List<String> selectedToolKeys) {
 		if (selectedToolKeys == null || selectedToolKeys.isEmpty()) {
@@ -213,7 +213,7 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 				continue;
 			}
 
-			// Convert serviceGroup.toolName to serviceGroup_toolName using
+			// Convert serviceGroup.toolName to serviceGroup-toolName using
 			// ServiceGroupIndexService
 			String convertedKey = serviceGroupIndexService.constructFrontendToolKey(toolKey);
 			convertedKeys.add(convertedKey);

@@ -63,11 +63,11 @@ public class ParallelExecutionService {
 
 	/**
 	 * Look up tool context using qualified key conversion This method handles the
-	 * conversion from raw tool name to qualified key format (serviceGroup_toolName) based
+	 * conversion from raw tool name to qualified key format (serviceGroup-toolName) based
 	 * on serviceGroup, and provides fallback to original toolName if conversion fails.
-	 * Supports both serviceGroup.toolName (dot format) and serviceGroup_toolName
-	 * (underscore format).
-	 * @param toolName The raw tool name to look up (can be in serviceGroup_toolName
+	 * Supports both serviceGroup.toolName (dot format) and serviceGroup-toolName
+	 * (hyphen format).
+	 * @param toolName The raw tool name to look up (can be in serviceGroup-toolName
 	 * format or serviceGroup.toolName format)
 	 * @param toolCallbackMap Map of tool callbacks
 	 * @return ToolCallBackContext if found, null otherwise
@@ -77,7 +77,7 @@ public class ParallelExecutionService {
 			return null;
 		}
 
-		// First, try direct lookup in case tool name is already in serviceGroup_toolName
+		// First, try direct lookup in case tool name is already in serviceGroup-toolName
 		// format
 		ToolCallBackContext toolContext = toolCallbackMap.get(toolName);
 		if (toolContext != null) {
@@ -86,7 +86,7 @@ public class ParallelExecutionService {
 		}
 
 		// If direct lookup failed, try conversion from serviceGroup.toolName to
-		// serviceGroup_toolName format
+		// serviceGroup-toolName format
 		String lookupKey = toolName;
 		if (serviceGroupIndexService != null) {
 			try {
@@ -110,10 +110,10 @@ public class ParallelExecutionService {
 		// compatibility)
 		// This handles cases where tool might be registered without serviceGroup prefix
 		if (toolContext == null) {
-			// Extract tool name part if it's in serviceGroup_toolName format
-			int lastUnderscoreIndex = toolName.lastIndexOf('_');
-			if (lastUnderscoreIndex > 0 && lastUnderscoreIndex < toolName.length() - 1) {
-				String toolNamePart = toolName.substring(lastUnderscoreIndex + 1);
+			// Extract tool name part if it's in serviceGroup-toolName format
+			int lastHyphenIndex = toolName.lastIndexOf('-');
+			if (lastHyphenIndex > 0 && lastHyphenIndex < toolName.length() - 1) {
+				String toolNamePart = toolName.substring(lastHyphenIndex + 1);
 				toolContext = toolCallbackMap.get(toolNamePart);
 				if (toolContext != null) {
 					logger.debug("Found tool using unqualified name '{}' from qualified key '{}'", toolNamePart,

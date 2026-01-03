@@ -386,13 +386,13 @@ public class PlanningFactory {
 				toolDefinition.setCurrentPlanId(planId);
 				toolDefinition.setRootPlanId(rootPlanId);
 
-				// Use qualified key format: serviceGroup_toolName
+				// Use qualified key format: serviceGroup-toolName
 				String serviceGroup = toolDefinition.getServiceGroup();
 				String toolName = toolDefinition.getName();
 				String qualifiedKey;
 
 				if (serviceGroup != null && !serviceGroup.isEmpty()) {
-					qualifiedKey = serviceGroup + "_" + toolName;
+					qualifiedKey = serviceGroup + "-" + toolName;
 				}
 				else {
 					qualifiedKey = toolName;
