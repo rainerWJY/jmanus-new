@@ -41,7 +41,7 @@ public class UuidGenerateTool extends AbstractBaseTool<UuidGenerateRequest> {
 		this.toolI18nService = toolI18nService;
 	}
 
-	private final String name = "uuid_generate";
+	private final String name = "uuid-generate";
 
 	@Override
 	public String getServiceGroup() {

@@ -155,8 +155,9 @@ const getToolDisplayNameWithGroup = (toolId: string): string => {
   const tool = availableTools.value.find(t => t.key === toolId)
   if (!tool) return toolId
 
-  const group = tool.serviceGroup || 'Ungrouped'
-  return `${group}_${tool.name}`
+  // Use the tool.key directly as it already contains the correct format (serviceGroup-toolName)
+  // The backend returns keys in serviceGroup-toolName format with hyphens
+  return tool.key
 }
 
 const getToolDescription = (toolId: string): string => {
