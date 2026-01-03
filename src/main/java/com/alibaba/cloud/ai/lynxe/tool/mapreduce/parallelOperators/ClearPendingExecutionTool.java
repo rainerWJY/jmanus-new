@@ -144,7 +144,7 @@ public class ClearPendingExecutionTool extends AbstractBaseTool<ClearPendingExec
 
 	@Override
 	public String getServiceGroup() {
-		return "parallel-execution";
+		return "parallel";
 	}
 
 	@Override

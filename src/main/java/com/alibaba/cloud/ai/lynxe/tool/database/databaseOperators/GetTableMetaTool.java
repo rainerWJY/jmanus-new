@@ -78,7 +78,7 @@ public class GetTableMetaTool extends AbstractBaseTool<GetTableMetaTool.GetTable
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

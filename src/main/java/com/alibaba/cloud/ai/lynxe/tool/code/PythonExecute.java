@@ -236,7 +236,7 @@ public class PythonExecute extends AbstractBaseTool<PythonExecute.PythonInput> {
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

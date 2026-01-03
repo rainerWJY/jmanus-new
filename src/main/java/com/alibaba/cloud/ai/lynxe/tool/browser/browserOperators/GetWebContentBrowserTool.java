@@ -225,13 +225,13 @@ public class GetWebContentBrowserTool extends AbstractBrowserTool<GetWebContentB
 
 	@Override
 	public String getServiceGroup() {
-		return "browser-service-group";
+		return "bw";
 	}
 
 	@Override
 	public ToolStateInfo getCurrentToolStateString() {
 		String stateString = browserUseTool.getCurrentToolStateString(getCurrentPlanId(), getRootPlanId());
-		return new ToolStateInfo("browser-service-group", stateString);
+		return new ToolStateInfo("bw", stateString);
 	}
 
 }

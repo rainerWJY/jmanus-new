@@ -258,7 +258,7 @@ public class CreatePptTool extends AbstractBaseTool<CreatePptTool.CreatePptInput
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

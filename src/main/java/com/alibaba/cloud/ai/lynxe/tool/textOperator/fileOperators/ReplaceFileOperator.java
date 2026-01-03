@@ -384,7 +384,7 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 
 	@Override
 	public String getServiceGroup() {
-		return "file-service-group";
+		return "fs";
 	}
 
 	@Override

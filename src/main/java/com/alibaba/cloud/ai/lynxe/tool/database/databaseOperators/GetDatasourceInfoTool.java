@@ -68,7 +68,7 @@ public class GetDatasourceInfoTool extends AbstractBaseTool<GetDatasourceInfoToo
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

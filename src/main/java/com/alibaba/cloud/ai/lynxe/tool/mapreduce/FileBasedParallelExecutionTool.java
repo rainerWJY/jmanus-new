@@ -114,7 +114,7 @@ public class FileBasedParallelExecutionTool extends AbstractBaseTool<FileBasedPa
 
 	@Override
 	public String getServiceGroup() {
-		return "parallel-execution";
+		return "parallel";
 	}
 
 	@Override

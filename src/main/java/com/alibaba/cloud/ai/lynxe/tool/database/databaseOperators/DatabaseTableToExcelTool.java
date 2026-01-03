@@ -389,7 +389,7 @@ public class DatabaseTableToExcelTool extends AbstractBaseTool<DatabaseTableToEx
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

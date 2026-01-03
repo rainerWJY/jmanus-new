@@ -196,7 +196,7 @@ public class ExecuteReadSqlToJsonFileTool
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

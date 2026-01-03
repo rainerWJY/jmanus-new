@@ -1076,7 +1076,7 @@ public class EnhancedGrep extends AbstractBaseTool<EnhancedGrep.GrepInput> {
 
 	@Override
 	public String getServiceGroup() {
-		return "file-service-group";
+		return "fs";
 	}
 
 	@Override

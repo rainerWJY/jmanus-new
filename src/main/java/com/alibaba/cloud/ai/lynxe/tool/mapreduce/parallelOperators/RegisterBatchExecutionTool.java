@@ -274,7 +274,7 @@ public class RegisterBatchExecutionTool extends AbstractBaseTool<RegisterBatchEx
 
 	@Override
 	public String getServiceGroup() {
-		return "parallel-execution";
+		return "parallel";
 	}
 
 	@Override

@@ -107,6 +107,7 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingE
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.EnhancedGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
@@ -324,6 +325,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new EnhancedGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			// Refactored file splitter (split action only, count removed)
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));
+			// File count tool for counting lines and characters
+			toolDefinitions.add(new CountFileTool(textFileService, toolI18nService));
 			// Refactored directory operators (split from DirectoryOperator)
 			toolDefinitions.add(new ListFilesTool(unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new GlobFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService,

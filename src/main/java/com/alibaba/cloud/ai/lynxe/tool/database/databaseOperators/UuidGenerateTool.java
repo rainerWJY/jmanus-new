@@ -45,7 +45,7 @@ public class UuidGenerateTool extends AbstractBaseTool<UuidGenerateRequest> {
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

@@ -167,7 +167,7 @@ public class SystemErrorReportTool extends AbstractBaseTool<Map<String, Object>>
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

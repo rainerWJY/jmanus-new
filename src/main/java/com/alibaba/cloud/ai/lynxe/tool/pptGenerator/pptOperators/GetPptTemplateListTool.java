@@ -110,7 +110,7 @@ public class GetPptTemplateListTool extends AbstractBaseTool<GetPptTemplateListT
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

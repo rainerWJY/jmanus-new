@@ -234,7 +234,7 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 
 	@Override
 	public String getServiceGroup() {
-		return "parallel-execution";
+		return "parallel";
 	}
 
 	@Override

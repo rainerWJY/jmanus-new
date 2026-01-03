@@ -319,7 +319,7 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

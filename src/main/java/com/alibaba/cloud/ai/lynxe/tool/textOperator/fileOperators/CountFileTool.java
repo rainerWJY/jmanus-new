@@ -16,9 +16,9 @@
 package com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -32,33 +32,22 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * Split file tool that splits text files (markdown, code, HTML, etc.) into smaller
- * pieces. Splits files by lines to ensure content completeness and adds index numbers to
- * split file names.
+ * Count file tool that counts the total lines and characters in a given file.
+ * Supports text-based file formats by default.
  */
-public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput> {
+public class CountFileTool extends AbstractBaseTool<CountFileTool.CountFileInput> {
 
-	private static final Logger log = LoggerFactory.getLogger(SplitFileTool.class);
+	private static final Logger log = LoggerFactory.getLogger(CountFileTool.class);
 
-	private static final String TOOL_NAME = "split-file";
-
-	/**
-	 * Default number of pieces to split file into
-	 */
-	private static final int DEFAULT_SPLIT_COUNT = 10;
+	private static final String TOOL_NAME = "count-file";
 
 	/**
-	 * Input class for split file operations
+	 * Input class for count file operations
 	 */
-	public static class SplitFileInput {
+	public static class CountFileInput {
 
 		@com.fasterxml.jackson.annotation.JsonProperty("file_path")
 		private String filePath;
-
-		private String header;
-
-		@com.fasterxml.jackson.annotation.JsonProperty("split_count")
-		private Integer splitCount;
 
 		// Getters and setters
 		public String getFilePath() {
@@ -69,58 +58,32 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 			this.filePath = filePath;
 		}
 
-		public String getHeader() {
-			return header;
-		}
-
-		public void setHeader(String header) {
-			this.header = header;
-		}
-
-		public Integer getSplitCount() {
-			return splitCount;
-		}
-
-		public void setSplitCount(Integer splitCount) {
-			this.splitCount = splitCount;
-		}
-
 	}
 
 	private final TextFileService textFileService;
 
 	private final ToolI18nService toolI18nService;
 
-	public SplitFileTool(TextFileService textFileService, ToolI18nService toolI18nService) {
+	public CountFileTool(TextFileService textFileService, ToolI18nService toolI18nService) {
 		this.textFileService = textFileService;
 		this.toolI18nService = toolI18nService;
 	}
 
 	@Override
-	public ToolExecuteResult run(SplitFileInput input) {
-		log.info("SplitFileTool input: filePath={}, splitCount={}", input.getFilePath(), input.getSplitCount());
+	public ToolExecuteResult run(CountFileInput input) {
+		log.info("CountFileTool input: filePath={}", input.getFilePath());
 		try {
 			String filePath = input.getFilePath();
-			String header = input.getHeader();
-			Integer splitCount = input.getSplitCount();
 
 			// Basic parameter validation
 			if (filePath == null || filePath.trim().isEmpty()) {
 				return new ToolExecuteResult("Error: file_path parameter is required");
 			}
 
-			// Validate splitCount if provided
-			if (splitCount != null && splitCount <= 0) {
-				return new ToolExecuteResult("Error: split_count must be a positive integer");
-			}
-
-			// Use provided splitCount or default value
-			int actualSplitCount = (splitCount != null) ? splitCount : DEFAULT_SPLIT_COUNT;
-
-			return splitFile(filePath, header, actualSplitCount);
+			return countFile(filePath);
 		}
 		catch (Exception e) {
-			log.error("SplitFileTool execution failed", e);
+			log.error("CountFileTool execution failed", e);
 			return new ToolExecuteResult("Tool execution failed: " + e.getMessage());
 		}
 	}
@@ -131,7 +94,7 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 	 */
 	private Path validateFilePath(String filePath) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for file splitter operations but is null or empty");
+			throw new IOException("Error: rootPlanId is required for file count operations but is null or empty");
 		}
 
 		// Check file type
@@ -219,96 +182,60 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 	}
 
 	/**
-	 * Split file into multiple pieces
+	 * Count lines and characters in a file
 	 */
-	private ToolExecuteResult splitFile(String filePath, String header, int splitCount) {
+	private ToolExecuteResult countFile(String filePath) {
 		try {
 			Path sourceFile = validateFilePath(filePath);
 
 			// Read all lines from the source file
-			List<String> allLines = Files.readAllLines(sourceFile);
-			if (allLines.isEmpty()) {
-				return new ToolExecuteResult("Error: File is empty, cannot split");
+			List<String> allLines = Files.readAllLines(sourceFile, StandardCharsets.UTF_8);
+
+			// Count total lines
+			int totalLines = allLines.size();
+
+			// Count total characters (including newlines)
+			long totalCharacters = Files.size(sourceFile);
+
+			// Count characters excluding newlines (sum of all line lengths)
+			int charactersWithoutNewlines = 0;
+			for (String line : allLines) {
+				charactersWithoutNewlines += line.length();
 			}
 
-			int totalLines = allLines.size();
-			int linesPerPiece = totalLines / splitCount;
-			int remainder = totalLines % splitCount;
-
-			// Prepare header (add newline if not empty)
-			String headerContent = (header != null && !header.trim().isEmpty()) ? header.trim() + "\n" : "";
-
-			// Get file name and extension
-			String fileName = sourceFile.getFileName().toString();
-			int lastDotIndex = fileName.lastIndexOf('.');
-			String baseName = (lastDotIndex > 0) ? fileName.substring(0, lastDotIndex) : fileName;
-			String extension = (lastDotIndex > 0) ? fileName.substring(lastDotIndex) : "";
-
-			// Get parent directory for output files
-			Path parentDir = sourceFile.getParent();
-
-			List<String> createdFiles = new ArrayList<>();
-			int currentLineIndex = 0;
-
-			// Split into splitCount pieces
-			for (int i = 0; i < splitCount; i++) {
-				// Calculate lines for this piece (distribute remainder evenly)
-				int pieceSize = linesPerPiece + (i < remainder ? 1 : 0);
-
-				if (pieceSize == 0) {
-					// Skip empty pieces if file is too small
-					continue;
+			// Count words (split by whitespace)
+			int wordCount = 0;
+			for (String line : allLines) {
+				if (line != null && !line.trim().isEmpty()) {
+					String[] words = line.trim().split("\\s+");
+					wordCount += words.length;
 				}
-
-				// Create output file name with index prefix
-				String outputFileName = String.format("%d-%s%s", i, baseName, extension);
-				Path outputFile = parentDir.resolve(outputFileName);
-
-				// Prepare content for this piece
-				StringBuilder content = new StringBuilder();
-				if (!headerContent.isEmpty()) {
-					content.append(headerContent);
-				}
-
-				// Add lines for this piece
-				for (int j = 0; j < pieceSize && currentLineIndex < totalLines; j++) {
-					content.append(allLines.get(currentLineIndex));
-					if (currentLineIndex < totalLines - 1 || j < pieceSize - 1) {
-						content.append("\n");
-					}
-					currentLineIndex++;
-				}
-
-				// Write the split file
-				Files.writeString(outputFile, content.toString());
-
-				createdFiles.add(outputFileName);
-				log.info("Created split file {} with {} lines", outputFileName, pieceSize);
 			}
 
 			// Build result message
 			StringBuilder result = new StringBuilder();
-			result
-				.append(String.format("Successfully split file '%s' into %d pieces:\n", fileName, createdFiles.size()));
 			result.append("=".repeat(60)).append("\n");
-			for (String createdFile : createdFiles) {
-				result.append(String.format("  - %s\n", createdFile));
-			}
-			result.append(String.format("\nTotal lines in original file: %d\n", totalLines));
-			result.append(String.format("Lines per piece: approximately %d\n", linesPerPiece));
-			if (!headerContent.isEmpty()) {
-				result.append("Header added to each split file\n");
-			}
+			result.append(String.format("File Statistics for: %s\n", sourceFile.getFileName().toString()));
+			result.append("=".repeat(60)).append("\n");
+			result.append(String.format("Total Lines: %d\n", totalLines));
+			result.append(String.format("Total Characters (including newlines): %d\n", totalCharacters));
+			result.append(String.format("Total Characters (excluding newlines): %d\n", charactersWithoutNewlines));
+			result.append(String.format("Total Words: %d\n", wordCount));
+			result.append(String.format("File Size: %d bytes\n", totalCharacters));
+			result.append("=".repeat(60));
+
+			log.info("Counted file {}: {} lines, {} characters (with newlines), {} characters (without newlines), {} words",
+					filePath, totalLines, totalCharacters, charactersWithoutNewlines, wordCount);
 
 			return new ToolExecuteResult(result.toString());
 		}
 		catch (IOException e) {
-			log.error("Error splitting file: {}", filePath, e);
-			return new ToolExecuteResult("Error splitting file: " + e.getMessage());
+			log.error("Error counting file: {}", filePath, e);
+			return new ToolExecuteResult("Error counting file: " + e.getMessage());
 		}
 		catch (Exception e) {
-			log.error("Unexpected error splitting file: {}", filePath, e);
-			return new ToolExecuteResult("Unexpected error splitting file: " + e.getMessage());
+			log.error("Unexpected error counting file: {}", filePath, e);
+			return new ToolExecuteResult("Unexpected error counting file: " + e.getMessage());
 		}
 	}
 
@@ -324,23 +251,23 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("split-file");
+		return toolI18nService.getDescription("count-file");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("split-file");
+		return toolI18nService.getParameters("count-file");
 	}
 
 	@Override
-	public Class<SplitFileInput> getInputType() {
-		return SplitFileInput.class;
+	public Class<CountFileInput> getInputType() {
+		return CountFileInput.class;
 	}
 
 	@Override
 	public void cleanup(String planId) {
 		if (planId != null) {
-			log.info("Cleaning up split file resources for plan: {}", planId);
+			log.info("Cleaning up count file resources for plan: {}", planId);
 		}
 	}
 
@@ -355,3 +282,4 @@ public class SplitFileTool extends AbstractBaseTool<SplitFileTool.SplitFileInput
 	}
 
 }
+

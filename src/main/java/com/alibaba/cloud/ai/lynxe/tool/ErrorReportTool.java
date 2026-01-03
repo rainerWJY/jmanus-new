@@ -164,7 +164,7 @@ public class ErrorReportTool extends AbstractBaseTool<Map<String, Object>> imple
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	// ==================== TerminableTool interface implementation ====================

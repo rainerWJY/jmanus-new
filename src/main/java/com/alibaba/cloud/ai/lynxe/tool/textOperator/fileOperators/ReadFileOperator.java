@@ -418,7 +418,7 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 
 	@Override
 	public String getServiceGroup() {
-		return "file-service-group";
+		return "fs";
 	}
 
 	@Override

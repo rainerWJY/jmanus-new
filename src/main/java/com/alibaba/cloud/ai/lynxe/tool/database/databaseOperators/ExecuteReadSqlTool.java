@@ -168,7 +168,7 @@ public class ExecuteReadSqlTool extends AbstractBaseTool<ExecuteReadSqlTool.Exec
 
 	@Override
 	public String getServiceGroup() {
-		return "database-service-group";
+		return "db-service";
 	}
 
 	@Override

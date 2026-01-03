@@ -97,7 +97,7 @@ public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override
