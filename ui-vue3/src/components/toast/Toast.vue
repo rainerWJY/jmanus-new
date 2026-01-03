@@ -43,7 +43,7 @@ defineOptions({
   name: 'ToastNotification',
 })
 
-import { ref } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 
 // Interface for exposing toast methods
@@ -84,6 +84,38 @@ const show = (msg: string, toastType = 'success', customDuration = 3000) => {
 const hide = () => {
   visible.value = false
 }
+
+/**
+ * Handle keyboard shortcuts for toast modal
+ * Enter: Confirm (close toast)
+ * Esc: Cancel (close toast)
+ */
+const handleToastKeydown = (event: KeyboardEvent) => {
+  if (!visible.value) return
+
+  // Both Enter and Esc close the toast (since there's only one Confirm button)
+  if (event.key === 'Enter' || event.key === 'Escape') {
+    event.preventDefault()
+    event.stopPropagation()
+    hide()
+  }
+}
+
+// Add keyboard event listener when toast is shown
+watch(visible, (isVisible) => {
+  if (isVisible) {
+    // Add event listener when toast opens
+    document.addEventListener('keydown', handleToastKeydown)
+  } else {
+    // Remove event listener when toast closes
+    document.removeEventListener('keydown', handleToastKeydown)
+  }
+})
+
+// Clean up event listener on component unmount
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleToastKeydown)
+})
 
 // Expose public API
 defineExpose<ToastInstance>({ show })
