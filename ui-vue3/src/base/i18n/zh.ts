@@ -472,6 +472,7 @@ const words: I18nType = {
         maxMemory: '能记住的最大消息数',
         conversationMemoryMaxChars: '单agent的最大 memory记忆阈值，超过这个数值系统会自动压缩记忆，保持记忆字符数在当前阈值内。',
         executorPoolSize: '执行器的核心大小，func-Agent可并行执行的数量，不建议过大3~5合适，瓶颈是llm端的并行调用限流。',
+        llmReadTimeout: 'llm读请求超时，是socket最核心的超时时间，默认是120秒',
         parallelToolCalls: '并行工具调用',
       },
       // infiniteContext: { // 临时注释掉

@@ -487,6 +487,7 @@ const words: I18nType = {
         maxMemory: 'Maximum number of messages that can be remembered',
         conversationMemoryMaxChars: 'Maximum memory threshold for a single agent. When exceeded, the system will automatically compress memory to keep the memory character count within the current threshold.',
         executorPoolSize: 'Core size of the executor pool, representing the number of func-Agents that can execute in parallel. It is not recommended to set this too large; 3~5 is appropriate. The bottleneck is the rate limiting of parallel calls on the LLM side.',
+        llmReadTimeout: 'LLM read request timeout, which is the core timeout for socket connections. Default is 120 seconds.',
         parallelToolCalls: 'Parallel tool calls',
       },
       // infiniteContext: { // TEMPORARILY COMMENTED OUT

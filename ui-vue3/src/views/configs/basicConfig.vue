@@ -429,6 +429,7 @@ const CONFIG_DISPLAY_NAMES: Record<string, string> = {
   maxMemory: 'config.basicConfig.agentSettings.maxMemory',
   conversationMemoryMaxChars: 'config.basicConfig.agentSettings.conversationMemoryMaxChars',
   executorPoolSize: 'config.basicConfig.agentSettings.executorPoolSize',
+  llmReadTimeout: 'config.basicConfig.agentSettings.llmReadTimeout',
   parallelToolCalls: 'config.basicConfig.agentSettings.parallelToolCalls',
 
   // Infinite Context - TEMPORARILY COMMENTED OUT
