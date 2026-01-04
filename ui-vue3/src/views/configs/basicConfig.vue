@@ -527,6 +527,7 @@ const getConfigMax = (configKey: string): number => {
     maxThreads: 32,
     timeoutSeconds: 300,
     maxMemory: 1000,
+    conversationMemoryMaxChars: 1000000,
   }
   return maxValues[configKey] || 10000
 }

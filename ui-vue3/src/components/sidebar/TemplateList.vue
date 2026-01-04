@@ -243,9 +243,7 @@ const emit = defineEmits<{
 // Handle organization method change
 const handleOrganizationChange = (event: Event) => {
   const target = event.target as HTMLSelectElement
-  templateStore.setOrganizationMethod(
-    target.value as 'by_group_time' | 'by_group_abc'
-  )
+  templateStore.setOrganizationMethod(target.value as 'by_group_time' | 'by_group_abc')
 }
 
 // Utility functions
