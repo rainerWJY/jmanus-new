@@ -40,13 +40,8 @@ export class TemplateStore {
   constructor() {
     // Load organization method from localStorage
     const savedMethod = localStorage.getItem('sidebarOrganizationMethod')
-    if (
-      savedMethod &&
-      ['by_group_time', 'by_group_abc'].includes(savedMethod)
-    ) {
-      this.organizationMethod = savedMethod as
-        | 'by_group_time'
-        | 'by_group_abc'
+    if (savedMethod && ['by_group_time', 'by_group_abc'].includes(savedMethod)) {
+      this.organizationMethod = savedMethod as 'by_group_time' | 'by_group_abc'
     }
     // Load group collapse state from localStorage
     this.loadGroupCollapseState()

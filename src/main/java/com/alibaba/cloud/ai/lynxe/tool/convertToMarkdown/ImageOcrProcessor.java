@@ -102,7 +102,8 @@ public class ImageOcrProcessor {
 			// Step 3: Process image with OCR using executor pool
 			String extractedText;
 			if (imageRecognitionExecutorPool != null) {
-				final String finalModelName = modelName; // Make effectively final for lambda
+				final String finalModelName = modelName; // Make effectively final for
+															// lambda
 				CompletableFuture<String> ocrTask = imageRecognitionExecutorPool.submitTask(() -> {
 					log.info("Processing image with OCR");
 					return processImageWithOcrWithRetry(image, 1, additionalRequirement, finalModelName);
@@ -179,6 +180,7 @@ public class ImageOcrProcessor {
 			return new ToolExecuteResult("Error: " + e.getMessage());
 		}
 	}
+
 	/**
 	 * Load image from file and validate format
 	 * @param sourceFile The source image file
@@ -286,9 +288,10 @@ public class ImageOcrProcessor {
 
 			// Get the ChatClient from LlmService
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
-			// Use provided model name if available, otherwise use configured model name from LynxeProperties
-			String finalModelName = (modelName != null && !modelName.trim().isEmpty())
-					? modelName : getConfiguredModelName();
+			// Use provided model name if available, otherwise use configured model name
+			// from LynxeProperties
+			String finalModelName = (modelName != null && !modelName.trim().isEmpty()) ? modelName
+					: getConfiguredModelName();
 			if (modelName != null && !modelName.trim().isEmpty()) {
 				log.debug("Using provided model name: {}", finalModelName);
 			}

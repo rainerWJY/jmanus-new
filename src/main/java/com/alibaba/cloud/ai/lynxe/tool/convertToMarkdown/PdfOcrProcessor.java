@@ -116,7 +116,8 @@ public class PdfOcrProcessor {
 
 			// Submit all OCR tasks to the dedicated executor pool
 			if (imageRecognitionExecutorPool != null) {
-				final String finalModelName = modelName; // Make effectively final for lambda
+				final String finalModelName = modelName; // Make effectively final for
+															// lambda
 				for (int i = 0; i < pageImages.size(); i++) {
 					final int pageIndex = i;
 					final BufferedImage pageImage = pageImages.get(i);
@@ -216,7 +217,6 @@ public class PdfOcrProcessor {
 			return new ToolExecuteResult("Error: " + e.getMessage());
 		}
 	}
-
 
 	/**
 	 * Convert PDF pages to images using PDFBox with optimized settings and parallel
@@ -461,9 +461,10 @@ public class PdfOcrProcessor {
 
 			// Get the ChatClient from LlmService
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
-			// Use provided model name if available, otherwise use configured model name from LynxeProperties
-			String finalModelName = (modelName != null && !modelName.trim().isEmpty())
-					? modelName : getConfiguredModelName();
+			// Use provided model name if available, otherwise use configured model name
+			// from LynxeProperties
+			String finalModelName = (modelName != null && !modelName.trim().isEmpty()) ? modelName
+					: getConfiguredModelName();
 			if (modelName != null && !modelName.trim().isEmpty()) {
 				log.debug("Using provided model name: {}", finalModelName);
 			}

@@ -125,7 +125,8 @@ public class MarkdownConverterTool extends AbstractBaseTool<MarkdownConverterToo
 		Boolean forceLlmForPdf = input.getForceLlmForPdf();
 		String modelName = input.getModelName();
 
-		log.info("MarkdownConverterTool processing file: {} with additional requirement: {}, forceLlmForPdf: {}, modelName: {}",
+		log.info(
+				"MarkdownConverterTool processing file: {} with additional requirement: {}, forceLlmForPdf: {}, modelName: {}",
 				filename, additionalRequirement, forceLlmForPdf, modelName);
 
 		try {
@@ -153,7 +154,8 @@ public class MarkdownConverterTool extends AbstractBaseTool<MarkdownConverterToo
 				case "doc", "docx" -> processWordToMarkdown(sourceFile, additionalRequirement);
 				case "xlsx", "xls" -> processExcelToMarkdown(sourceFile, additionalRequirement);
 				case "pdf" -> processPdfToMarkdown(sourceFile, additionalRequirement, forceLlmForPdf, modelName);
-				case "jpg", "jpeg", "png", "gif" -> processImageToMarkdown(sourceFile, additionalRequirement, modelName);
+				case "jpg", "jpeg", "png", "gif" ->
+					processImageToMarkdown(sourceFile, additionalRequirement, modelName);
 				case "eml" -> processEmlToMarkdown(sourceFile, additionalRequirement);
 				case "txt", "md", "json", "xml", "yaml", "yml", "log", "java", "py", "js", "html", "css" ->
 					processTextToMarkdown(sourceFile, additionalRequirement);
