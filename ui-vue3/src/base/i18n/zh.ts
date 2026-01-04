@@ -470,6 +470,8 @@ const words: I18nType = {
         maxSteps: '智能体执行最大步数',
         userInputTimeout: '用户输入表单等待超时时间(秒)',
         maxMemory: '能记住的最大消息数',
+        conversationMemoryMaxChars: '单agent的最大 memory记忆阈值，超过这个数值系统会自动压缩记忆，保持记忆字符数在当前阈值内。',
+        executorPoolSize: '执行器的核心大小，func-Agent可并行执行的数量，不建议过大3~5合适，瓶颈是llm端的并行调用限流。',
         parallelToolCalls: '并行工具调用',
       },
       // infiniteContext: { // 临时注释掉

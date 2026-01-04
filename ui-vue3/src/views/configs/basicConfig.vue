@@ -110,6 +110,7 @@
                   <div class="config-item-content vertical-layout">
                     <div class="config-item-info">
                       <div class="config-item-header">
+                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <label class="config-label">
                           {{ $t(item.displayName) || item.description }}
                           <span class="type-badge boolean">{{
@@ -123,7 +124,6 @@
                             >{{ $t('config.modified') }}</span
                           >
                         </label>
-                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                       </div>
                     </div>
                     <div class="config-control">
@@ -165,6 +165,7 @@
                   <div class="config-item-content vertical-layout">
                     <div class="config-item-info">
                       <div class="config-item-header">
+                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <label class="config-label">
                           {{ $t(item.displayName) || item.description }}
                           <span class="type-badge select">{{ $t('config.types.select') }}</span>
@@ -174,7 +175,6 @@
                             >{{ $t('config.modified') }}</span
                           >
                         </label>
-                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                       </div>
                     </div>
                     <div class="config-control">
@@ -202,6 +202,7 @@
                   <div class="config-item-content vertical-layout">
                     <div class="config-item-info">
                       <div class="config-item-header">
+                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <label class="config-label">
                           {{ $t(item.displayName) || item.description }}
                           <span class="type-badge textarea">{{ $t('config.types.textarea') }}</span>
@@ -211,7 +212,6 @@
                             >{{ $t('config.modified') }}</span
                           >
                         </label>
-                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                       </div>
                     </div>
                     <div class="config-control">
@@ -236,6 +236,7 @@
                   <div class="config-item-content vertical-layout">
                     <div class="config-item-info">
                       <div class="config-item-header">
+                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <label class="config-label">
                           {{ $t(item.displayName) || item.description }}
                           <span class="type-badge number">{{ $t('config.types.number') }}</span>
@@ -245,7 +246,6 @@
                             >{{ $t('config.modified') }}</span
                           >
                         </label>
-                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <div class="config-meta" v-if="item.min || item.max">
                           <span class="range-info">
                             {{ $t('config.range') }}: {{ item.min || 0 }} - {{ item.max || '∞' }}
@@ -274,6 +274,7 @@
                   <div class="config-item-content vertical-layout">
                     <div class="config-item-info">
                       <div class="config-item-header">
+                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                         <label class="config-label">
                           {{ $t(item.displayName) || item.description }}
                           <span class="type-badge string">{{
@@ -287,7 +288,6 @@
                             >{{ $t('config.modified') }}</span
                           >
                         </label>
-                        <span class="config-key" :title="item.configKey">{{ item.configKey }}</span>
                       </div>
                     </div>
                     <div class="config-control">
@@ -427,6 +427,8 @@ const CONFIG_DISPLAY_NAMES: Record<string, string> = {
   maxSteps: 'config.basicConfig.agentSettings.maxSteps',
   userInputTimeout: 'config.basicConfig.agentSettings.userInputTimeout',
   maxMemory: 'config.basicConfig.agentSettings.maxMemory',
+  conversationMemoryMaxChars: 'config.basicConfig.agentSettings.conversationMemoryMaxChars',
+  executorPoolSize: 'config.basicConfig.agentSettings.executorPoolSize',
   parallelToolCalls: 'config.basicConfig.agentSettings.parallelToolCalls',
 
   // Infinite Context - TEMPORARILY COMMENTED OUT
@@ -1113,8 +1115,8 @@ onMounted(() => {
 }
 
 .config-label {
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 4px;
   display: flex;
   align-items: center;
@@ -1125,19 +1127,18 @@ onMounted(() => {
 /* Label style in vertical layout */
 .vertical-layout .config-label {
   margin-bottom: 0;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .config-key {
   display: block;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 6px;
+  font-size: 14px;
+  color: #ffffff;
+  font-weight: bold;
+  margin-bottom: 8px;
   font-family: monospace;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 6px;
-  border-radius: 4px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1146,8 +1147,8 @@ onMounted(() => {
 
 /* Configuration key style in vertical layout */
 .vertical-layout .config-key {
-  margin-bottom: 0;
-  display: inline-block;
+  margin-bottom: 8px;
+  display: block;
   max-width: fit-content;
 }
 
