@@ -86,10 +86,11 @@ public class PdfOcrProcessor {
 	 * @param currentPlanId Current plan ID for file operations
 	 * @param targetFilename Optional target filename (if null, will generate _ocr.txt
 	 * filename)
+	 * @param modelName Optional model name to override default configuration
 	 * @return ToolExecuteResult with OCR processing status and extracted text
 	 */
 	public ToolExecuteResult convertPdfToTextWithOcr(Path sourceFile, String additionalRequirement,
-			String currentPlanId, String targetFilename) {
+			String currentPlanId, String targetFilename, String modelName) {
 		try {
 			log.info("Starting OCR processing for PDF file: {}", sourceFile.getFileName());
 
@@ -115,13 +116,15 @@ public class PdfOcrProcessor {
 
 			// Submit all OCR tasks to the dedicated executor pool
 			if (imageRecognitionExecutorPool != null) {
+				final String finalModelName = modelName; // Make effectively final for lambda
 				for (int i = 0; i < pageImages.size(); i++) {
 					final int pageIndex = i;
 					final BufferedImage pageImage = pageImages.get(i);
 
 					CompletableFuture<String> ocrTask = imageRecognitionExecutorPool.submitTask(() -> {
 						log.info("Processing page {} of {} with OCR", pageIndex + 1, pageImages.size());
-						return processImageWithOcrWithRetry(pageImage, pageIndex + 1, additionalRequirement);
+						return processImageWithOcrWithRetry(pageImage, pageIndex + 1, additionalRequirement,
+								finalModelName);
 					});
 
 					ocrTasks.add(ocrTask);
@@ -214,17 +217,6 @@ public class PdfOcrProcessor {
 		}
 	}
 
-	/**
-	 * Convert PDF file to text using OCR processing (backward compatibility method)
-	 * @param sourceFile The source PDF file
-	 * @param additionalRequirement Optional additional requirements for OCR processing
-	 * @param currentPlanId Current plan ID for file operations
-	 * @return ToolExecuteResult with OCR processing status and extracted text
-	 */
-	public ToolExecuteResult convertPdfToTextWithOcr(Path sourceFile, String additionalRequirement,
-			String currentPlanId) {
-		return convertPdfToTextWithOcr(sourceFile, additionalRequirement, currentPlanId, null);
-	}
 
 	/**
 	 * Convert PDF pages to images using PDFBox with optimized settings and parallel
@@ -392,15 +384,17 @@ public class PdfOcrProcessor {
 	 * @param image The BufferedImage to process
 	 * @param pageNumber The page number for logging
 	 * @param additionalRequirement Optional additional requirements for OCR processing
+	 * @param modelName Optional model name to override default configuration
 	 * @return Extracted text or null if failed
 	 */
-	private String processImageWithOcrWithRetry(BufferedImage image, int pageNumber, String additionalRequirement) {
+	private String processImageWithOcrWithRetry(BufferedImage image, int pageNumber, String additionalRequirement,
+			String modelName) {
 		int maxRetryAttempts = getConfiguredMaxRetryAttempts();
 
 		for (int attempt = 1; attempt <= maxRetryAttempts; attempt++) {
 			try {
 				log.debug("OCR attempt {} of {} for page {}", attempt, maxRetryAttempts, pageNumber);
-				String result = processImageWithOcr(image, pageNumber, additionalRequirement);
+				String result = processImageWithOcr(image, pageNumber, additionalRequirement, modelName);
 
 				if (result != null && !result.trim().isEmpty()) {
 					if (attempt > 1) {
@@ -443,9 +437,11 @@ public class PdfOcrProcessor {
 	 * @param image The BufferedImage to process
 	 * @param pageNumber The page number for logging
 	 * @param additionalRequirement Optional additional requirements for OCR processing
+	 * @param modelName Optional model name to override default configuration
 	 * @return Extracted text or null if failed
 	 */
-	private String processImageWithOcr(BufferedImage image, int pageNumber, String additionalRequirement) {
+	private String processImageWithOcr(BufferedImage image, int pageNumber, String additionalRequirement,
+			String modelName) {
 		if (llmService == null) {
 			log.error("LlmService is not initialized, cannot perform OCR");
 			return null;
@@ -465,9 +461,16 @@ public class PdfOcrProcessor {
 
 			// Get the ChatClient from LlmService
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
-			// Use configured model name from LynxeProperties
-			String modelName = getConfiguredModelName();
-			ChatOptions chatOptions = ChatOptions.builder().model(modelName).build();
+			// Use provided model name if available, otherwise use configured model name from LynxeProperties
+			String finalModelName = (modelName != null && !modelName.trim().isEmpty())
+					? modelName : getConfiguredModelName();
+			if (modelName != null && !modelName.trim().isEmpty()) {
+				log.debug("Using provided model name: {}", finalModelName);
+			}
+			else {
+				log.debug("Using configured model name: {}", finalModelName);
+			}
+			ChatOptions chatOptions = ChatOptions.builder().model(finalModelName).build();
 
 			// Use ChatClient to process the image with OCR
 			// Include additional requirements in the system message if provided

@@ -1213,14 +1213,14 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 			com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult result = switch (extension) {
 				case "pdf" -> {
 					if (pdfProcessor != null) {
-						yield pdfProcessor.convertToMarkdown(filePath, null, planId, false);
+						yield pdfProcessor.convertToMarkdown(filePath, null, planId, false, null);
 					}
 					yield null;
 				}
 				case "jpg", "jpeg", "png", "gif" -> {
 					if (imageProcessor != null) {
 						String markdownFilename = generateMarkdownFilename(filename);
-						yield imageProcessor.convertImageToTextWithOcr(filePath, null, planId, markdownFilename);
+						yield imageProcessor.convertImageToTextWithOcr(filePath, null, planId, markdownFilename, null);
 					}
 					yield null;
 				}
