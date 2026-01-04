@@ -24,8 +24,6 @@
             @change="handleOrganizationChange"
             class="organization-select"
           >
-            <option value="by_time">{{ $t('sidebar.organizationByTime') }}</option>
-            <option value="by_abc">{{ $t('sidebar.organizationByAbc') }}</option>
             <option value="by_group_time">{{ $t('sidebar.organizationByGroupTime') }}</option>
             <option value="by_group_abc">{{ $t('sidebar.organizationByGroupAbc') }}</option>
           </select>
@@ -246,7 +244,7 @@ const emit = defineEmits<{
 const handleOrganizationChange = (event: Event) => {
   const target = event.target as HTMLSelectElement
   templateStore.setOrganizationMethod(
-    target.value as 'by_time' | 'by_abc' | 'by_group_time' | 'by_group_abc'
+    target.value as 'by_group_time' | 'by_group_abc'
   )
 }
 

@@ -897,8 +897,6 @@ const words: I18nType = {
     serviceGroup: 'Service Group',
     organizationMethod: 'Organization',
     organizationLabel: 'Organization:',
-    organizationByTime: 'By Modify Time',
-    organizationByAbc: 'By ABC',
     organizationByGroupTime: 'By Service Group & Time',
     organizationByGroupAbc: 'By Service Group & ABC',
     ungroupedMethods: 'Ungrouped Methods',

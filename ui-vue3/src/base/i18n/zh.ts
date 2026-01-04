@@ -844,8 +844,6 @@ const words: I18nType = {
     serviceGroup: '服务组',
     organizationMethod: '组织方式',
     organizationLabel: '组织：',
-    organizationByTime: '按修改时间',
-    organizationByAbc: '按ABC字符排序',
     organizationByGroupTime: '按服务组名和修改时间',
     organizationByGroupAbc: '按服务组名和ABC字符排序',
     ungroupedMethods: '未分组方法',
