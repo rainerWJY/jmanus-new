@@ -24,9 +24,9 @@
             <Icon icon="carbon:arrow-left" />
             {{ $t('backHome') }}
           </button>
-          <LanguageSwitcher />
         </div>
         <div class="header-actions-right">
+          <LanguageSwitcher />
           <NamespaceSwitch />
         </div>
       </div>
@@ -68,25 +68,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { Icon } from '@iconify/vue'
-import { useI18n } from 'vue-i18n'
-import {
-  SettingOutlined,
-  BuildOutlined,
-  ToolOutlined,
-  DatabaseOutlined,
-  FolderOutlined,
-  FileTextOutlined,
-} from '@ant-design/icons-vue'
-import BasicConfig from './basicConfig.vue'
-import ModelConfig from './modelConfig.vue'
-import McpConfig from './mcpConfig.vue'
-import DatabaseConfig from './databaseConfig.vue'
 import LanguageSwitcher from '@/components/language-switcher/LanguageSwitcher.vue'
-import NamespaceConfig from './namespaceConfig.vue'
+import {
+  BuildOutlined,
+  DatabaseOutlined,
+  FileTextOutlined,
+  FolderOutlined,
+  SettingOutlined,
+  ToolOutlined,
+} from '@ant-design/icons-vue'
+import { Icon } from '@iconify/vue'
+import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
+import BasicConfig from './basicConfig.vue'
 import NamespaceSwitch from './components/namespaceSwitch.vue'
+import DatabaseConfig from './databaseConfig.vue'
+import McpConfig from './mcpConfig.vue'
+import ModelConfig from './modelConfig.vue'
+import NamespaceConfig from './namespaceConfig.vue'
 import PlanTemplateConfig from './planTemplateConfig.vue'
 
 // Define component name for Vue linting rules
@@ -207,6 +207,12 @@ const getAntIcon = (key: string) => {
   width: 100%;
 }
 .header-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-actions-right {
   display: flex;
   align-items: center;
   gap: 14px;
