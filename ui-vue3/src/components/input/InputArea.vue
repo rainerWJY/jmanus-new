@@ -84,7 +84,6 @@ import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vu
 import { useAvailableToolsSingleton, type useAvailableTools } from '@/composables/useAvailableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
-import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
@@ -98,7 +97,6 @@ const { t } = useI18n()
 const taskStore = useTaskStore()
 const templateConfig = usePlanTemplateConfigSingleton()
 const messageDialog = useMessageDialogSingleton()
-const planExecution = usePlanExecutionSingleton()
 const { stopTask } = useTaskStop()
 const fileUpload = useFileUploadSingleton()
 const availableToolsStore: ReturnType<typeof useAvailableTools> = useAvailableToolsSingleton()
@@ -368,31 +366,9 @@ onMounted(() => {
   loadInnerTools()
   loadHistory()
 
-  // Watch for plan completion to reset session (reactive approach)
-  // Only reset when ALL plans are completed, not when any single plan completes
-  watch(
-    () => planExecution.planExecutionRecords.value,
-    records => {
-      // Check if ALL tracked plans are completed
-      const recordsArray = Object.entries(records)
-      if (recordsArray.length === 0) {
-        return // No plans to check
-      }
-
-      // Check if there are any running plans
-      const hasRunningPlans = recordsArray.some(
-        ([, planDetails]) =>
-          planDetails && !planDetails.completed && planDetails.status !== 'failed'
-      )
-
-      // Only reset session when ALL plans are completed
-      if (!hasRunningPlans) {
-        console.log('[InputArea] All plans completed, resetting session')
-        resetSession()
-      }
-    },
-    { deep: true }
-  )
+  // Note: We no longer automatically reset session when plans complete
+  // This allows users to reuse uploaded files across multiple plan executions
+  // Files should only be cleared when the user explicitly starts a new conversation
 
   // Watch for taskToInput changes and set input value automatically
   watch(
