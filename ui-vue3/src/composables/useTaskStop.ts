@@ -16,7 +16,7 @@
 
 import { DirectApiService } from '@/api/direct-api-service'
 import { useTaskStore } from '@/stores/task'
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 /**
  * Composable for handling task stop functionality
@@ -35,9 +35,10 @@ export function useTaskStop() {
 
   /**
    * Stop a running task by plan ID
+   * Checks execution status before and after stopping to handle backend restart scenarios
    * @param planId Plan ID to stop. If not provided, uses planId from currentTask
    * @param updateTaskState Whether to update taskStore state after stopping (default: true)
-   * @returns Promise<boolean> - true if stop was successful, false otherwise
+   * @returns Promise<boolean> - true if stop was successful or task was already stopped, false otherwise
    */
   const stopTask = async (planId?: string, updateTaskState: boolean = true): Promise<boolean> => {
     // Determine which planId to use
@@ -57,16 +58,72 @@ export function useTaskStop() {
     isStopping.value = true
 
     try {
-      await DirectApiService.stopTask(targetPlanId)
-      console.log('[useTaskStop] Task stopped successfully')
+      // Check execution status before stopping to handle backend restart scenario
+      let taskStatus
+      try {
+        taskStatus = await DirectApiService.getTaskStatus(targetPlanId)
+        console.log('[useTaskStop] Task status before stop:', taskStatus)
 
-      // Update task state if requested and it matches the stopped planId
-      if (
-        updateTaskState &&
-        taskStore.currentTask &&
-        taskStore.currentTask.planId === targetPlanId
-      ) {
-        taskStore.currentTask.isRunning = false
+        // If task doesn't exist or is not running, reset frontend state
+        if (!taskStatus.exists || !taskStatus.isRunning) {
+          console.log(
+            '[useTaskStop] Task is not actually running (backend may have restarted), resetting frontend state'
+          )
+          if (
+            updateTaskState &&
+            taskStore.currentTask &&
+            taskStore.currentTask.planId === targetPlanId
+          ) {
+            taskStore.currentTask.isRunning = false
+          }
+          // Reset stopping flag before returning
+          isStopping.value = false
+          return true // Consider this a success since task is already stopped
+        }
+      } catch (statusError) {
+        console.warn(
+          '[useTaskStop] Failed to check task status, proceeding with stop:',
+          statusError
+        )
+        // Continue with stop attempt even if status check fails
+      }
+
+      // Stop the task
+      await DirectApiService.stopTask(targetPlanId)
+      console.log('[useTaskStop] Task stop request sent successfully')
+
+      // Verify status after stopping
+      try {
+        // Wait a bit for the backend to process the stop request
+        await new Promise(resolve => setTimeout(resolve, 500))
+        taskStatus = await DirectApiService.getTaskStatus(targetPlanId)
+        console.log('[useTaskStop] Task status after stop:', taskStatus)
+
+        // Update task state based on actual backend status
+        if (
+          updateTaskState &&
+          taskStore.currentTask &&
+          taskStore.currentTask.planId === targetPlanId
+        ) {
+          // Set isRunning to false if task is not running or doesn't exist
+          taskStore.currentTask.isRunning = taskStatus.exists && taskStatus.isRunning
+          if (!taskStatus.isRunning) {
+            console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
+          }
+        }
+      } catch (statusError) {
+        console.warn(
+          '[useTaskStop] Failed to verify task status after stop, updating state anyway:',
+          statusError
+        )
+        // Update state optimistically
+        if (
+          updateTaskState &&
+          taskStore.currentTask &&
+          taskStore.currentTask.planId === targetPlanId
+        ) {
+          taskStore.currentTask.isRunning = false
+        }
       }
 
       return true

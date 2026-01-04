@@ -66,8 +66,8 @@ public class SystemErrorReportTool extends AbstractBaseTool<Map<String, Object>>
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return String.format("""
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString = String.format("""
 				System Error Report Tool Status:
 				- Current State: %s
 				- Last Error: %s
@@ -79,6 +79,7 @@ public class SystemErrorReportTool extends AbstractBaseTool<Map<String, Object>>
 				lastErrorMessage.isEmpty() ? "N/A" : lastErrorMessage,
 				errorReportTimestamp.isEmpty() ? "N/A" : errorReportTimestamp,
 				currentPlanId != null ? currentPlanId : "N/A");
+		return new ToolStateInfo(null, stateString);
 	}
 
 	public SystemErrorReportTool(String planId) {
@@ -166,7 +167,7 @@ public class SystemErrorReportTool extends AbstractBaseTool<Map<String, Object>>
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override

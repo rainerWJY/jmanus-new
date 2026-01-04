@@ -18,7 +18,6 @@ package com.alibaba.cloud.ai.lynxe.runtime.executor;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +37,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanInterface;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.StepResult;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
 import com.alibaba.cloud.ai.lynxe.runtime.service.FileUploadService;
+import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 
 /**
@@ -69,6 +69,21 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	protected final UnifiedDirectoryManager unifiedDirectoryManager;
 
+	protected PlanIdDispatcher planIdDispatcher;
+
+	/**
+	 * Generate a unique step ID for tracking execution steps using PlanIdDispatcher.
+	 * @return unique step ID
+	 */
+	protected String generateStepId() {
+		if (planIdDispatcher != null) {
+			return planIdDispatcher.generateStepId();
+		}
+		else {
+			throw new IllegalStateException("PlanIdDispatcher is not available");
+		}
+	}
+
 	// Define static final strings for the keys used in executorParams
 	public static final String PLAN_STATUS_KEY = "planStatus";
 
@@ -83,7 +98,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	public AbstractPlanExecutor(List<DynamicAgentEntity> agents, PlanExecutionRecorder recorder, LlmService llmService,
 			LynxeProperties lynxeProperties, LevelBasedExecutorPool levelBasedExecutorPool,
 			FileUploadService fileUploadService, AgentInterruptionHelper agentInterruptionHelper,
-			UnifiedDirectoryManager unifiedDirectoryManager) {
+			UnifiedDirectoryManager unifiedDirectoryManager, PlanIdDispatcher planIdDispatcher) {
 		this.agents = agents;
 		this.recorder = recorder;
 		this.llmService = llmService;
@@ -92,35 +107,43 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 		this.fileUploadService = fileUploadService;
 		this.agentInterruptionHelper = agentInterruptionHelper;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
+		this.planIdDispatcher = planIdDispatcher;
 	}
 
 	/**
 	 * General logic for executing a single step.
 	 * @param step The execution step
 	 * @param context The execution context
-	 * @return The step executor
+	 * @return CompletableFuture that completes with the step executor
 	 */
-	protected BaseAgent executeStep(ExecutionStep step, ExecutionContext context) {
+	protected CompletableFuture<BaseAgent> executeStep(ExecutionStep step, ExecutionContext context) {
+		// Ensure stepId is set - generate if null (e.g., from JSON deserialization)
+		if (step.getStepId() == null) {
+			String generatedStepId = generateStepId();
+			step.setStepId(generatedStepId);
+			logger.debug("Generated stepId for ExecutionStep: {}", generatedStepId);
+		}
+
+		BaseAgent executor = getExecutorForStep(context, step);
+		if (executor == null) {
+			logger.error("No executor found for step type: {}", step.getStepInStr());
+			step.setResult("No executor found for step type: " + step.getStepInStr());
+			step.setStatus(AgentState.FAILED);
+			step.setErrorMessage("No executor found for step type: " + step.getStepInStr());
+			return CompletableFuture.completedFuture(null);
+		}
+
+		step.setAgent(executor);
+
 		try {
-			BaseAgent executor = getExecutorForStep(context, step);
-			if (executor == null) {
-				logger.error("No executor found for step type: {}", step.getStepInStr());
-				step.setResult("No executor found for step type: " + step.getStepInStr());
-				step.setStatus(AgentState.FAILED);
-				step.setErrorMessage("No executor found for step type: " + step.getStepInStr());
-				return null;
-			}
+			recorder.recordStepStart(step, context.getCurrentPlanId());
+		}
+		catch (Exception e) {
+			logger.warn("Failed to record step start for planId: {}", context.getCurrentPlanId(), e);
+		}
 
-			step.setAgent(executor);
-
-			try {
-				recorder.recordStepStart(step, context.getCurrentPlanId());
-			}
-			catch (Exception e) {
-				logger.warn("Failed to record step start for planId: {}", context.getCurrentPlanId(), e);
-			}
-
-			BaseAgent.AgentExecResult agentResult = executor.run();
+		// Chain async execution
+		return executor.run().thenApply(agentResult -> {
 			if (agentResult == null) {
 				logger.error("Agent {} returned null result", executor.getName());
 				step.setResult("Agent execution returned null result");
@@ -149,8 +172,7 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			}
 
 			return executor;
-		}
-		catch (Exception e) {
+		}).exceptionally(e -> {
 			logger.error("Error executing step: {} for planId: {}", step.getStepRequirement(),
 					context.getCurrentPlanId(), e);
 			String errorMessage = e.getMessage();
@@ -159,27 +181,16 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			}
 			step.setResult("Execution failed: " + errorMessage);
 			step.setErrorMessage(errorMessage);
-		}
-		catch (Throwable t) {
-			// Catch any other throwable (Error, etc.)
-			logger.error("Fatal error executing step: {} for planId: {}", step.getStepRequirement(),
-					context.getCurrentPlanId(), t);
-			String errorMessage = t.getMessage();
-			if (errorMessage == null || errorMessage.isEmpty()) {
-				errorMessage = t.getClass().getSimpleName() + " occurred during step execution";
-			}
-			step.setResult("Execution failed: " + errorMessage);
-			step.setErrorMessage(errorMessage);
-		}
-		finally {
+			return null;
+		}).thenApply(executorResult -> {
 			try {
 				recorder.recordStepEnd(step, context.getCurrentPlanId());
 			}
 			catch (Exception e) {
 				logger.warn("Failed to record step end for planId: {}", context.getCurrentPlanId(), e);
 			}
-		}
-		return null;
+			return executorResult;
+		});
 	}
 
 	/**
@@ -283,55 +294,59 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	 * @return CompletableFuture containing PlanExecutionResult with all step results
 	 */
 	public CompletableFuture<PlanExecutionResult> executeAllStepsAsync(ExecutionContext context) {
-		// Get the plan depth from context to determine which executor pool to use
-		int planDepth = context.getPlanDepth();
+		// Initialize plan execution synchronously (setup work)
+		PlanInterface plan = context.getPlan();
+		if (plan == null) {
+			return CompletableFuture.completedFuture(createErrorResult(context, "Plan is null in execution context"));
+		}
+		plan.setCurrentPlanId(context.getCurrentPlanId());
+		plan.setRootPlanId(context.getRootPlanId());
+		plan.updateStepIndices();
 
-		// Get the appropriate executor for this depth level
-		ExecutorService executor = levelBasedExecutorPool.getExecutorForLevel(planDepth);
+		// Initialize plan execution environment
+		initializePlanExecution(context);
 
-		return CompletableFuture.supplyAsync(() -> {
-			PlanExecutionResult result = new PlanExecutionResult();
-			BaseAgent lastExecutor = null;
-			try {
-				PlanInterface plan = context.getPlan();
-				if (plan == null) {
-					throw new IllegalStateException("Plan is null in execution context");
+		// Synchronize uploaded files to plan directory at the beginning of execution
+		syncUploadedFilesToPlan(context);
+		List<ExecutionStep> steps = plan.getAllSteps();
+
+		// Ensure all ExecutionStep objects have stepId before recording
+		if (steps != null) {
+			for (ExecutionStep step : steps) {
+				if (step.getStepId() == null) {
+					String generatedStepId = generateStepId();
+					step.setStepId(generatedStepId);
+					logger.debug("Generated stepId for ExecutionStep before recordPlanExecutionStart: {}",
+							generatedStepId);
 				}
-				plan.setCurrentPlanId(context.getCurrentPlanId());
-				plan.setRootPlanId(context.getRootPlanId());
-				plan.updateStepIndices();
+			}
+		}
 
-				// Initialize plan execution environment
-				initializePlanExecution(context);
+		recorder.recordPlanExecutionStart(context.getCurrentPlanId(), context.getPlan().getTitle(), context.getTitle(),
+				steps, context.getParentPlanId(), context.getRootPlanId(), context.getToolCallId());
 
-				// Synchronize uploaded files to plan directory at the beginning of
-				// execution
-				syncUploadedFilesToPlan(context);
-				List<ExecutionStep> steps = plan.getAllSteps();
+		// Build async chain for step execution
+		PlanExecutionResult result = new PlanExecutionResult();
+		CompletableFuture<BaseAgent> chain = CompletableFuture.completedFuture(null);
 
-				recorder.recordPlanExecutionStart(context.getCurrentPlanId(), context.getPlan().getTitle(),
-						context.getTitle(), steps, context.getParentPlanId(), context.getRootPlanId(),
-						context.getToolCallId());
+		if (steps != null && !steps.isEmpty()) {
+			for (int i = 0; i < steps.size(); i++) {
+				final ExecutionStep step = steps.get(i);
+				final int stepIndex = i;
+				chain = chain.thenCompose(lastExecutor -> {
+					// Check for interruption before each step
+					if (agentInterruptionHelper != null
+							&& !agentInterruptionHelper.checkInterruptionAndContinue(context.getRootPlanId())) {
+						logger.info("Plan execution interrupted at step {}/{} for planId: {}", stepIndex + 1,
+								steps.size(), context.getRootPlanId());
+						context.setSuccess(false);
+						result.setSuccess(false);
+						result.setErrorMessage("Plan execution interrupted by user");
+						return CompletableFuture.completedFuture(null);
+					}
 
-				if (steps != null && !steps.isEmpty()) {
-					for (int i = 0; i < steps.size(); i++) {
-						ExecutionStep step = steps.get(i);
-
-						// Check for interruption before each step
-						if (agentInterruptionHelper != null
-								&& !agentInterruptionHelper.checkInterruptionAndContinue(context.getRootPlanId())) {
-							logger.info("Plan execution interrupted at step {}/{} for planId: {}", i + 1, steps.size(),
-									context.getRootPlanId());
-							context.setSuccess(false);
-							result.setSuccess(false);
-							result.setErrorMessage("Plan execution interrupted by user");
-							break; // Stop executing remaining steps
-						}
-
-						BaseAgent stepExecutor = executeStep(step, context);
+					return executeStep(step, context).thenApply(stepExecutor -> {
 						if (stepExecutor != null) {
-							lastExecutor = stepExecutor;
-
 							// Collect step result
 							StepResult stepResult = new StepResult();
 							stepResult.setStepIndex(step.getStepIndex());
@@ -343,12 +358,13 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 							result.addStepResult(stepResult);
 
 							// Check if this step was interrupted
-							if (step.getResult().contains("Execution interrupted by user")) {
+							if (step.getResult() != null
+									&& step.getResult().contains("Execution interrupted by user")) {
 								logger.info("Step execution was interrupted, stopping plan execution");
 								context.setSuccess(false);
 								result.setSuccess(false);
 								result.setErrorMessage("Plan execution interrupted by user");
-								break; // Stop executing remaining steps
+								return null; // Signal to stop
 							}
 
 							// Check if this step failed
@@ -362,59 +378,48 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 								else {
 									result.setErrorMessage("Agent execution failed: " + step.getResult());
 								}
-								break; // Stop executing remaining steps
+								return null; // Signal to stop
 							}
+
+							return stepExecutor;
 						}
-					}
-				}
+						return null;
+					});
+				});
+			}
+		}
 
-				// Only set success if no interruption or failure occurred
-				if (result.getErrorMessage() == null || (!result.getErrorMessage().contains("interrupted")
-						&& !result.getErrorMessage().contains("failed"))) {
-					context.setSuccess(true);
-					result.setSuccess(true);
-					result.setFinalResult(context.getPlan().getResult());
-				}
+		// Finalize result and perform cleanup
+		return chain.thenApply(lastExecutor -> {
+			// Only set success if no interruption or failure occurred
+			if (result.getErrorMessage() == null || (!result.getErrorMessage().contains("interrupted")
+					&& !result.getErrorMessage().contains("failed"))) {
+				context.setSuccess(true);
+				result.setSuccess(true);
+				result.setFinalResult(context.getPlan().getResult());
+			}
 
+			// Perform cleanup
+			try {
+				performCleanup(context, lastExecutor);
 			}
 			catch (Exception e) {
-				logger.error("Unexpected error during plan execution for planId: {}", context.getCurrentPlanId(), e);
-				context.setSuccess(false);
-				result.setSuccess(false);
-				String errorMessage = e.getMessage();
-				if (errorMessage == null || errorMessage.isEmpty()) {
-					errorMessage = e.getClass().getSimpleName() + " occurred during plan execution";
-				}
-				result.setErrorMessage(errorMessage);
-			}
-			catch (Throwable t) {
-				// Catch any other throwable (Error, etc.) that might not be caught by
-				// Exception
-				logger.error("Fatal error during plan execution for planId: {}", context.getCurrentPlanId(), t);
-				context.setSuccess(false);
-				result.setSuccess(false);
-				String errorMessage = t.getMessage();
-				if (errorMessage == null || errorMessage.isEmpty()) {
-					errorMessage = t.getClass().getSimpleName() + " occurred during plan execution";
-				}
-				result.setErrorMessage(errorMessage);
-			}
-			finally {
-				try {
-					performCleanup(context, lastExecutor);
-				}
-				catch (Exception e) {
-					logger.error("Error during cleanup for planId: {}", context.getCurrentPlanId(), e);
-				}
+				logger.error("Error during cleanup for planId: {}", context.getCurrentPlanId(), e);
 			}
 
 			return result;
-		}, executor).exceptionally(throwable -> {
-			// Handle any uncaught exceptions that might escape the supplyAsync lambda
-			// This is a safety net for exceptions that occur outside the try-catch blocks
-			logger.error("Uncaught exception in CompletableFuture for planId: {}", context.getCurrentPlanId(),
+		}).exceptionally(throwable -> {
+			logger.error("Unexpected error during plan execution for planId: {}", context.getCurrentPlanId(),
 					throwable);
-			// Ensure cleanup happens even if exception occurred before finally block
+			context.setSuccess(false);
+			result.setSuccess(false);
+			String errorMessage = throwable.getMessage();
+			if (errorMessage == null || errorMessage.isEmpty()) {
+				errorMessage = throwable.getClass().getSimpleName() + " occurred during plan execution";
+			}
+			result.setErrorMessage(errorMessage);
+
+			// Perform cleanup on error
 			try {
 				performCleanup(context, null);
 			}
@@ -422,15 +427,17 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 				logger.error("Error during cleanup in exceptionally handler for planId: {}", context.getCurrentPlanId(),
 						e);
 			}
-			PlanExecutionResult errorResult = new PlanExecutionResult();
-			errorResult.setSuccess(false);
-			String errorMessage = throwable.getMessage();
-			if (errorMessage == null || errorMessage.isEmpty()) {
-				errorMessage = throwable.getClass().getSimpleName() + " occurred during async plan execution";
-			}
-			errorResult.setErrorMessage(errorMessage);
-			return errorResult;
+
+			return result;
 		});
+	}
+
+	private PlanExecutionResult createErrorResult(ExecutionContext context, String errorMessage) {
+		PlanExecutionResult errorResult = new PlanExecutionResult();
+		errorResult.setSuccess(false);
+		errorResult.setErrorMessage(errorMessage);
+		context.setSuccess(false);
+		return errorResult;
 	}
 
 	/**

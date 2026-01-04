@@ -266,7 +266,7 @@ public class LynxeProperties {
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "conversationMemoryMaxChars",
 			path = "lynxe.agent.conversationMemoryMaxChars",
-			description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue = "30000",
+			description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue = "300000",
 			inputType = ConfigInputType.NUMBER)
 	private volatile Integer conversationMemoryMaxChars;
 
@@ -277,7 +277,7 @@ public class LynxeProperties {
 			conversationMemoryMaxChars = Integer.valueOf(value);
 		}
 		if (conversationMemoryMaxChars == null) {
-			conversationMemoryMaxChars = 30000;
+			conversationMemoryMaxChars = 300000;
 		}
 		return conversationMemoryMaxChars;
 	}

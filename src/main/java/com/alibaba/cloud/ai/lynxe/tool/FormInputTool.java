@@ -44,7 +44,7 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 
 	private static final Logger log = LoggerFactory.getLogger(FormInputTool.class);
 
-	public static final String name = "form_input";
+	public static final String name = "form-input";
 
 	// Data structures:
 	/**
@@ -373,7 +373,7 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	/**
@@ -381,24 +381,29 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 	 * user-entered values if any)
 	 */
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		if (currentFormDefinition == null) {
-			return String.format("FormInputTool Status: No form defined. Current input state: %s",
+			stateString = String.format("FormInputTool Status: No form defined. Current input state: %s",
 					inputState.toString());
 		}
-		try {
-			StringBuilder stateBuilder = new StringBuilder("FormInputTool Status:\n");
-			stateBuilder
-				.append(String.format("Description: %s\nInput Items: %s\n", currentFormDefinition.getDescription(),
-						objectMapper.writeValueAsString(currentFormDefinition.getInputs())));
-			stateBuilder.append(String.format("Current input state: %s\n", inputState.toString()));
-			return stateBuilder.toString();
+		else {
+			try {
+				StringBuilder stateBuilder = new StringBuilder("FormInputTool Status:\n");
+				stateBuilder
+					.append(String.format("Description: %s\nInput Items: %s\n", currentFormDefinition.getDescription(),
+							objectMapper.writeValueAsString(currentFormDefinition.getInputs())));
+				stateBuilder.append(String.format("Current input state: %s\n", inputState.toString()));
+				stateString = stateBuilder.toString();
+			}
+			catch (JsonProcessingException e) {
+				log.error("Error serializing currentFormDefinition for state string", e);
+				stateString = String.format(
+						"FormInputTool Status: Error serializing input items. Current input state: %s",
+						inputState.toString());
+			}
 		}
-		catch (JsonProcessingException e) {
-			log.error("Error serializing currentFormDefinition for state string", e);
-			return String.format("FormInputTool Status: Error serializing input items. Current input state: %s",
-					inputState.toString());
-		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 	@Override

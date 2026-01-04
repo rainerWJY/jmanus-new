@@ -32,6 +32,7 @@ import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.model.entity.DynamicModelEntity;
 import com.alibaba.cloud.ai.lynxe.model.repository.DynamicModelRepository;
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,12 +68,12 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "image";
 	}
 
 	@Override
 	public String getName() {
-		return "image_generate";
+		return "image-generate";
 	}
 
 	@Override
@@ -619,7 +620,8 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
+		String stateString;
 		try {
 			StringBuilder stateBuilder = new StringBuilder();
 			stateBuilder.append("\n=== Image Generation Tool Current State ===\n");
@@ -630,12 +632,13 @@ public class ImageGenerationTool extends AbstractBaseTool<ImageGenerationRequest
 			stateBuilder.append("Supported quality: standard, hd\n");
 			stateBuilder.append("Supported number of images: 1-10\n");
 			stateBuilder.append("\n=== End Image Generation Tool State ===\n");
-			return stateBuilder.toString();
+			stateString = stateBuilder.toString();
 		}
 		catch (Exception e) {
 			log.error("Failed to get image generation tool state", e);
-			return String.format("Image generation tool state error: %s", e.getMessage());
+			stateString = String.format("Image generation tool state error: %s", e.getMessage());
 		}
+		return new ToolStateInfo(null, stateString);
 	}
 
 }

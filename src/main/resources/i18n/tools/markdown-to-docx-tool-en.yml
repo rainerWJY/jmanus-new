@@ -9,7 +9,6 @@ description: |
   Main operation:
   - Convert markdown file (.md or .markdown) to DOCX format
     - path (required): The markdown file path to convert (relative path in root plan directory)
-    - file_path (optional): Alternative parameter name for path (for backward compatibility)
     - output_path (optional): Output DOCX file path. If not provided, uses the same name as input with .docx extension
     - Output file is saved in the root plan directory (rootPlanId/)
     - Supports markdown features: headers, lists, tables, code blocks, horizontal rules, inline formatting
@@ -34,20 +33,12 @@ parameters: |
         "type": "string",
         "description": "The markdown file path to convert (relative path in root plan directory, e.g., 'file.md' or 'subdir/file.md')"
       },
-      "file_path": {
-        "type": "string",
-        "description": "Alternative parameter name for path (for backward compatibility)"
-      },
       "output_path": {
         "type": "string",
         "description": "Optional: Output DOCX file path. If not provided, uses the same name as input file with .docx extension (e.g., 'file.md' -> 'file.docx')"
       }
     },
     "required": ["path"],
-    "anyOf": [
-      {"required": ["path"]},
-      {"required": ["file_path"]}
-    ],
     "additionalProperties": false
   }
 

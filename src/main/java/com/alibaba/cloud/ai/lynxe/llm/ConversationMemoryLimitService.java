@@ -44,15 +44,15 @@ public class ConversationMemoryLimitService {
 
 	private static final Logger log = LoggerFactory.getLogger(ConversationMemoryLimitService.class);
 
-	private static final int RECENT_CHARS_TO_KEEP = 5000;
-
-	private static final int SUMMARY_MIN_CHARS = 3000;
-
-	private static final int SUMMARY_MAX_CHARS = 4000;
-
 	private static final double RETENTION_RATIO = 0.4; // Retain 40% of content
 
 	private static final String COMPRESSION_CONFIRMATION_MESSAGE = "Got it. Thanks for the additional context!";
+
+	/**
+	 * Metadata key to mark compression summary messages. Messages with this metadata
+	 * should be preserved in agent memory even though they are UserMessages.
+	 */
+	public static final String COMPRESSION_SUMMARY_METADATA_KEY = "compression_summary";
 
 	@Autowired
 	private LynxeProperties lynxeProperties;
@@ -215,7 +215,7 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Calculate total character count of all rounds
-		int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+		int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 		// Calculate target retention: 40% of total content
 		int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -239,7 +239,7 @@ public class ConversationMemoryLimitService {
 		// Start from the newest round and work backwards
 		for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 			DialogRound round = dialogRounds.get(i);
-			int roundChars = round.getTotalChars();
+			int roundChars = round.getTotalChars(objectMapper);
 
 			// Always keep at least the newest round (even if it exceeds 40%)
 			if (i == dialogRounds.size() - 1) {
@@ -451,19 +451,15 @@ public class ConversationMemoryLimitService {
 							First, reason in your scratchpad. Then, generate the <state_snapshot>.
 
 							Analyze the following conversation history and create a structured state_snapshot XML.
-							The state_snapshot should be between %d and %d characters total.
 
 							Required XML structure:
 							<state_snapshot>
-							<overall_goal>
-							[The main objective or goal of the conversation]
-							</overall_goal>
 							<key_knowledge>
 							[Important facts, commands, configurations, URLs, file paths, and key information discovered]
 							</key_knowledge>
-							<file_system_state>
-							[Files that were created, modified, deleted, or accessed (use prefixes: CREATED, MODIFIED, DELETED, ACCESSED)]
-							</file_system_state>
+							<previous_actions_summary>
+							[Briefly summarize what the system has already done previously]
+							</previous_actions_summary>
 							<recent_actions>
 							[Recent tool calls, commands executed, searches performed, and actions taken]
 							</recent_actions>
@@ -473,17 +469,16 @@ public class ConversationMemoryLimitService {
 							</state_snapshot>
 
 							Guidelines:
+							- ALL XML tags are REQUIRED and MUST contain content. Each tag must have meaningful content, cannot be empty.
 							- Preserve all critical information: URLs, file paths, commands, configurations
 							- Include tool names and their results when relevant
-							- Track file system changes accurately
 							- Maintain plan status and progress
-							- Keep the total length between %d and %d characters
 							- Output the XML content directly, no additional text before or after
 
 							Conversation history:
 							%s
 							""",
-					SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, SUMMARY_MIN_CHARS, SUMMARY_MAX_CHARS, conversationHistory);
+					conversationHistory);
 
 			// Use LLM to generate summary in state_snapshot format
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
@@ -496,26 +491,31 @@ public class ConversationMemoryLimitService {
 
 			String summary = response.getResult().getOutput().getText();
 
-			// Ensure summary is within target range (simple truncation if needed)
-			if (summary.length() < SUMMARY_MIN_CHARS) {
-				log.warn("Generated summary is too short ({} chars), using as-is", summary.length());
-			}
-			else if (summary.length() > SUMMARY_MAX_CHARS) {
-				log.warn("Generated summary is too long ({} chars), truncating...", summary.length());
-				summary = summary.substring(0, SUMMARY_MAX_CHARS);
-			}
+			// Add prefix explanation before the summary content
+			String prefixExplanation = "The following content is a brief summary of previously executed actions. "
+					+ "The original content was too long and has been summarized:\n\n";
+			String finalSummary = prefixExplanation + summary;
 
 			// Store as UserMessage regardless of format correctness (as requested)
-			return new UserMessage(summary);
+			// Add metadata to mark this as a compression summary so it won't be filtered
+			// out by processMemory
+			UserMessage summaryMessage = new UserMessage(finalSummary);
+			summaryMessage.getMetadata().put(COMPRESSION_SUMMARY_METADATA_KEY, Boolean.TRUE);
+			return summaryMessage;
 
 		}
 		catch (Exception e) {
 			log.error("Failed to summarize dialog rounds", e);
 			// Fallback: create a simple summary
+			String prefixExplanation = "The following content is a brief summary of previously executed actions. "
+					+ "The original content was too long and has been summarized:\n\n";
 			String fallbackSummary = String.format(
 					"Previous conversation history (%d dialog rounds) has been summarized due to length constraints.",
 					rounds.size());
-			return new UserMessage(fallbackSummary);
+			String finalFallbackSummary = prefixExplanation + fallbackSummary;
+			UserMessage fallbackMessage = new UserMessage(finalFallbackSummary);
+			fallbackMessage.getMetadata().put(COMPRESSION_SUMMARY_METADATA_KEY, Boolean.TRUE);
+			return fallbackMessage;
 		}
 	}
 
@@ -536,11 +536,23 @@ public class ConversationMemoryLimitService {
 			return messages;
 		}
 
-		public int getTotalChars() {
-			return messages.stream().mapToInt(msg -> {
-				String text = msg.getText();
-				return text != null ? text.length() : 0;
-			}).sum();
+		public int getTotalChars(ObjectMapper objectMapper) {
+			if (messages == null || messages.isEmpty()) {
+				return 0;
+			}
+			try {
+				// Serialize messages to JSON to get accurate character count
+				String json = objectMapper.writeValueAsString(messages);
+				return json.length();
+			}
+			catch (Exception e) {
+				log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+				// Fallback to simple text length calculation
+				return messages.stream().mapToInt(msg -> {
+					String text = msg.getText();
+					return text != null ? text.length() : 0;
+				}).sum();
+			}
 		}
 
 	}
@@ -577,7 +589,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Calculate total character count of all rounds
-			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -600,7 +612,7 @@ public class ConversationMemoryLimitService {
 			// Start from the newest round and work backwards
 			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 				DialogRound round = dialogRounds.get(i);
-				int roundChars = round.getTotalChars();
+				int roundChars = round.getTotalChars(objectMapper);
 
 				// Always keep at least the newest round (even if it exceeds 40%)
 				if (i == dialogRounds.size() - 1) {
@@ -704,7 +716,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Calculate total character count of all rounds
-			int totalChars = dialogRounds.stream().mapToInt(DialogRound::getTotalChars).sum();
+			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: 40% of total content
 			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
@@ -726,7 +738,7 @@ public class ConversationMemoryLimitService {
 			// Start from the newest round and work backwards
 			for (int i = dialogRounds.size() - 1; i >= 0; i--) {
 				DialogRound round = dialogRounds.get(i);
-				int roundChars = round.getTotalChars();
+				int roundChars = round.getTotalChars(objectMapper);
 
 				// Always keep at least the newest round (even if it exceeds 40%)
 				if (i == dialogRounds.size() - 1) {

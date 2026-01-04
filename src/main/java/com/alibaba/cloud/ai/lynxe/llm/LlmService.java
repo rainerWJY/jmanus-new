@@ -28,6 +28,7 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.observation.ChatModelObservationConvention;
 import org.springframework.ai.model.SimpleApiKey;
 import org.springframework.ai.model.tool.DefaultToolExecutionEligibilityPredicate;
@@ -45,6 +46,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.alibaba.cloud.ai.lynxe.agent.fix.DynamicAgentStreamingFix;
 import com.alibaba.cloud.ai.lynxe.event.LynxeListener;
 import com.alibaba.cloud.ai.lynxe.event.ModelChangeEvent;
 import com.alibaba.cloud.ai.lynxe.model.entity.DynamicModelEntity;
@@ -100,6 +102,9 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	@Autowired(required = false)
 	private ConversationMemoryLimitService conversationMemoryLimitService;
 
+	@Autowired(required = false)
+	private DynamicAgentStreamingFix dynamicAgentStreamingFix;
+
 	public LlmService() {
 	}
 
@@ -111,12 +116,19 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	 */
 	private ChatClient buildUnifiedChatClient(String modelName, DynamicModelEntity model, OpenAiChatOptions options) {
 		// Use the existing openAiChatModel method which calls openAiApi()
-		OpenAiChatModel chatModel = openAiChatModel(modelName, model, options);
+		ChatModel chatModel = openAiChatModel(modelName, model, options);
 
-		return ChatClient.builder(chatModel)
+		var builder = ChatClient.builder(chatModel)
 			.defaultAdvisors(new SimpleLoggerAdvisor())
-			.defaultOptions(OpenAiChatOptions.fromOptions(options))
-			.build();
+			.defaultOptions(OpenAiChatOptions.fromOptions(options));
+
+		// Add streaming fix advisor if available
+		// StreamAdvisor can be added via defaultAdvisors as it extends Advisor
+		if (dynamicAgentStreamingFix != null) {
+			builder.defaultAdvisors(dynamicAgentStreamingFix);
+		}
+
+		return builder.build();
 	}
 
 	private void initializeChatClientsWithModel(DynamicModelEntity model) {
@@ -343,12 +355,12 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 		if (headers == null) {
 			headers = new HashMap<>();
 		}
-		headers.put("User-Agent", "Lynxe/4.8.0");
+		headers.put("User-Agent", "Lynxe/4.10.0");
 		defaultOptions.setHttpHeaders(headers);
 		var openAiApi = openAiApi(restClientBuilderProvider.getIfAvailable(RestClient::builder),
 				webClientBuilderProvider.getIfAvailable(WebClient::builder), dynamicModelEntity);
 		OpenAiChatOptions options = OpenAiChatOptions.fromOptions(defaultOptions);
-		var chatModel = OpenAiChatModel.builder()
+		OpenAiChatModel chatModel = OpenAiChatModel.builder()
 			.openAiApi(openAiApi)
 			.defaultOptions(options)
 			// .toolCallingManager(toolCallingManager)

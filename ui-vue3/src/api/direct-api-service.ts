@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import type { InputMessage } from '@/types/message-dialog'
 import { memoryStore } from '@/stores/memory'
+import type { InputMessage } from '@/types/message-dialog'
 import { LlmCheckService } from '@/utils/llm-check'
 
 export class DirectApiService {
@@ -299,6 +299,34 @@ export class DirectApiService {
       const result = await response.json()
       console.log('[DirectApiService] executeByToolName response:', result)
       return result
+    })
+  }
+
+  // Get task status by plan ID
+  public static async getTaskStatus(planId: string): Promise<{
+    planId: string
+    isRunning: boolean
+    exists: boolean
+    desiredState?: string
+    startTime?: string
+    endTime?: string
+    lastUpdated?: string
+    taskResult?: string
+  }> {
+    return LlmCheckService.withLlmCheck(async () => {
+      console.log('[DirectApiService] Getting task status for planId:', planId)
+
+      const response = await fetch(`${this.BASE_URL}/taskStatus/${planId}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to get task status: ${response.status}`)
+      }
+
+      return await response.json()
     })
   }
 

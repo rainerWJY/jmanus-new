@@ -40,10 +40,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.TextFileService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
-import com.alibaba.cloud.ai.lynxe.tool.textOperator.TextFileService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -62,7 +63,7 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 
 	private static final Logger log = LoggerFactory.getLogger(MarkdownToDocxTool.class);
 
-	private static final String TOOL_NAME = "markdown_to_docx";
+	private static final String TOOL_NAME = "markdown-to-docx";
 
 	/**
 	 * Pattern to match markdown image syntax: ![alt text](image_path)
@@ -799,8 +800,8 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
-		return "";
+	public ToolStateInfo getCurrentToolStateString() {
+		return new ToolStateInfo(null, "");
 	}
 
 	@Override
@@ -832,7 +833,7 @@ public class MarkdownToDocxTool extends AbstractBaseTool<MarkdownToDocxTool.Mark
 
 	@Override
 	public String getServiceGroup() {
-		return "file-operations";
+		return "import-export";
 	}
 
 	@Override

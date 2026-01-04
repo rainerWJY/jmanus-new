@@ -1031,22 +1031,34 @@ const showToolSelectionModal = (stepIndex: number) => {
   showToolModal.value = true
 }
 
-const handleToolSelectionConfirm = (selectedToolIds: string[]) => {
+const handleToolSelectionConfirm = async (selectedToolIds: string[]) => {
   setEditingFlag()
+
+  // Ensure available tools are loaded
+  if (
+    availableToolsStore.availableTools.value.length === 0 &&
+    !availableToolsStore.isLoading.value
+  ) {
+    await availableToolsStore.loadAvailableTools()
+  }
+
+  // Filter out non-existent tools
+  const availableToolKeys = new Set(availableToolsStore.availableTools.value.map(tool => tool.key))
+  const validToolIds = selectedToolIds.filter(toolId => availableToolKeys.has(toolId))
+
   if (currentStepIndex.value >= 0 && currentStepIndex.value < displayData.steps.length) {
-    // Update the specific step's selected tool keys
-    displayData.steps[currentStepIndex.value].selectedToolKeys = [...selectedToolIds]
+    // Update the specific step's selected tool keys with filtered list
+    displayData.steps[currentStepIndex.value].selectedToolKeys = [...validToolIds]
   }
   showToolModal.value = false
   currentStepIndex.value = -1
 }
 
-const handleToolsFiltered = (stepIndex: number, filteredTools: string[]) => {
-  setEditingFlag()
-  if (stepIndex >= 0 && stepIndex < displayData.steps.length) {
-    // Update the step's selected tool keys with filtered tools
-    displayData.steps[stepIndex].selectedToolKeys = [...filteredTools]
-  }
+const handleToolsFiltered = (_stepIndex: number, _filteredTools: string[]) => {
+  // NOTE: Do NOT automatically update selectedToolKeys with filtered tools.
+  // Non-existent tools should remain visible with yellow warning styling
+  // so users can see which tools are missing and manually remove them if needed.
+  // This preserves the original tool selection and shows clear warnings for missing tools.
 }
 
 // Copy plan state

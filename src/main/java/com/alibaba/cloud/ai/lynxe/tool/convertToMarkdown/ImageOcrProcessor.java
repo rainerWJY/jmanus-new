@@ -77,10 +77,11 @@ public class ImageOcrProcessor {
 	 * @param currentPlanId Current plan ID for file operations
 	 * @param targetFilename Optional target filename (if null, will generate _ocr.txt
 	 * filename)
+	 * @param modelName Optional model name to override default configuration
 	 * @return ToolExecuteResult with OCR processing status and extracted text
 	 */
 	public ToolExecuteResult convertImageToTextWithOcr(Path sourceFile, String additionalRequirement,
-			String currentPlanId, String targetFilename) {
+			String currentPlanId, String targetFilename, String modelName) {
 		try {
 			log.info("Starting OCR processing for image file: {}", sourceFile.getFileName());
 
@@ -101,9 +102,11 @@ public class ImageOcrProcessor {
 			// Step 3: Process image with OCR using executor pool
 			String extractedText;
 			if (imageRecognitionExecutorPool != null) {
+				final String finalModelName = modelName; // Make effectively final for
+															// lambda
 				CompletableFuture<String> ocrTask = imageRecognitionExecutorPool.submitTask(() -> {
 					log.info("Processing image with OCR");
-					return processImageWithOcrWithRetry(image, 1, additionalRequirement);
+					return processImageWithOcrWithRetry(image, 1, additionalRequirement, finalModelName);
 				});
 
 				try {
@@ -209,15 +212,17 @@ public class ImageOcrProcessor {
 	 * @param image The BufferedImage to process
 	 * @param imageNumber The image number for logging
 	 * @param additionalRequirement Optional additional requirements for OCR processing
+	 * @param modelName Optional model name to override default configuration
 	 * @return Extracted text or null if failed
 	 */
-	private String processImageWithOcrWithRetry(BufferedImage image, int imageNumber, String additionalRequirement) {
+	private String processImageWithOcrWithRetry(BufferedImage image, int imageNumber, String additionalRequirement,
+			String modelName) {
 		int maxRetryAttempts = getConfiguredMaxRetryAttempts();
 
 		for (int attempt = 1; attempt <= maxRetryAttempts; attempt++) {
 			try {
 				log.debug("OCR attempt {} of {} for image {}", attempt, maxRetryAttempts, imageNumber);
-				String result = processImageWithOcr(image, imageNumber, additionalRequirement);
+				String result = processImageWithOcr(image, imageNumber, additionalRequirement, modelName);
 
 				if (result != null && !result.trim().isEmpty()) {
 					if (attempt > 1) {
@@ -260,9 +265,11 @@ public class ImageOcrProcessor {
 	 * @param image The BufferedImage to process
 	 * @param imageNumber The image number for logging
 	 * @param additionalRequirement Optional additional requirements for OCR processing
+	 * @param modelName Optional model name to override default configuration
 	 * @return Extracted text or null if failed
 	 */
-	private String processImageWithOcr(BufferedImage image, int imageNumber, String additionalRequirement) {
+	private String processImageWithOcr(BufferedImage image, int imageNumber, String additionalRequirement,
+			String modelName) {
 		if (llmService == null) {
 			log.error("LlmService is not initialized, cannot perform OCR");
 			return null;
@@ -281,9 +288,17 @@ public class ImageOcrProcessor {
 
 			// Get the ChatClient from LlmService
 			ChatClient chatClient = llmService.getDefaultDynamicAgentChatClient();
-			// Use configured model name from LynxeProperties
-			String modelName = getConfiguredModelName();
-			ChatOptions chatOptions = ChatOptions.builder().model(modelName).build();
+			// Use provided model name if available, otherwise use configured model name
+			// from LynxeProperties
+			String finalModelName = (modelName != null && !modelName.trim().isEmpty()) ? modelName
+					: getConfiguredModelName();
+			if (modelName != null && !modelName.trim().isEmpty()) {
+				log.debug("Using provided model name: {}", finalModelName);
+			}
+			else {
+				log.debug("Using configured model name: {}", finalModelName);
+			}
+			ChatOptions chatOptions = ChatOptions.builder().model(finalModelName).build();
 
 			// Use ChatClient to process the image with OCR
 			// Include additional requirements in the system message if provided

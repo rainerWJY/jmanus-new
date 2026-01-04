@@ -27,10 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.cloud.ai.lynxe.tool.AbstractBaseTool;
+import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
+import com.alibaba.cloud.ai.lynxe.tool.filesystem.SmartContentSavingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
-import com.alibaba.cloud.ai.lynxe.tool.innerStorage.SmartContentSavingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class Bash extends AbstractBaseTool<Bash.BashInput> {
@@ -85,16 +86,11 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 		this.innerStorageService = innerStorageService;
 	}
 
-	private String lastCommand = "";
-
-	private String lastResult = "";
-
 	@Override
 	public ToolExecuteResult run(BashInput input) {
 		String command = input.getCommand();
 		log.info("Bash command: {}", command);
 		log.info("Current operating system: {}", osName);
-		this.lastCommand = command;
 
 		// Validate command paths to ensure they stay within root-plan-folder
 		if (rootPlanId != null && !rootPlanId.trim().isEmpty()) {
@@ -105,9 +101,16 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				log.warn("Command path validation failed: {}", e.getMessage());
 				String errorMessage = "Error: " + e.getMessage() + ". All paths must be within the root-plan-folder.";
 				// Process error message through SmartContentSavingService
-				if (innerStorageService != null) {
+				if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 						.processContent(rootPlanId, errorMessage, "bash_path_validation_error");
+					return new ToolExecuteResult(processedResult.getComprehensiveResult());
+				}
+				// If rootPlanId is not available, still try to process if service is
+				// available
+				if (innerStorageService != null) {
+					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
+						.processContent("default", errorMessage, "bash_path_validation_error");
 					return new ToolExecuteResult(processedResult.getComprehensiveResult());
 				}
 				return new ToolExecuteResult(errorMessage);
@@ -137,22 +140,29 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 
 			List<String> result = executor.execute(commandList, workingDir);
 			String resultContent = String.join("\n", result);
-			this.lastResult = resultContent;
+
+			// Handle empty result - return meaningful message instead of empty string
+			if (resultContent == null || resultContent.trim().isEmpty()) {
+				resultContent = "Command executed successfully with no output.";
+			}
 
 			// Process result through SmartContentSavingService to handle large outputs
+			// Only process if rootPlanId is available (required for file saving)
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(rootPlanId, resultContent, "bash");
 				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 
-			// Fallback: return JSON format if innerStorageService is not available
+			// Fallback: return JSON format if innerStorageService is not available or
+			// rootPlanId is missing
 			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
 		}
 		catch (Exception e) {
 			log.error("Error executing bash command", e);
 			String errorMessage = "Error executing command: " + e.getMessage();
 			// Process error message through SmartContentSavingService
+			// Only process if rootPlanId is available (required for file saving)
 			if (innerStorageService != null && rootPlanId != null && !rootPlanId.trim().isEmpty()) {
 				SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 					.processContent(rootPlanId, errorMessage, "bash_execution_error");
@@ -311,32 +321,25 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 
 	@Override
 	public String getServiceGroup() {
-		return "default-service-group";
+		return "default";
 	}
 
 	@Override
-	public String getCurrentToolStateString() {
+	public ToolStateInfo getCurrentToolStateString() {
 		String workingDir;
 		if (rootPlanId != null && !rootPlanId.trim().isEmpty()) {
+			// Only show root-plan directory to LLM
 			workingDir = unifiedDirectoryManager.getRootPlanDirectory(rootPlanId).toString();
 		}
 		else {
 			workingDir = unifiedDirectoryManager.getWorkingDirectoryPath();
 		}
 
-		return String.format("""
-				            Current File Operation State:
-				            - Working Directory:
+		String stateString = String.format("""
+				Current Working Directory:
 				%s
-
-				            - Last File Operation:
-				%s
-
-				            - Last Operation Result:
-				%s
-
-				            """, workingDir, lastCommand.isEmpty() ? "No command executed yet" : lastCommand,
-				lastResult.isEmpty() ? "No result yet" : lastResult);
+				""", workingDir);
+		return new ToolStateInfo(getServiceGroup(), stateString);
 	}
 
 	@Override

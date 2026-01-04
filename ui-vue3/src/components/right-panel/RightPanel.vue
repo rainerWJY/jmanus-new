@@ -652,7 +652,7 @@ const initScrollListener = () => {
     // Set scroll container
     setScrollContainer(element)
 
-    element.addEventListener('scroll', checkScrollState)
+    element.addEventListener('scroll', checkScrollState, { passive: true })
     // Initial state check
     shouldAutoScrollToBottom.value = true // Reset to auto scroll state
     checkScrollState()
