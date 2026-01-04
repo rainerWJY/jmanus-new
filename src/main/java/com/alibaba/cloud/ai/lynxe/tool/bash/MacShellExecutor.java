@@ -130,7 +130,8 @@ public class MacShellExecutor implements ShellCommandExecutor {
 					});
 
 					// Wait for process to complete with timeout
-					if (!command.endsWith("&")) { // Only set timeout for non-background commands
+					if (!command.endsWith("&")) { // Only set timeout for non-background
+													// commands
 						if (!currentProcess.waitFor(DEFAULT_TIMEOUT, TimeUnit.SECONDS)) {
 							log.warn("Command timed out. Sending SIGINT to the process");
 							terminate();
@@ -142,7 +143,8 @@ public class MacShellExecutor implements ShellCommandExecutor {
 						}
 					}
 
-					// Wait for both reading threads to complete (with timeout to prevent hanging)
+					// Wait for both reading threads to complete (with timeout to prevent
+					// hanging)
 					try {
 						outputBuilder = stdoutFuture.get(5, TimeUnit.SECONDS);
 					}

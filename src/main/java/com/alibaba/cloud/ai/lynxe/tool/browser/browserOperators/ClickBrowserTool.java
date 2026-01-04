@@ -92,8 +92,7 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 					// Primary method: Use mouse simulation click
 					log.debug("Attempting primary method: mouse simulation click for element at index {}", index);
 					clickWithMouseSimulation(page, locator, index);
-					log.info("Successfully clicked element at index {} using mouse simulation (primary method)",
-							index);
+					log.info("Successfully clicked element at index {} using mouse simulation (primary method)", index);
 				});
 				return new ToolExecuteResult(
 						"Successfully clicked element at index " + index + " " + clickResultMessage);
@@ -136,7 +135,7 @@ public class ClickBrowserTool extends AbstractBrowserTool<ClickBrowserTool.Click
 			// Wait for element to be visible
 			try {
 				locator.waitFor(new Locator.WaitForOptions().setTimeout(3000)
-						.setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
+					.setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE));
 			}
 			catch (TimeoutError waitError) {
 				log.warn("Element may not be visible: {}", waitError.getMessage());

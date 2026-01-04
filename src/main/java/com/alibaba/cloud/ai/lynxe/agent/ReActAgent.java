@@ -67,14 +67,15 @@ public abstract class ReActAgent extends BaseAgent {
 	 *
 	 * Example implementations: - ToolCallAgent: execute selected tool calls -
 	 * BrowserAgent: execute browser operations
-	 * @return CompletableFuture that completes with description of action execution results
+	 * @return CompletableFuture that completes with description of action execution
+	 * results
 	 */
 	protected abstract CompletableFuture<AgentExecResult> act();
 
 	/**
 	 * Execute a complete think-act step
-	 * @return CompletableFuture that completes with thinking complete message if no action is needed, otherwise returns
-	 * action execution result
+	 * @return CompletableFuture that completes with thinking complete message if no
+	 * action is needed, otherwise returns action execution result
 	 */
 	@Override
 	public CompletableFuture<AgentExecResult> step() {
@@ -90,7 +91,8 @@ public abstract class ReActAgent extends BaseAgent {
 		}
 		catch (com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionCheckerService.TaskInterruptedException e) {
 			// Agent was interrupted, return INTERRUPTED state to stop execution
-			return CompletableFuture.completedFuture(new AgentExecResult("Agent execution interrupted: " + e.getMessage(), AgentState.INTERRUPTED));
+			return CompletableFuture.completedFuture(
+					new AgentExecResult("Agent execution interrupted: " + e.getMessage(), AgentState.INTERRUPTED));
 		}
 	}
 

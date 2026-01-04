@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Interface for providing executor pools for task execution.
- * Allows custom implementations to provide their own executor pools.
+ * Interface for providing executor pools for task execution. Allows custom
+ * implementations to provide their own executor pools.
  */
 public interface ExecutorPoolProvider {
 
@@ -50,4 +50,3 @@ public interface ExecutorPoolProvider {
 	CompletableFuture<Void> submitTask(int depthLevel, Runnable task);
 
 }
-

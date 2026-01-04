@@ -65,8 +65,8 @@ public class ParallelExecutionService {
 	 * Look up tool context using qualified key conversion This method handles the
 	 * conversion from raw tool name to qualified key format (serviceGroup-toolName) based
 	 * on serviceGroup, and provides fallback to original toolName if conversion fails.
-	 * Supports both serviceGroup.toolName (dot format) and serviceGroup-toolName
-	 * (hyphen format).
+	 * Supports both serviceGroup.toolName (dot format) and serviceGroup-toolName (hyphen
+	 * format).
 	 * @param toolName The raw tool name to look up (can be in serviceGroup-toolName
 	 * format or serviceGroup.toolName format)
 	 * @param toolCallbackMap Map of tool callbacks
@@ -400,8 +400,10 @@ public class ParallelExecutionService {
 				List<Map<String, Object>> results = new ArrayList<>();
 				for (CompletableFuture<Map<String, Object>> future : otherFutures) {
 					try {
-						// Future is already completed due to allOf, so getNow() won't block
-						// Use getNow with null default - if future is not done, something is wrong
+						// Future is already completed due to allOf, so getNow() won't
+						// block
+						// Use getNow with null default - if future is not done, something
+						// is wrong
 						Map<String, Object> result = future.getNow(null);
 						if (result != null) {
 							results.add(result);
@@ -473,8 +475,10 @@ public class ParallelExecutionService {
 				List<Map<String, Object>> terminateResults = new ArrayList<>();
 				for (CompletableFuture<Map<String, Object>> future : terminateFutures) {
 					try {
-						// Future is already completed due to allOf, so getNow() won't block
-						// Use getNow with null default - if future is not done, something is wrong
+						// Future is already completed due to allOf, so getNow() won't
+						// block
+						// Use getNow with null default - if future is not done, something
+						// is wrong
 						Map<String, Object> result = future.getNow(null);
 						if (result != null) {
 							terminateResults.add(result);

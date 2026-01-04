@@ -536,24 +536,24 @@ public class ConversationMemoryLimitService {
 			return messages;
 		}
 
-	public int getTotalChars(ObjectMapper objectMapper) {
-		if (messages == null || messages.isEmpty()) {
-			return 0;
+		public int getTotalChars(ObjectMapper objectMapper) {
+			if (messages == null || messages.isEmpty()) {
+				return 0;
+			}
+			try {
+				// Serialize messages to JSON to get accurate character count
+				String json = objectMapper.writeValueAsString(messages);
+				return json.length();
+			}
+			catch (Exception e) {
+				log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
+				// Fallback to simple text length calculation
+				return messages.stream().mapToInt(msg -> {
+					String text = msg.getText();
+					return text != null ? text.length() : 0;
+				}).sum();
+			}
 		}
-		try {
-			// Serialize messages to JSON to get accurate character count
-			String json = objectMapper.writeValueAsString(messages);
-			return json.length();
-		}
-		catch (Exception e) {
-			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
-			// Fallback to simple text length calculation
-			return messages.stream().mapToInt(msg -> {
-				String text = msg.getText();
-				return text != null ? text.length() : 0;
-			}).sum();
-		}
-	}
 
 	}
 
@@ -785,7 +785,7 @@ public class ConversationMemoryLimitService {
 			// confirmation (as AssistantMessage), then most recent round
 			// This maintains the user-assistant message pair pattern similar to
 			// state_snapshot storage
- 			List<Message> compressedMessages = new ArrayList<>();
+			List<Message> compressedMessages = new ArrayList<>();
 
 			if (summaryMessage != null) {
 				// Add summary as UserMessage (like state_snapshot)

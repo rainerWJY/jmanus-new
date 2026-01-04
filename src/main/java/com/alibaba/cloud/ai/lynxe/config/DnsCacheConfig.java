@@ -162,9 +162,10 @@ public class DnsCacheConfig {
 				final String finalPassword = password;
 
 				InetSocketAddress proxyAddress = new InetSocketAddress(finalProxyHost, finalPort);
-				
+
 				// Configure proxy using Reactor Netty's proxy API
-				if (finalUsername != null && !finalUsername.isEmpty() && finalPassword != null && !finalPassword.isEmpty()) {
+				if (finalUsername != null && !finalUsername.isEmpty() && finalPassword != null
+						&& !finalPassword.isEmpty()) {
 					// Proxy with authentication
 					httpClient = httpClient.proxy(proxy -> proxy.type(ProxyProvider.Proxy.HTTP)
 						.address(proxyAddress)
@@ -173,8 +174,7 @@ public class DnsCacheConfig {
 				}
 				else {
 					// Proxy without authentication
-					httpClient = httpClient.proxy(proxy -> proxy.type(ProxyProvider.Proxy.HTTP)
-						.address(proxyAddress));
+					httpClient = httpClient.proxy(proxy -> proxy.type(ProxyProvider.Proxy.HTTP).address(proxyAddress));
 				}
 
 				if (finalUsername != null && !finalUsername.isEmpty()) {
@@ -230,7 +230,8 @@ public class DnsCacheConfig {
 	}
 
 	/**
-	 * Parse proxy host from proxy URL (e.g., "http://proxy.example.com:8080" -> "proxy.example.com")
+	 * Parse proxy host from proxy URL (e.g., "http://proxy.example.com:8080" ->
+	 * "proxy.example.com")
 	 */
 	private String parseProxyHost(String proxyUrl) {
 		if (proxyUrl == null || proxyUrl.trim().isEmpty()) {

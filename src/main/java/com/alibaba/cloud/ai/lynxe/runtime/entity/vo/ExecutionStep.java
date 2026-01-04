@@ -29,7 +29,7 @@ public class ExecutionStep {
 	/**
 	 * Unique identifier for this execution step
 	 */
-	private  String stepId;
+	private String stepId;
 
 	/**
 	 * Constructor that requires a step ID
@@ -39,7 +39,7 @@ public class ExecutionStep {
 		this.stepId = stepId;
 	}
 
-	public ExecutionStep(){
+	public ExecutionStep() {
 
 	}
 

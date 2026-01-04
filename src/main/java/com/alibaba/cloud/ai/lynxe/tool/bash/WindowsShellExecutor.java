@@ -93,7 +93,12 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 					Future<StringBuilder> stdoutFuture = executor.submit(() -> {
 						StringBuilder builder = new StringBuilder();
 						try (BufferedReader reader = new BufferedReader(
-								new InputStreamReader(currentProcess.getInputStream(), "GBK"))) { // Windows uses GBK encoding by default
+								new InputStreamReader(currentProcess.getInputStream(), "GBK"))) { // Windows
+																									// uses
+																									// GBK
+																									// encoding
+																									// by
+																									// default
 							String line;
 							while ((line = reader.readLine()) != null) {
 								log.info(line);
@@ -110,7 +115,12 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 					Future<StringBuilder> stderrFuture = executor.submit(() -> {
 						StringBuilder builder = new StringBuilder();
 						try (BufferedReader errorReader = new BufferedReader(
-								new InputStreamReader(currentProcess.getErrorStream(), "GBK"))) { // Windows uses GBK encoding by default
+								new InputStreamReader(currentProcess.getErrorStream(), "GBK"))) { // Windows
+																									// uses
+																									// GBK
+																									// encoding
+																									// by
+																									// default
 							String line;
 							while ((line = errorReader.readLine()) != null) {
 								log.error(line);
@@ -124,7 +134,8 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 					});
 
 					// Wait for process to complete with timeout
-					if (!command.startsWith("start /B")) { // Only set timeout for non-background commands
+					if (!command.startsWith("start /B")) { // Only set timeout for
+															// non-background commands
 						if (!currentProcess.waitFor(DEFAULT_TIMEOUT, TimeUnit.SECONDS)) {
 							log.warn("Command timed out. Sending termination signal to the process");
 							terminate();
@@ -134,7 +145,8 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 						}
 					}
 
-					// Wait for both reading threads to complete (with timeout to prevent hanging)
+					// Wait for both reading threads to complete (with timeout to prevent
+					// hanging)
 					try {
 						outputBuilder = stdoutFuture.get(5, TimeUnit.SECONDS);
 					}
@@ -223,7 +235,12 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 			Future<StringBuilder> stdoutFuture = executor.submit(() -> {
 				StringBuilder builder = new StringBuilder();
 				try (BufferedReader reader = new BufferedReader(
-						new InputStreamReader(process.getInputStream(), "GBK"))) { // Windows uses GBK encoding by default
+						new InputStreamReader(process.getInputStream(), "GBK"))) { // Windows
+																					// uses
+																					// GBK
+																					// encoding
+																					// by
+																					// default
 					String line;
 					while ((line = reader.readLine()) != null) {
 						log.info(line);
@@ -240,7 +257,12 @@ public class WindowsShellExecutor implements ShellCommandExecutor {
 			Future<StringBuilder> stderrFuture = executor.submit(() -> {
 				StringBuilder builder = new StringBuilder();
 				try (BufferedReader errorReader = new BufferedReader(
-						new InputStreamReader(process.getErrorStream(), "GBK"))) { // Windows uses GBK encoding by default
+						new InputStreamReader(process.getErrorStream(), "GBK"))) { // Windows
+																					// uses
+																					// GBK
+																					// encoding
+																					// by
+																					// default
 					String line;
 					while ((line = errorReader.readLine()) != null) {
 						log.error(line);

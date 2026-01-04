@@ -78,7 +78,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 	protected String generateStepId() {
 		if (planIdDispatcher != null) {
 			return planIdDispatcher.generateStepId();
-		}else{
+		}
+		else {
 			throw new IllegalStateException("PlanIdDispatcher is not available");
 		}
 	}
@@ -321,9 +322,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 			}
 		}
 
-		recorder.recordPlanExecutionStart(context.getCurrentPlanId(), context.getPlan().getTitle(),
-				context.getTitle(), steps, context.getParentPlanId(), context.getRootPlanId(),
-				context.getToolCallId());
+		recorder.recordPlanExecutionStart(context.getCurrentPlanId(), context.getPlan().getTitle(), context.getTitle(),
+				steps, context.getParentPlanId(), context.getRootPlanId(), context.getToolCallId());
 
 		// Build async chain for step execution
 		PlanExecutionResult result = new PlanExecutionResult();
@@ -358,7 +358,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 							result.addStepResult(stepResult);
 
 							// Check if this step was interrupted
-							if (step.getResult() != null && step.getResult().contains("Execution interrupted by user")) {
+							if (step.getResult() != null
+									&& step.getResult().contains("Execution interrupted by user")) {
 								logger.info("Step execution was interrupted, stopping plan execution");
 								context.setSuccess(false);
 								result.setSuccess(false);

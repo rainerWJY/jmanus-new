@@ -213,7 +213,7 @@ public abstract class BaseAgent {
 					- You must call exactly ONE tool at a time. Multiple simultaneous tool calls are not allowed.
 					- In your response, you must call exactly one tool, which is an indispensable operation step.
 					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs_read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
-					
+
 					""";
 		}
 		Map<String, Object> variables = new HashMap<>(getInitSettingData());
@@ -285,25 +285,23 @@ public abstract class BaseAgent {
 	public CompletableFuture<AgentExecResult> run() {
 		currentStep = 0;
 		List<AgentExecResult> results = new ArrayList<>();
-		
+
 		// Use recursive async chain to execute steps one by one
-		return runStepRecursive(1, results)
-			.exceptionally(e -> {
-				log.error("Agent execution failed", e);
-				
-				// Wrap exception with SystemErrorReportTool
-				AgentExecResult errorResult = handleExceptionWithSystemErrorReport(e, results);
-				return new AgentExecResult(errorResult.getResult(), errorResult.getState(), results);
-			})
-			.thenApply(finalResult -> {
-				// Record execution at the end
-				if (currentPlanId != null && planExecutionRecorder != null) {
-					planExecutionRecorder.recordCompleteAgentExecution(step);
-				}
-				return finalResult;
-			});
+		return runStepRecursive(1, results).exceptionally(e -> {
+			log.error("Agent execution failed", e);
+
+			// Wrap exception with SystemErrorReportTool
+			AgentExecResult errorResult = handleExceptionWithSystemErrorReport(e, results);
+			return new AgentExecResult(errorResult.getResult(), errorResult.getState(), results);
+		}).thenApply(finalResult -> {
+			// Record execution at the end
+			if (currentPlanId != null && planExecutionRecorder != null) {
+				planExecutionRecorder.recordCompleteAgentExecution(step);
+			}
+			return finalResult;
+		});
 	}
-	
+
 	/**
 	 * Recursive helper method to execute steps one by one asynchronously
 	 * @param stepNum Current step number
@@ -315,22 +313,22 @@ public abstract class BaseAgent {
 		if (stepNum > maxSteps) {
 			log.info("Agent reached max rounds ({}), generating final summary and terminating", maxSteps);
 			String finalSummary = generateFinalSummary();
-			
+
 			// Call TerminateTool with the summary
 			String result = terminateWithSummary(finalSummary);
-			
+
 			// Create final result for max steps reached
 			AgentExecResult finalResult = new AgentExecResult(result, AgentState.COMPLETED);
 			results.add(finalResult);
-			
-			return CompletableFuture.completedFuture(
-				new AgentExecResult(finalResult.getResult(), finalResult.getState(), results));
+
+			return CompletableFuture
+				.completedFuture(new AgentExecResult(finalResult.getResult(), finalResult.getState(), results));
 		}
-		
+
 		// Execute current step
 		currentStep = stepNum;
 		log.info("Executing round {}/{}", currentStep, maxSteps);
-		
+
 		return step().thenCompose(stepResult -> {
 			// Check if agent should terminate
 			AgentState stepState = stepResult.getState();
@@ -340,7 +338,7 @@ public abstract class BaseAgent {
 						: stepState == AgentState.INTERRUPTED ? "interrupted" : "failed";
 				log.info("Agent execution {} at round {}/{}", stateDescription, currentStep, maxSteps);
 				results.add(stepResult);
-				
+
 				// Handle final processing based on state
 				if (stepState == AgentState.INTERRUPTED) {
 					handleInterruptedExecution(results);
@@ -351,12 +349,12 @@ public abstract class BaseAgent {
 				else {
 					handleCompletedExecution(results);
 				}
-				
+
 				// Return terminal result
-				return CompletableFuture.completedFuture(
-					new AgentExecResult(stepResult.getResult(), stepResult.getState(), results));
+				return CompletableFuture
+					.completedFuture(new AgentExecResult(stepResult.getResult(), stepResult.getState(), results));
 			}
-			
+
 			// Add result and continue to next step
 			results.add(stepResult);
 			return runStepRecursive(stepNum + 1, results);

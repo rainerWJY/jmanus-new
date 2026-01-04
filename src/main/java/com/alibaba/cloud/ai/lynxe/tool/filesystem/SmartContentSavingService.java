@@ -101,7 +101,9 @@ public class SmartContentSavingService {
 							totalLines, fileName);
 				}
 				else {
-					fileInfo = String.format("\n\nContent is too long. The output has been saved as file %s in the root directory, and you can use relevant file processing tools to handle it.", fileName);
+					fileInfo = String.format(
+							"\n\nContent is too long. The output has been saved as file %s in the root directory, and you can use relevant file processing tools to handle it.",
+							fileName);
 				}
 				return summary + fileInfo;
 			}
@@ -142,7 +144,8 @@ public class SmartContentSavingService {
 		// Check if content is empty
 		if (content.trim().isEmpty()) {
 			log.debug("processContent called with empty content: planId={}, callingMethod={}", planId, callingMethod);
-			// Return meaningful message instead of empty string to avoid frontend showing "N/A"
+			// Return meaningful message instead of empty string to avoid frontend showing
+			// "N/A"
 			return new SmartProcessResult(null, "Command executed successfully with no output.");
 		}
 
@@ -165,8 +168,7 @@ public class SmartContentSavingService {
 
 				// Save full content to file
 				Files.writeString(filePath, content);
-				log.info("Saved long content ({} chars, {} lines) to file: {}", content.length(), totalLines,
-						filePath);
+				log.info("Saved long content ({} chars, {} lines) to file: {}", content.length(), totalLines, filePath);
 
 				// Generate truncated summary: first 250 chars + "...[truncated]..." +
 				// last 200 chars
@@ -211,7 +213,8 @@ public class SmartContentSavingService {
 		if (content == null || content.isEmpty()) {
 			return 0;
 		}
-		// Count newline characters and add 1 for the last line (if content doesn't end with newline)
+		// Count newline characters and add 1 for the last line (if content doesn't end
+		// with newline)
 		int lines = 1; // At least one line
 		for (int i = 0; i < content.length(); i++) {
 			if (content.charAt(i) == '\n') {

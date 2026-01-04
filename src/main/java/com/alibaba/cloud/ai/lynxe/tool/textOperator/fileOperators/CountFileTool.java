@@ -32,8 +32,8 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * Count file tool that counts the total lines and characters in a given file.
- * Supports text-based file formats by default.
+ * Count file tool that counts the total lines and characters in a given file. Supports
+ * text-based file formats by default.
  */
 public class CountFileTool extends AbstractBaseTool<CountFileTool.CountFileInput> {
 
@@ -224,7 +224,8 @@ public class CountFileTool extends AbstractBaseTool<CountFileTool.CountFileInput
 			result.append(String.format("File Size: %d bytes\n", totalCharacters));
 			result.append("=".repeat(60));
 
-			log.info("Counted file {}: {} lines, {} characters (with newlines), {} characters (without newlines), {} words",
+			log.info(
+					"Counted file {}: {} lines, {} characters (with newlines), {} characters (without newlines), {} words",
 					filePath, totalLines, totalCharacters, charactersWithoutNewlines, wordCount);
 
 			return new ToolExecuteResult(result.toString());
@@ -282,4 +283,3 @@ public class CountFileTool extends AbstractBaseTool<CountFileTool.CountFileInput
 	}
 
 }
-

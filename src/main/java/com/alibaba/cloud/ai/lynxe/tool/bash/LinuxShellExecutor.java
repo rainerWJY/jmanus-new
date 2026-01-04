@@ -139,7 +139,8 @@ public class LinuxShellExecutor implements ShellCommandExecutor {
 						}
 					}
 
-					// Wait for both reading threads to complete (with timeout to prevent hanging)
+					// Wait for both reading threads to complete (with timeout to prevent
+					// hanging)
 					try {
 						outputBuilder = stdoutFuture.get(5, TimeUnit.SECONDS);
 					}

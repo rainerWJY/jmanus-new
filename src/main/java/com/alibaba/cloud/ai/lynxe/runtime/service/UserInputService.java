@@ -222,8 +222,9 @@ public class UserInputService implements IUserInputService {
 		if (formInputTool == null) {
 			throw new IllegalArgumentException("FormInputTool not found for planId: " + planId);
 		}
-		
-		// Allow submission if tool is AWAITING_USER_INPUT or INPUT_TIMEOUT (late submission)
+
+		// Allow submission if tool is AWAITING_USER_INPUT or INPUT_TIMEOUT (late
+		// submission)
 		if (formInputTool.getInputState() == FormInputTool.InputState.AWAITING_USER_INPUT
 				|| formInputTool.getInputState() == FormInputTool.InputState.INPUT_TIMEOUT) {
 			List<FormInputTool.InputItem> inputItems = inputs.entrySet().stream().map(entry -> {

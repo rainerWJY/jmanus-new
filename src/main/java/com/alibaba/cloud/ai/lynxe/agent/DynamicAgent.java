@@ -88,8 +88,8 @@ public class DynamicAgent extends ReActAgent {
 	private static final Logger log = LoggerFactory.getLogger(DynamicAgent.class);
 
 	/**
-	 * Dedicated thread pool for FormInputTool waiting operations.
-	 * Uses 5 threads to handle user input waiting without blocking business thread pools.
+	 * Dedicated thread pool for FormInputTool waiting operations. Uses 5 threads to
+	 * handle user input waiting without blocking business thread pools.
 	 */
 	private static final ExecutorService FORM_INPUT_WAIT_EXECUTOR = Executors.newFixedThreadPool(5, r -> {
 		Thread t = new Thread(r, "form-input-wait-thread-" + System.nanoTime());
@@ -563,7 +563,8 @@ public class DynamicAgent extends ReActAgent {
 		}
 		catch (TaskInterruptionCheckerService.TaskInterruptedException e) {
 			// Agent was interrupted, return INTERRUPTED state to stop execution
-			return CompletableFuture.completedFuture(new AgentExecResult("Agent execution interrupted: " + e.getMessage(), AgentState.INTERRUPTED));
+			return CompletableFuture.completedFuture(
+					new AgentExecResult("Agent execution interrupted: " + e.getMessage(), AgentState.INTERRUPTED));
 		}
 		catch (Exception e) {
 			log.error("Unexpected exception in step()", e);
@@ -627,14 +628,16 @@ public class DynamicAgent extends ReActAgent {
 		// Check for interruption before starting action process
 		if (agentInterruptionHelper != null && !agentInterruptionHelper.checkInterruptionAndContinue(getRootPlanId())) {
 			log.info("Agent {} action process interrupted for rootPlanId: {}", getName(), getRootPlanId());
-			return CompletableFuture.completedFuture(new AgentExecResult("Action interrupted by user", AgentState.INTERRUPTED));
+			return CompletableFuture
+				.completedFuture(new AgentExecResult("Action interrupted by user", AgentState.INTERRUPTED));
 		}
 
 		try {
 			List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
 
 			if (toolCalls == null || toolCalls.isEmpty()) {
-				return CompletableFuture.completedFuture(new AgentExecResult("tool call is empty, please retry", AgentState.IN_PROGRESS));
+				return CompletableFuture
+					.completedFuture(new AgentExecResult("tool call is empty, please retry", AgentState.IN_PROGRESS));
 			}
 
 			// Unified call to processTools() - chain the async result
@@ -661,16 +664,17 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Unified method to process tools (single or multiple)
-	 * Uses "build task list first, then execute" pattern
+	 * Unified method to process tools (single or multiple) Uses "build task list first,
+	 * then execute" pattern
 	 * @param toolCalls List of tool calls to execute
-	 * @return CompletableFuture that completes with AgentExecResult containing the execution result
+	 * @return CompletableFuture that completes with AgentExecResult containing the
+	 * execution result
 	 */
 	private CompletableFuture<AgentExecResult> processTools(List<ToolCall> toolCalls) {
 		// Check for interruption
-		if (agentInterruptionHelper != null
-				&& !agentInterruptionHelper.checkInterruptionAndContinue(getRootPlanId())) {
-			return CompletableFuture.completedFuture(new AgentExecResult("Action interrupted by user", AgentState.INTERRUPTED));
+		if (agentInterruptionHelper != null && !agentInterruptionHelper.checkInterruptionAndContinue(getRootPlanId())) {
+			return CompletableFuture
+				.completedFuture(new AgentExecResult("Action interrupted by user", AgentState.INTERRUPTED));
 		}
 
 		// Validate that actToolInfoList size matches toolCalls size
@@ -686,7 +690,8 @@ public class DynamicAgent extends ReActAgent {
 		// Check if ParallelExecutionService is available
 		if (parallelExecutionService == null) {
 			log.error("ParallelExecutionService is not available");
-			return CompletableFuture.completedFuture(new AgentExecResult("Parallel execution service is not available", AgentState.COMPLETED));
+			return CompletableFuture.completedFuture(
+					new AgentExecResult("Parallel execution service is not available", AgentState.COMPLETED));
 		}
 
 		// 1. Build execution task list
@@ -713,14 +718,14 @@ public class DynamicAgent extends ReActAgent {
 			}
 			catch (Exception e) {
 				log.error("Error processing execution results: {}", e.getMessage(), e);
-				return new AgentExecResult("Error processing execution results: " + e.getMessage(), AgentState.IN_PROGRESS);
+				return new AgentExecResult("Error processing execution results: " + e.getMessage(),
+						AgentState.IN_PROGRESS);
 			}
 		}).exceptionally(e -> {
 			log.error("Error executing tools: {}", e.getMessage(), e);
 			return new AgentExecResult("Error executing tools: " + e.getMessage(), AgentState.IN_PROGRESS);
 		});
 	}
-
 
 	/**
 	 * Internal class to represent a tool execution task
@@ -743,17 +748,14 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		boolean isFormInputTool() {
-			return toolCallBackContext != null
-					&& toolCallBackContext.getFunctionInstance() instanceof FormInputTool;
+			return toolCallBackContext != null && toolCallBackContext.getFunctionInstance() instanceof FormInputTool;
 		}
 
 		boolean isTerminableTool() {
-			return toolCallBackContext != null
-					&& toolCallBackContext.getFunctionInstance() instanceof TerminableTool;
+			return toolCallBackContext != null && toolCallBackContext.getFunctionInstance() instanceof TerminableTool;
 		}
 
 	}
-
 
 	/**
 	 * Build execution tasks from tool calls
@@ -815,7 +817,8 @@ public class DynamicAgent extends ReActAgent {
 					});
 				}
 				else {
-					// Use ParallelExecutionService to execute (unified interface even for sequential)
+					// Use ParallelExecutionService to execute (unified interface even for
+					// sequential)
 					Map<String, Object> params = parseToolArguments(currentTask.toolCall.arguments());
 
 					// Create tool-specific ToolContext
@@ -824,11 +827,13 @@ public class DynamicAgent extends ReActAgent {
 					toolContextMap.put("toolcallId", currentTask.param.getToolCallId());
 					ToolContext toolContext = new ToolContext(toolContextMap);
 
-					return parallelExecutionService.executeTool(currentTask.toolCall.name(), params, toolCallbackMap,
-							toolContext, currentTask.index).thenApply(result -> {
-								results.add(result);
-								return results;
-							});
+					return parallelExecutionService
+						.executeTool(currentTask.toolCall.name(), params, toolCallbackMap, toolContext,
+								currentTask.index)
+						.thenApply(result -> {
+							results.add(result);
+							return results;
+						});
 				}
 			});
 		}
@@ -871,8 +876,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Execute FormInputTool with special handling (async version).
-	 * This method asynchronously handles form input waiting without blocking business threads.
+	 * Execute FormInputTool with special handling (async version). This method
+	 * asynchronously handles form input waiting without blocking business threads.
 	 * @param task Execution task containing FormInputTool
 	 * @return CompletableFuture that completes with execution result in unified format
 	 */
@@ -891,7 +896,8 @@ public class DynamicAgent extends ReActAgent {
 			}
 
 			// Call run() first to set the state to AWAITING_USER_INPUT
-			// This is necessary because FormInputTool is a singleton and may have a stale state
+			// This is necessary because FormInputTool is a singleton and may have a stale
+			// state
 			formInputTool.run(formInput);
 
 			// Asynchronously handle the form input tool logic
@@ -986,8 +992,8 @@ public class DynamicAgent extends ReActAgent {
 
 			// Build result list
 			resultList.add(processedResult);
-			toolResponses.add(new ToolResponseMessage.ToolResponse(task.toolCall.id(), task.toolCall.name(),
-					processedResult));
+			toolResponses
+				.add(new ToolResponseMessage.ToolResponse(task.toolCall.id(), task.toolCall.name(), processedResult));
 
 			// Check for repeated results (only for single result)
 			if (tasks.size() == 1) {
@@ -1050,9 +1056,9 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Parse tool arguments from JSON string to Map
-	 * This method extracts valid JSON from the arguments string, removing any descriptive text
-	 * that the LLM might have included.
+	 * Parse tool arguments from JSON string to Map This method extracts valid JSON from
+	 * the arguments string, removing any descriptive text that the LLM might have
+	 * included.
 	 */
 	@SuppressWarnings("unchecked")
 	private Map<String, Object> parseToolArguments(String arguments) {
@@ -1083,9 +1089,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Extract valid JSON from a string that may contain descriptive text.
-	 * This method finds the first valid JSON object or array in the string.
-	 * 
+	 * Extract valid JSON from a string that may contain descriptive text. This method
+	 * finds the first valid JSON object or array in the string.
 	 * @param input The input string that may contain descriptive text and JSON
 	 * @return The extracted JSON string, or the original string if no JSON is found
 	 */
@@ -1119,7 +1124,7 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		String extracted = trimmed.substring(startIndex, endIndex + 1);
-		
+
 		// Validate the extracted JSON
 		try {
 			objectMapper.readTree(extracted);
@@ -1133,7 +1138,6 @@ public class DynamicAgent extends ReActAgent {
 
 	/**
 	 * Find the start index of a JSON object or array in the string.
-	 * 
 	 * @param input The input string
 	 * @return The index of '{' or '[', or -1 if not found
 	 */
@@ -1149,7 +1153,6 @@ public class DynamicAgent extends ReActAgent {
 
 	/**
 	 * Find the end index of a JSON object or array, handling nested structures.
-	 * 
 	 * @param input The input string
 	 * @param startIndex The start index of the JSON structure
 	 * @return The index of the matching closing brace/bracket, or -1 if not found
@@ -1157,33 +1160,33 @@ public class DynamicAgent extends ReActAgent {
 	private int findJsonEnd(String input, int startIndex) {
 		char startChar = input.charAt(startIndex);
 		char endChar = (startChar == '{') ? '}' : ']';
-		
+
 		int depth = 1;
 		boolean inString = false;
 		boolean escaped = false;
-		
+
 		for (int i = startIndex + 1; i < input.length(); i++) {
 			char c = input.charAt(i);
-			
+
 			if (escaped) {
 				escaped = false;
 				continue;
 			}
-			
+
 			if (c == '\\') {
 				escaped = true;
 				continue;
 			}
-			
+
 			if (c == '"') {
 				inString = !inString;
 				continue;
 			}
-			
+
 			if (inString) {
 				continue;
 			}
-			
+
 			if (c == startChar) {
 				depth++;
 			}
@@ -1194,15 +1197,16 @@ public class DynamicAgent extends ReActAgent {
 				}
 			}
 		}
-		
+
 		return -1;
 	}
 
 	/**
-	 * Handle FormInputTool specific logic with exclusive storage (async version).
-	 * This method asynchronously waits for user input without blocking business threads.
+	 * Handle FormInputTool specific logic with exclusive storage (async version). This
+	 * method asynchronously waits for user input without blocking business threads.
 	 */
-	private CompletableFuture<AgentExecResult> handleFormInputToolAsync(FormInputTool formInputTool, ActToolParam param) {
+	private CompletableFuture<AgentExecResult> handleFormInputToolAsync(FormInputTool formInputTool,
+			ActToolParam param) {
 		// Ensure the form input tool has the correct plan IDs set
 		formInputTool.setCurrentPlanId(getCurrentPlanId());
 		formInputTool.setRootPlanId(getRootPlanId());
@@ -1221,7 +1225,7 @@ public class DynamicAgent extends ReActAgent {
 				log.error("Failed to store form for sub-plan {} due to lock timeout or interruption", currentPlanId);
 				param.setResult("Failed to store form due to system timeout");
 				return CompletableFuture.completedFuture(
-					new AgentExecResult("Failed to store form due to system timeout", AgentState.COMPLETED));
+						new AgentExecResult("Failed to store form due to system timeout", AgentState.COMPLETED));
 			}
 
 			// Asynchronously wait for user input or timeout
@@ -1247,8 +1251,10 @@ public class DynamicAgent extends ReActAgent {
 
 					UserMessage userMessage = UserMessage.builder().text("Input timeout occurred for form: ").build();
 					processUserInputToMemory(userMessage);
-					// Don't remove FormInputTool immediately on timeout - allow late submissions
-					// The tool will be cleaned up when the plan execution completes or when explicitly removed
+					// Don't remove FormInputTool immediately on timeout - allow late
+					// submissions
+					// The tool will be cleaned up when the plan execution completes or
+					// when explicitly removed
 					// userInputService.removeFormInputTool(rootPlanId);
 					param.setResult("Input timeout occurred");
 
@@ -1261,7 +1267,7 @@ public class DynamicAgent extends ReActAgent {
 		}
 		else {
 			return CompletableFuture.completedFuture(
-				new AgentExecResult("FormInputTool is not in AWAITING_USER_INPUT state", AgentState.FAILED));
+					new AgentExecResult("FormInputTool is not in AWAITING_USER_INPUT state", AgentState.FAILED));
 		}
 	}
 
@@ -1401,7 +1407,6 @@ public class DynamicAgent extends ReActAgent {
 	private void recordActionResult(List<ActToolParam> actToolInfoList) {
 		planExecutionRecorder.recordActionResult(actToolInfoList);
 	}
-
 
 	/**
 	 * Extract error message from tool result and set it on the step
@@ -1961,10 +1966,11 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Asynchronously wait for user input or timeout.
-	 * This method executes in a dedicated thread pool to avoid blocking business threads.
+	 * Asynchronously wait for user input or timeout. This method executes in a dedicated
+	 * thread pool to avoid blocking business threads.
 	 * @param formInputTool The form input tool to wait for
-	 * @return CompletableFuture that completes when user input is received or timeout occurs
+	 * @return CompletableFuture that completes when user input is received or timeout
+	 * occurs
 	 */
 	private CompletableFuture<Void> waitForUserInputOrTimeoutAsync(FormInputTool formInputTool) {
 		return CompletableFuture.runAsync(() -> {
@@ -1984,7 +1990,8 @@ public class DynamicAgent extends ReActAgent {
 					if (agentInterruptionHelper != null
 							&& !agentInterruptionHelper.checkInterruptionAndContinue(getRootPlanId())) {
 						log.info("User input wait interrupted for rootPlanId: {}", getRootPlanId());
-						formInputTool.handleInputTimeout(); // Treat interruption as timeout
+						formInputTool.handleInputTimeout(); // Treat interruption as
+															// timeout
 						break;
 					}
 					lastInterruptionCheck = currentTime;
@@ -1998,13 +2005,15 @@ public class DynamicAgent extends ReActAgent {
 				}
 				try {
 					// Poll for input state change. In a real scenario, this might involve
-					// a more sophisticated mechanism like a Future or a callback from the UI.
+					// a more sophisticated mechanism like a Future or a callback from the
+					// UI.
 					TimeUnit.MILLISECONDS.sleep(500); // Check every 500ms
 				}
 				catch (InterruptedException e) {
 					log.warn("Interrupted while waiting for user input for planId: {}", getCurrentPlanId());
 					Thread.currentThread().interrupt();
-					formInputTool.handleInputTimeout(); // Treat interruption as timeout for
+					formInputTool.handleInputTimeout(); // Treat interruption as timeout
+														// for
 					// simplicity
 					break;
 				}

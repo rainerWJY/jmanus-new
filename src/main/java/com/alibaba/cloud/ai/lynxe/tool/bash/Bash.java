@@ -106,7 +106,8 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 						.processContent(rootPlanId, errorMessage, "bash_path_validation_error");
 					return new ToolExecuteResult(processedResult.getComprehensiveResult());
 				}
-				// If rootPlanId is not available, still try to process if service is available
+				// If rootPlanId is not available, still try to process if service is
+				// available
 				if (innerStorageService != null) {
 					SmartContentSavingService.SmartProcessResult processedResult = innerStorageService
 						.processContent("default", errorMessage, "bash_path_validation_error");
@@ -153,7 +154,8 @@ public class Bash extends AbstractBaseTool<Bash.BashInput> {
 				return new ToolExecuteResult(processedResult.getComprehensiveResult());
 			}
 
-			// Fallback: return JSON format if innerStorageService is not available or rootPlanId is missing
+			// Fallback: return JSON format if innerStorageService is not available or
+			// rootPlanId is missing
 			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
 		}
 		catch (Exception e) {

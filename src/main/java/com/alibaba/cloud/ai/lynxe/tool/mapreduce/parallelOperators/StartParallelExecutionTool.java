@@ -45,7 +45,7 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 
 	private static final Logger logger = LoggerFactory.getLogger(StartParallelExecutionTool.class);
 
-	private static final String TOOL_NAME = "start-parallel-execution";
+	private static final String TOOL_NAME = "start-parallel";
 
 	/**
 	 * Input class for start execution (no parameters needed)
@@ -214,12 +214,12 @@ public class StartParallelExecutionTool extends AbstractBaseTool<StartParallelEx
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("start-parallel-execution");
+		return toolI18nService.getDescription("start-parallel");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("start-parallel-execution");
+		return toolI18nService.getParameters("start-parallel");
 	}
 
 	@Override

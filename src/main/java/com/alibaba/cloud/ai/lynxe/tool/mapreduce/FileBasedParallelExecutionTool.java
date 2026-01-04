@@ -119,17 +119,17 @@ public class FileBasedParallelExecutionTool extends AbstractBaseTool<FileBasedPa
 
 	@Override
 	public String getName() {
-		return "file-based-parallel-execution-tool";
+		return "file-based-parallel-tool";
 	}
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("file-based-parallel-execution-tool");
+		return toolI18nService.getDescription("file-based-parallel-tool");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("file-based-parallel-execution-tool");
+		return toolI18nService.getParameters("file-based-parallel-tool");
 	}
 
 	@Override
