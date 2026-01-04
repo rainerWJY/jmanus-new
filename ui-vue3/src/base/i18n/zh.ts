@@ -216,6 +216,7 @@ const words: I18nType = {
       filesystem: '文件系统',
       mcpServiceLoader: 'MCP服务加载器',
       imageRecognition: '图像识别',
+      imageGeneration: '图像生成',
     },
     // Model配置页面
     modelConfig: {
@@ -470,10 +471,13 @@ const words: I18nType = {
         maxSteps: '智能体执行最大步数',
         userInputTimeout: '用户输入表单等待超时时间(秒)',
         maxMemory: '能记住的最大消息数',
-        conversationMemoryMaxChars: '单agent的最大 memory记忆阈值，超过这个数值系统会自动压缩记忆，保持记忆字符数在当前阈值内。',
-        executorPoolSize: '执行器的核心大小，func-Agent可并行执行的数量，不建议过大3~5合适，瓶颈是llm端的并行调用限流。',
+        conversationMemoryMaxChars:
+          '单agent的最大 memory记忆阈值，超过这个数值系统会自动压缩记忆，保持记忆字符数在当前阈值内。',
+        executorPoolSize:
+          '执行器的核心大小，func-Agent可并行执行的数量，不建议过大3~5合适，瓶颈是llm端的并行调用限流。',
         llmReadTimeout: 'llm读请求超时，是socket最核心的超时时间，默认是120秒',
-        parallelToolCalls: '并行工具调用',
+        parallelToolCalls:
+          '并行工具调用，打开的话会引导模型做并行的tools调用，不过模型有时候不是很聪明，并行容易出现不少错误，默认关闭',
       },
       // infiniteContext: { // 临时注释掉
       //   enabled: '是否开启无限上下文',
@@ -495,11 +499,9 @@ const words: I18nType = {
         imageType: '图像类型',
         maxRetryAttempts: '最大重试次数',
       },
-      versionInfo: {
-        title: '版本信息',
-        version: '版本号',
-        buildTime: '构建时间',
-        currentTime: '当前时间',
+      imageGeneration: {
+        modelName:
+          '模型名称。指定用于图像生成的模型名称。\n\n【DashScope Wanx 模型】\n文本生成图片：wan2.6-t2i, wan2.5-t2i-preview, wan2.2-t2i-plus, wan2.2-t2i-flash, wanx2.1-t2i-plus, wanx2.1-t2i-turbo, wanx2.0-t2i-turbo, wanx-v1\n图片生成和编辑：wan2.6-image, wan2.5-i2i-preview, wanx2.1-imageedit\n其他功能：wanx-sketch-to-image-lite, wanx-x-painting, wanx-style-repaint-v1, wanx-background-generation-v2, image-out-painting, wanx-virtualmodel, virtualmodel-v2, shoemodel-v1, wanx-poster-generation-v1\n\n【DashScope Qwen 模型】\n图片生成：qwen-image-plus, qwen-image\n图片编辑：qwen-image-edit-plus, qwen-image-edit-plus-2025-10-30, qwen-image-edit',
       },
       systemSettings: {
         systemName: '系统名称',
@@ -589,6 +591,12 @@ const words: I18nType = {
       importConfirm: '这将覆盖具有相同 planTemplateId 的现有模板。是否继续？',
       invalidFormat: '文件格式无效。应为计划模板的 JSON 数组。',
       loadFailed: '加载计划模板失败',
+    },
+    versionInfo: {
+      title: '版本信息',
+      version: '版本号',
+      buildTime: '构建时间',
+      currentTime: '当前时间',
     },
   },
 

@@ -221,6 +221,7 @@ const words: I18nType = {
       filesystem: 'File System',
       mcpServiceLoader: 'MCP Service Loader',
       imageRecognition: 'Image Recognition',
+      imageGeneration: 'Image Generation',
     },
     // Model configuration page
     modelConfig: {
@@ -485,9 +486,12 @@ const words: I18nType = {
         maxSteps: 'Max Steps',
         userInputTimeout: 'User input form waiting timeout (seconds)',
         maxMemory: 'Maximum number of messages that can be remembered',
-        conversationMemoryMaxChars: 'Maximum memory threshold for a single agent. When exceeded, the system will automatically compress memory to keep the memory character count within the current threshold.',
-        executorPoolSize: 'Core size of the executor pool, representing the number of func-Agents that can execute in parallel. It is not recommended to set this too large; 3~5 is appropriate. The bottleneck is the rate limiting of parallel calls on the LLM side.',
-        llmReadTimeout: 'LLM read request timeout, which is the core timeout for socket connections. Default is 120 seconds.',
+        conversationMemoryMaxChars:
+          'Maximum memory threshold for a single agent. When exceeded, the system will automatically compress memory to keep the memory character count within the current threshold.',
+        executorPoolSize:
+          'Core size of the executor pool, representing the number of func-Agents that can execute in parallel. It is not recommended to set this too large; 3~5 is appropriate. The bottleneck is the rate limiting of parallel calls on the LLM side.',
+        llmReadTimeout:
+          'LLM read request timeout, which is the core timeout for socket connections. Default is 120 seconds.',
         parallelToolCalls: 'Parallel tool calls',
       },
       // infiniteContext: { // TEMPORARILY COMMENTED OUT
@@ -511,11 +515,9 @@ const words: I18nType = {
         imageType: 'Image Type',
         maxRetryAttempts: 'Max Retry Attempts',
       },
-      versionInfo: {
-        title: 'Version Information',
-        version: 'Version',
-        buildTime: 'Build Time',
-        currentTime: 'Current Time',
+      imageGeneration: {
+        modelName:
+          'Model name. Specify the model name for image generation.\n\n【DashScope Wanx Models】\nText-to-Image: wan2.6-t2i, wan2.5-t2i-preview, wan2.2-t2i-plus, wan2.2-t2i-flash, wanx2.1-t2i-plus, wanx2.1-t2i-turbo, wanx2.0-t2i-turbo, wanx-v1\nImage Generation and Editing: wan2.6-image, wan2.5-i2i-preview, wanx2.1-imageedit\nOther Features: wanx-sketch-to-image-lite, wanx-x-painting, wanx-style-repaint-v1, wanx-background-generation-v2, image-out-painting, wanx-virtualmodel, virtualmodel-v2, shoemodel-v1, wanx-poster-generation-v1\n\n【DashScope Qwen Models】\nImage Generation: qwen-image-plus, qwen-image\nImage Editing: qwen-image-edit-plus, qwen-image-edit-plus-2025-10-30, qwen-image-edit',
       },
       systemSettings: {
         systemName: 'System Name',
@@ -606,6 +608,12 @@ const words: I18nType = {
         'This will overwrite existing templates with the same planTemplateId. Continue?',
       invalidFormat: 'Invalid file format. Expected a JSON array of plan templates.',
       loadFailed: 'Failed to load plan templates',
+    },
+    versionInfo: {
+      title: 'Version Information',
+      version: 'Version',
+      buildTime: 'Build Time',
+      currentTime: 'Current Time',
     },
   },
 

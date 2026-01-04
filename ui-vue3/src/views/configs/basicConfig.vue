@@ -447,10 +447,15 @@ const CONFIG_DISPLAY_NAMES: Record<string, string> = {
 
   // Image Recognition
   poolSize: 'config.basicConfig.imageRecognition.poolSize',
-  modelName: 'config.basicConfig.imageRecognition.modelName',
+  imageRecognition_modelName: 'config.basicConfig.imageRecognition.modelName',
+  modelName: 'config.basicConfig.imageRecognition.modelName', // Fallback for backward compatibility
   dpi: 'config.basicConfig.imageRecognition.dpi',
   imageType: 'config.basicConfig.imageRecognition.imageType',
   maxRetryAttempts: 'config.basicConfig.imageRecognition.maxRetryAttempts',
+
+  // Image Generation
+  imageGeneration_modelName: 'config.basicConfig.imageGeneration.modelName',
+  imageGenerationModelName: 'config.basicConfig.imageGeneration.modelName', // Fallback for backward compatibility
 
   // System Settings (not used)
   // 'systemName': t('config.basicConfig.systemSettings.systemName'),
@@ -489,6 +494,7 @@ const SUB_GROUP_DISPLAY_NAMES: Record<string, string> = {
   filesystem: 'config.subGroupDisplayNames.filesystem',
   mcpServiceLoader: 'config.subGroupDisplayNames.mcpServiceLoader',
   imageRecognition: 'config.subGroupDisplayNames.imageRecognition',
+  imageGeneration: 'config.subGroupDisplayNames.imageGeneration',
 }
 
 // Computed property: Whether there are changes
@@ -641,12 +647,21 @@ const loadAllConfigs = async () => {
         }
 
         // Set display name for each configuration item (prioritize description)
-        const processedItems: ExtendedConfigItem[] = items.map(item => ({
-          ...item,
-          displayName: CONFIG_DISPLAY_NAMES[item.configKey] || item.configKey,
-          min: getConfigMin(item.configKey),
-          max: getConfigMax(item.configKey),
-        }))
+        // Use subGroup + configKey to handle duplicate keys (e.g., modelName in different subGroups)
+        const processedItems: ExtendedConfigItem[] = items.map(item => {
+          const subGroup = item.configSubGroup ?? 'general'
+          const compositeKey = `${subGroup}_${item.configKey}`
+          const displayName =
+            CONFIG_DISPLAY_NAMES[compositeKey] ||
+            CONFIG_DISPLAY_NAMES[item.configKey] ||
+            item.configKey
+          return {
+            ...item,
+            displayName,
+            min: getConfigMin(item.configKey),
+            max: getConfigMax(item.configKey),
+          }
+        })
 
         // Cache original values
         processedItems.forEach(item => {
