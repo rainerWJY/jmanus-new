@@ -884,8 +884,16 @@ const handleStop = async () => {
     console.log('[ExecutionController] Task stopped successfully')
     // Reset execution flag immediately to synchronize button state
     isExecutingPlan.value = false
+    
+    // Clear tracked plan IDs to ensure button state updates correctly
+    const currentPlanId = taskStore.currentTask?.planId
+    if (currentPlanId && planExecution.trackedPlanIds.value.has(currentPlanId)) {
+      planExecution.untrackPlan(currentPlanId)
+      console.log('[ExecutionController] Untracked plan:', currentPlanId)
+    }
+    
     console.log('[ExecutionController] Reset isExecutingPlan flag')
-    toast.success(t('input.stop') || 'Stopped')
+    // Toast removed - button state will update automatically via reactive state
   } else {
     console.error('[ExecutionController] Failed to stop task')
     toast.error(t('sidebar.executeFailed') || 'Failed to stop task')
