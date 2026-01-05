@@ -1806,6 +1806,40 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	@Override
+	protected void handleFailedExecution(List<AgentExecResult> results) {
+		log.info("Handling failed execution - performing cleanup");
+		// Perform cleanup when execution fails (e.g., LLM timeout)
+		String planId = getCurrentPlanId();
+		if (planId != null) {
+			try {
+				clearUp(planId);
+				log.info("Successfully cleaned up resources after failed execution for planId: {}", planId);
+			}
+			catch (Exception e) {
+				log.error("Error during cleanup after failed execution for planId: {}", planId, e);
+			}
+		}
+		super.handleFailedExecution(results);
+	}
+
+	@Override
+	protected void handleInterruptedExecution(List<AgentExecResult> results) {
+		log.info("Handling interrupted execution - performing cleanup");
+		// Perform cleanup when execution is interrupted
+		String planId = getCurrentPlanId();
+		if (planId != null) {
+			try {
+				clearUp(planId);
+				log.info("Successfully cleaned up resources after interrupted execution for planId: {}", planId);
+			}
+			catch (Exception e) {
+				log.error("Error during cleanup after interrupted execution for planId: {}", planId, e);
+			}
+		}
+		super.handleInterruptedExecution(results);
+	}
+
+	@Override
 	protected void handleCompletedExecution(List<AgentExecResult> results) {
 		super.handleCompletedExecution(results);
 		// Note: Final result will be saved to conversation memory in
