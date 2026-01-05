@@ -62,6 +62,7 @@ import com.alibaba.cloud.ai.lynxe.subplan.service.SubplanToolService;
 import com.alibaba.cloud.ai.lynxe.tool.DebugTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
+import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.bash.Bash;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ClickBrowserTool;
@@ -309,6 +310,7 @@ public class PlanningFactory {
 			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
+			toolDefinitions.add(new ThinkTool());
 			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());
 

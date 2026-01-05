@@ -50,6 +50,7 @@ import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.util.CollectionUtils;
 
+import com.alibaba.cloud.ai.lynxe.agent.entity.AgentStreamingResult;
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.event.LynxeEventPublisher;
 import com.alibaba.cloud.ai.lynxe.event.PlanExceptionClearedEvent;
@@ -71,6 +72,7 @@ import com.alibaba.cloud.ai.lynxe.tool.ErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.SystemErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminableTool;
+import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
@@ -111,6 +113,8 @@ public class DynamicAgent extends ReActAgent {
 	private ChatResponse response;
 
 	private StreamingResponseHandler.StreamingResult streamResult;
+
+	private AgentStreamingResult agentStreamingResult;
 
 	private Prompt userPrompt;
 
@@ -372,26 +376,64 @@ public class DynamicAgent extends ReActAgent {
 				streamResult = streamingResponseHandler.processStreamingResponse(responseFlux,
 						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true, inputCharCount);
 
-				response = streamResult.getLastResponse();
-
-				// Use merged content from streaming handler
+				// Extract commonly used data into AgentStreamingResult
 				List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
 				String responseByLLm = streamResult.getEffectiveText();
-
-				// Get input and output character counts from StreamingResult
 				int finalInputCharCount = streamResult.getInputCharCount();
 				int finalOutputCharCount = streamResult.getOutputCharCount();
-				log.info("Input character count: {}, Output character count: {}", finalInputCharCount,
+
+				agentStreamingResult = new AgentStreamingResult(toolCalls, responseByLLm, finalInputCharCount,
 						finalOutputCharCount);
 
-				log.info(String.format("✨ %s's thoughts: %s", getName(), responseByLLm));
-				log.info(String.format("🛠️ %s selected %d tools to use", getName(), toolCalls.size()));
+				// Keep response for backward compatibility (used in extractAssistantMessageFromResponse)
+				response = streamResult.getLastResponse();
 
-				if (!toolCalls.isEmpty()) {
+				log.info("Input character count: {}, Output character count: {}",
+						agentStreamingResult.getInputCharCount(), agentStreamingResult.getOutputCharCount());
+
+				log.info(String.format("✨ %s's thoughts: %s", getName(), agentStreamingResult.getResponseText()));
+				log.info(String.format("🛠️ %s selected %d tools to use", getName(),
+						agentStreamingResult.getToolCalls().size()));
+
+				// If no tools selected, wrap message in ThinkTool and create a ToolCall
+				if (!agentStreamingResult.hasToolCalls()) {
+					noToolSelectedCount++;
+					log.warn("Attempt {}: No tools selected. Creating ThinkTool call... (no tool selected count: {})",
+							attempt, noToolSelectedCount);
+
+					try {
+						// Prepare ThinkTool input
+						Map<String, Object> thinkToolInput = new HashMap<>();
+						thinkToolInput.put("message",
+								agentStreamingResult.getResponseText() != null ? agentStreamingResult.getResponseText()
+										: "No response from LLM");
+
+						// Create ThinkTool ToolCall
+						String thinkToolCallId = planIdDispatcher.generateToolCallId();
+						String thinkToolArguments = objectMapper.writeValueAsString(thinkToolInput);
+						ToolCall thinkToolCall = new ToolCall(thinkToolCallId, "function", ThinkTool.SERVICE_GROUP + "-" + ThinkTool.name,
+								thinkToolArguments);
+
+						// Add ThinkTool call to agentStreamingResult
+						List<ToolCall> toolCallsWithThink = new ArrayList<>();
+						toolCallsWithThink.add(thinkToolCall);
+						agentStreamingResult.setToolCalls(toolCallsWithThink);
+
+						log.info("Created ThinkTool call, will be executed in unified tool processing flow");
+					}
+					catch (Exception e) {
+						log.error("Failed to create ThinkTool call: {}", e.getMessage(), e);
+						// Continue with normal retry flow if ThinkTool creation fails
+					}
+				}
+
+				// Unified tool processing flow (handles both regular tools and ThinkTool)
+				if (agentStreamingResult.hasToolCalls()) {
 					// Reset no-tool-selected count on successful tool call
 					noToolSelectedCount = 0;
 					log.info(String.format("🧰 Tools being prepared: %s",
-							toolCalls.stream().map(ToolCall::name).collect(Collectors.toList())));
+							agentStreamingResult.getToolCalls().stream().map(ToolCall::name)
+									.collect(Collectors.toList())));
 
 					String stepId = super.step.getStepId();
 					String thinkActId = planIdDispatcher.generateThinkActId();
@@ -401,16 +443,18 @@ public class DynamicAgent extends ReActAgent {
 					// present
 					// This ensures each tool has its own toolCallId for proper sub-plan
 					// linkage
-					for (ToolCall toolCall : toolCalls) {
-						String toolCallIdForTool = (toolCalls.size() > 1) ? planIdDispatcher.generateToolCallId()
-								: toolcallId;
+					for (ToolCall toolCall : agentStreamingResult.getToolCalls()) {
+						String toolCallIdForTool = (agentStreamingResult.getToolCalls().size() > 1)
+								? planIdDispatcher.generateToolCallId() : toolcallId;
 						ActToolParam actToolInfo = new ActToolParam(toolCall.name(), toolCall.arguments(),
 								toolCallIdForTool);
 						actToolInfoList.add(actToolInfo);
 					}
 
 					ThinkActRecordParams paramsN = new ThinkActRecordParams(thinkActId, stepId, thinkInput,
-							responseByLLm, null, finalInputCharCount, finalOutputCharCount, actToolInfoList);
+							agentStreamingResult.getResponseText(), null,
+							agentStreamingResult.getInputCharCount(), agentStreamingResult.getOutputCharCount(),
+							actToolInfoList);
 					planExecutionRecorder.recordThinkingAndAction(step, paramsN);
 
 					// Clear exception cache if this was a retry attempt
@@ -421,11 +465,6 @@ public class DynamicAgent extends ReActAgent {
 
 					return true;
 				}
-
-				// No tool calls - increment counter and retry
-				noToolSelectedCount++;
-				log.warn("Attempt {}: No tools selected. Retrying... (no tool selected count: {})", attempt,
-						noToolSelectedCount);
 
 			}
 			catch (Exception e) {
@@ -589,15 +628,18 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		try {
-			List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
+			if (agentStreamingResult == null) {
+				return CompletableFuture.completedFuture(
+						new AgentExecResult("Agent streaming result is null, please retry", AgentState.IN_PROGRESS));
+			}
 
-			if (toolCalls == null || toolCalls.isEmpty()) {
+			if (!agentStreamingResult.hasToolCalls()) {
 				return CompletableFuture
 					.completedFuture(new AgentExecResult("tool call is empty, please retry", AgentState.IN_PROGRESS));
 			}
 
 			// Unified call to processTools() - chain the async result
-			return processTools(toolCalls);
+			return processTools(agentStreamingResult.getToolCalls());
 		}
 		catch (Exception e) {
 			log.error("Error executing tools: {}", e.getMessage(), e);
@@ -976,8 +1018,14 @@ public class DynamicAgent extends ReActAgent {
 	private void buildAndProcessMemory(List<ToolResponseMessage.ToolResponse> toolResponses) {
 		ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder().responses(toolResponses).build();
 
-		// Get AssistantMessage
-		AssistantMessage assistantMessage = extractAssistantMessageFromResponse(response);
+		// Get AssistantMessage from agentStreamingResult if available, otherwise fall back to response
+		AssistantMessage assistantMessage;
+		if (agentStreamingResult != null && agentStreamingResult.hasToolCalls()) {
+			assistantMessage = agentStreamingResult.createAssistantMessage();
+		}
+		else {
+			assistantMessage = extractAssistantMessageFromResponse(response);
+		}
 
 		// Build conversationHistory
 		List<Message> conversationHistory = new ArrayList<>();
