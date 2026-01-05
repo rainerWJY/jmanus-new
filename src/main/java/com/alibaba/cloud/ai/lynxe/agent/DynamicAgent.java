@@ -242,9 +242,8 @@ public class DynamicAgent extends ReActAgent {
 	private boolean executeWithRetry(int maxRetries) throws Exception {
 		int attempt = 0;
 		Exception lastException = null;
-		// Track early termination count to prevent infinite loops
-		int earlyTerminationCount = 0;
-		final int EARLY_TERMINATION_THRESHOLD = 3; // Fail after 3 early terminations
+		// Track no-tool-selected count to add IMPORTANT hints when repeated
+		int noToolSelectedCount = 0;
 		// Clear exception list at the start of retry cycle
 		llmCallExceptions.clear();
 		latestLlmException = null;
@@ -268,14 +267,13 @@ public class DynamicAgent extends ReActAgent {
 				// Use current env as user message
 				Message currentStepEnvMessage = currentStepEnvMessage();
 
-				// If early termination occurred in previous attempt, add explicit tool
-				// call requirement
-				if (earlyTerminationCount > 0) {
+				// If no tools were selected in previous attempts, add explicit tool call requirement
+				if (noToolSelectedCount > 0) {
 					String toolCallRequirement = String
 						.format("\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
-								+ "Previous attempt returned only text without tool calls (early termination detected %d time(s)). "
+								+ "Previous %d attempt(s) did not select any tools. "
 								+ "Do not provide explanations or reasoning - call a tool immediately.",
-								earlyTerminationCount);
+								noToolSelectedCount);
 					// Append requirement to current step env message
 					String enhancedEnvText = currentStepEnvMessage.getText() + toolCallRequirement;
 					// Create new UserMessage with enhanced text, preserving metadata
@@ -284,8 +282,8 @@ public class DynamicAgent extends ReActAgent {
 						enhancedMessage.getMetadata().putAll(currentStepEnvMessage.getMetadata());
 					}
 					currentStepEnvMessage = enhancedMessage;
-					log.info("Added explicit tool call requirement to retry message (early termination count: {})",
-							earlyTerminationCount);
+					log.info("Added explicit tool call requirement to retry message (no tool selected count: {})",
+							noToolSelectedCount);
 				}
 				// Record think message
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
@@ -386,34 +384,12 @@ public class DynamicAgent extends ReActAgent {
 				log.info("Input character count: {}, Output character count: {}", finalInputCharCount,
 						finalOutputCharCount);
 
-				// Check for early termination
-				boolean isEarlyTerminated = streamResult.isEarlyTerminated();
-				if (isEarlyTerminated) {
-					earlyTerminationCount++;
-					log.warn(
-							"Early termination detected (attempt {}): thinking-only response with no tool calls. Count: {}/{}",
-							attempt, earlyTerminationCount, EARLY_TERMINATION_THRESHOLD);
-
-					// If early termination threshold reached, fail gracefully
-					if (earlyTerminationCount >= EARLY_TERMINATION_THRESHOLD) {
-						log.error(
-								"Early termination threshold ({}) reached. LLM repeatedly returned thinking-only responses without tool calls. Failing gracefully.",
-								EARLY_TERMINATION_THRESHOLD);
-						// Store a special exception to indicate early termination failure
-						latestLlmException = new Exception(
-								"Early termination threshold reached: LLM returned thinking-only responses without tool calls "
-										+ earlyTerminationCount + " times. The model must call tools to proceed.");
-						return false; // Return false to trigger failure handling in
-										// step()
-					}
-				}
-
 				log.info(String.format("✨ %s's thoughts: %s", getName(), responseByLLm));
 				log.info(String.format("🛠️ %s selected %d tools to use", getName(), toolCalls.size()));
 
 				if (!toolCalls.isEmpty()) {
-					// Reset early termination count on successful tool call
-					earlyTerminationCount = 0;
+					// Reset no-tool-selected count on successful tool call
+					noToolSelectedCount = 0;
 					log.info(String.format("🧰 Tools being prepared: %s",
 							toolCalls.stream().map(ToolCall::name).collect(Collectors.toList())));
 
@@ -446,15 +422,10 @@ public class DynamicAgent extends ReActAgent {
 					return true;
 				}
 
-				// No tool calls - check if this is due to early termination
-				if (isEarlyTerminated) {
-					log.warn(
-							"Attempt {}: Early termination - no tools selected (thinking-only response). Retrying with explicit tool call requirement...",
-							attempt);
-				}
-				else {
-					log.warn("Attempt {}: No tools selected. Retrying...", attempt);
-				}
+				// No tool calls - increment counter and retry
+				noToolSelectedCount++;
+				log.warn("Attempt {}: No tools selected. Retrying... (no tool selected count: {})", attempt,
+						noToolSelectedCount);
 
 			}
 			catch (Exception e) {
@@ -532,20 +503,6 @@ public class DynamicAgent extends ReActAgent {
 				// Check if we have a latest exception from LLM calls (max retries
 				// reached)
 				if (latestLlmException != null) {
-					// Check if failure was due to early termination threshold
-					if (latestLlmException.getMessage() != null
-							&& latestLlmException.getMessage().contains("Early termination threshold reached")) {
-						log.error(
-								"Agent {} failed due to early termination threshold. LLM repeatedly returned thinking-only responses without tool calls.",
-								getName());
-						// Return FAILED state to stop infinite retry loop
-						return CompletableFuture.completedFuture(new AgentExecResult(
-								"Agent failed: LLM repeatedly returned thinking-only responses without tool calls. "
-										+ "Please ensure the model is configured to call tools. "
-										+ latestLlmException.getMessage(),
-								AgentState.FAILED));
-					}
-
 					log.error(
 							"Agent {} thinking failed after all retries. Simulating full flow with SystemErrorReportTool",
 							getName());
@@ -1216,6 +1173,73 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
+	 * Fix incorrectly escaped key-value pairs in JSON.
+	 * Fixes the pattern "key\":\"value" to "key":"value"
+	 * @param json The JSON string that may contain incorrectly escaped key-value pairs
+	 * @return Fixed JSON string
+	 */
+	private String fixIncorrectlyEscapedKeyValuePairs(String json) {
+		if (json == null || json.isEmpty()) {
+			return json;
+		}
+
+		// Pattern to fix: "key\":\"value" -> "key":"value"
+		// This happens when quotes around key-value pairs are incorrectly escaped
+		// We need to find patterns like: " followed by \" followed by : followed by \"
+		// This indicates an incorrectly escaped key-value separator
+		// We'll use a targeted replacement that checks context to ensure it's a key-value boundary
+
+		StringBuilder fixed = new StringBuilder();
+		int i = 0;
+		while (i < json.length()) {
+			// Look for the pattern: " followed by \" followed by : followed by \"
+			// This is the pattern ":\" which indicates incorrectly escaped key-value separator
+			if (i + 5 < json.length() && json.charAt(i) == '"' && json.charAt(i + 1) == '\\'
+					&& json.charAt(i + 2) == '"' && json.charAt(i + 3) == ':'
+					&& json.charAt(i + 4) == '\\' && json.charAt(i + 5) == '"') {
+				// Found the pattern ":\" - this is an incorrectly escaped key-value separator
+				// Check context to ensure this is indeed a key-value separator
+				// Look backwards to see if we're after a key name
+				boolean isValidContext = false;
+				if (i > 0) {
+					// Look backwards skipping whitespace to find the start of the key
+					int lookBack = i - 1;
+					while (lookBack >= 0 && Character.isWhitespace(json.charAt(lookBack))) {
+						lookBack--;
+					}
+					if (lookBack >= 0) {
+						char charBeforeSpace = json.charAt(lookBack);
+						// If we're after a quote (end of key name), comma, or opening brace, it's valid
+						if (charBeforeSpace == '"' || charBeforeSpace == ',' || charBeforeSpace == '{'
+								|| charBeforeSpace == '[') {
+							isValidContext = true;
+						}
+					}
+				}
+				else {
+					// At the start, could be valid if it's the first key
+					isValidContext = true;
+				}
+
+				if (isValidContext) {
+					// Fix: ":\" -> ":"
+					fixed.append('"');
+					fixed.append(':');
+					fixed.append('"');
+					i += 6; // Skip the 6 characters we just processed ("\":\")
+					continue;
+				}
+			}
+
+			// Not the pattern we're looking for, append character as-is
+			fixed.append(json.charAt(i));
+			i++;
+		}
+
+		return fixed.toString();
+	}
+
+	/**
 	 * Fix common JSON formatting issues, such as unescaped newlines, quotes, and other
 	 * special characters in string values. This method properly escapes all characters
 	 * that need to be escaped inside JSON string values.
@@ -1226,6 +1250,10 @@ public class DynamicAgent extends ReActAgent {
 		if (json == null || json.isEmpty()) {
 			return json;
 		}
+
+		// First, fix the pattern "key\":\"value" -> "key":"value"
+		// This pattern occurs when quotes around key-value pairs are incorrectly escaped
+		json = fixIncorrectlyEscapedKeyValuePairs(json);
 
 		StringBuilder fixed = new StringBuilder();
 		boolean inString = false;
