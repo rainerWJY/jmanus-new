@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
+import { useTaskStop } from '@/composables/useTaskStop'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { useTaskStop } from '@/composables/useTaskStop'
 
 export interface TaskPayload {
   prompt: string
@@ -153,7 +153,7 @@ export const useTaskStore = defineStore('task', () => {
     if (currentTask.value && currentTask.value.isRunning && currentTask.value.planId) {
       // Use shared stop logic from composable
       const { stopTask } = useTaskStop()
-      return await stopTask(currentTask.value.planId, true)
+      return await stopTask(currentTask.value.planId)
     }
     return false
   }
