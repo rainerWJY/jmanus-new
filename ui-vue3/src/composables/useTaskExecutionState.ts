@@ -47,11 +47,7 @@ export function useTaskExecutionState() {
    * Used to prevent concurrent execution during API calls
    */
   const isExecutionInProgress = computed(() => {
-    return (
-      isTaskRunning.value ||
-      isExecutingLocally.value ||
-      messageDialog.isLoading.value
-    )
+    return isTaskRunning.value || isExecutingLocally.value || messageDialog.isLoading.value
   })
 
   /**
@@ -113,4 +109,3 @@ export function useTaskExecutionStateSingleton() {
   }
   return singletonInstance
 }
-

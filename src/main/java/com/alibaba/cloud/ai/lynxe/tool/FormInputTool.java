@@ -268,7 +268,8 @@ public class FormInputTool extends AbstractBaseTool<FormInputTool.UserFormInput>
 
 		this.currentFormDefinition = formInput;
 		// Normalize description: convert literal \n strings to actual newlines
-		// This handles cases where LLM sends escaped newlines (\\n) which become literal \n strings
+		// This handles cases where LLM sends escaped newlines (\\n) which become literal
+		// \n strings
 		if (this.currentFormDefinition != null && this.currentFormDefinition.getDescription() != null) {
 			String description = this.currentFormDefinition.getDescription();
 			// Replace literal \n (backslash + n) with actual newline character

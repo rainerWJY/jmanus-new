@@ -271,13 +271,14 @@ public class DynamicAgent extends ReActAgent {
 				// Use current env as user message
 				Message currentStepEnvMessage = currentStepEnvMessage();
 
-				// If no tools were selected in previous attempts, add explicit tool call requirement
+				// If no tools were selected in previous attempts, add explicit tool call
+				// requirement
 				if (noToolSelectedCount > 0) {
-					String toolCallRequirement = String
-						.format("\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
-								+ "Previous %d attempt(s) did not select any tools. "
-								+ "Do not provide explanations or reasoning - call a tool immediately.",
-								noToolSelectedCount);
+					String toolCallRequirement = String.format(
+							"\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
+									+ "Previous %d attempt(s) did not select any tools. "
+									+ "Do not provide explanations or reasoning - call a tool immediately.",
+							noToolSelectedCount);
 					// Append requirement to current step env message
 					String enhancedEnvText = currentStepEnvMessage.getText() + toolCallRequirement;
 					// Create new UserMessage with enhanced text, preserving metadata
@@ -385,7 +386,8 @@ public class DynamicAgent extends ReActAgent {
 				agentStreamingResult = new AgentStreamingResult(toolCalls, responseByLLm, finalInputCharCount,
 						finalOutputCharCount);
 
-				// Keep response for backward compatibility (used in extractAssistantMessageFromResponse)
+				// Keep response for backward compatibility (used in
+				// extractAssistantMessageFromResponse)
 				response = streamResult.getLastResponse();
 
 				log.info("Input character count: {}, Output character count: {}",
@@ -404,15 +406,14 @@ public class DynamicAgent extends ReActAgent {
 					try {
 						// Prepare ThinkTool input
 						Map<String, Object> thinkToolInput = new HashMap<>();
-						thinkToolInput.put("message",
-								agentStreamingResult.getResponseText() != null ? agentStreamingResult.getResponseText()
-										: "No response from LLM");
+						thinkToolInput.put("message", agentStreamingResult.getResponseText() != null
+								? agentStreamingResult.getResponseText() : "No response from LLM");
 
 						// Create ThinkTool ToolCall
 						String thinkToolCallId = planIdDispatcher.generateToolCallId();
 						String thinkToolArguments = objectMapper.writeValueAsString(thinkToolInput);
-						ToolCall thinkToolCall = new ToolCall(thinkToolCallId, "function", ThinkTool.SERVICE_GROUP + "-" + ThinkTool.name,
-								thinkToolArguments);
+						ToolCall thinkToolCall = new ToolCall(thinkToolCallId, "function",
+								ThinkTool.SERVICE_GROUP + "-" + ThinkTool.name, thinkToolArguments);
 
 						// Add ThinkTool call to agentStreamingResult
 						List<ToolCall> toolCallsWithThink = new ArrayList<>();
@@ -432,8 +433,10 @@ public class DynamicAgent extends ReActAgent {
 					// Reset no-tool-selected count on successful tool call
 					noToolSelectedCount = 0;
 					log.info(String.format("🧰 Tools being prepared: %s",
-							agentStreamingResult.getToolCalls().stream().map(ToolCall::name)
-									.collect(Collectors.toList())));
+							agentStreamingResult.getToolCalls()
+								.stream()
+								.map(ToolCall::name)
+								.collect(Collectors.toList())));
 
 					String stepId = super.step.getStepId();
 					String thinkActId = planIdDispatcher.generateThinkActId();
@@ -452,9 +455,8 @@ public class DynamicAgent extends ReActAgent {
 					}
 
 					ThinkActRecordParams paramsN = new ThinkActRecordParams(thinkActId, stepId, thinkInput,
-							agentStreamingResult.getResponseText(), null,
-							agentStreamingResult.getInputCharCount(), agentStreamingResult.getOutputCharCount(),
-							actToolInfoList);
+							agentStreamingResult.getResponseText(), null, agentStreamingResult.getInputCharCount(),
+							agentStreamingResult.getOutputCharCount(), actToolInfoList);
 					planExecutionRecorder.recordThinkingAndAction(step, paramsN);
 
 					// Clear exception cache if this was a retry attempt
@@ -1018,7 +1020,8 @@ public class DynamicAgent extends ReActAgent {
 	private void buildAndProcessMemory(List<ToolResponseMessage.ToolResponse> toolResponses) {
 		ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder().responses(toolResponses).build();
 
-		// Get AssistantMessage from agentStreamingResult if available, otherwise fall back to response
+		// Get AssistantMessage from agentStreamingResult if available, otherwise fall
+		// back to response
 		AssistantMessage assistantMessage;
 		if (agentStreamingResult != null && agentStreamingResult.hasToolCalls()) {
 			assistantMessage = agentStreamingResult.createAssistantMessage();
@@ -1221,8 +1224,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Fix incorrectly escaped key-value pairs in JSON.
-	 * Fixes the pattern "key\":\"value" to "key":"value"
+	 * Fix incorrectly escaped key-value pairs in JSON. Fixes the pattern "key\":\"value"
+	 * to "key":"value"
 	 * @param json The JSON string that may contain incorrectly escaped key-value pairs
 	 * @return Fixed JSON string
 	 */
@@ -1235,17 +1238,20 @@ public class DynamicAgent extends ReActAgent {
 		// This happens when quotes around key-value pairs are incorrectly escaped
 		// We need to find patterns like: " followed by \" followed by : followed by \"
 		// This indicates an incorrectly escaped key-value separator
-		// We'll use a targeted replacement that checks context to ensure it's a key-value boundary
+		// We'll use a targeted replacement that checks context to ensure it's a key-value
+		// boundary
 
 		StringBuilder fixed = new StringBuilder();
 		int i = 0;
 		while (i < json.length()) {
 			// Look for the pattern: " followed by \" followed by : followed by \"
-			// This is the pattern ":\" which indicates incorrectly escaped key-value separator
+			// This is the pattern ":\" which indicates incorrectly escaped key-value
+			// separator
 			if (i + 5 < json.length() && json.charAt(i) == '"' && json.charAt(i + 1) == '\\'
-					&& json.charAt(i + 2) == '"' && json.charAt(i + 3) == ':'
-					&& json.charAt(i + 4) == '\\' && json.charAt(i + 5) == '"') {
-				// Found the pattern ":\" - this is an incorrectly escaped key-value separator
+					&& json.charAt(i + 2) == '"' && json.charAt(i + 3) == ':' && json.charAt(i + 4) == '\\'
+					&& json.charAt(i + 5) == '"') {
+				// Found the pattern ":\" - this is an incorrectly escaped key-value
+				// separator
 				// Check context to ensure this is indeed a key-value separator
 				// Look backwards to see if we're after a key name
 				boolean isValidContext = false;
@@ -1257,7 +1263,8 @@ public class DynamicAgent extends ReActAgent {
 					}
 					if (lookBack >= 0) {
 						char charBeforeSpace = json.charAt(lookBack);
-						// If we're after a quote (end of key name), comma, or opening brace, it's valid
+						// If we're after a quote (end of key name), comma, or opening
+						// brace, it's valid
 						if (charBeforeSpace == '"' || charBeforeSpace == ',' || charBeforeSpace == '{'
 								|| charBeforeSpace == '[') {
 							isValidContext = true;

@@ -23,9 +23,9 @@ import org.slf4j.LoggerFactory;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 
 /**
- * Internal tool used to wrap LLM thinking messages when no tools are selected.
- * This tool requires the LLM to select at least one tool to proceed.
- * This tool is not exposed to LLM and is only used internally by DynamicAgent.
+ * Internal tool used to wrap LLM thinking messages when no tools are selected. This tool
+ * requires the LLM to select at least one tool to proceed. This tool is not exposed to
+ * LLM and is only used internally by DynamicAgent.
  */
 public class ThinkTool extends AbstractBaseTool<Map<String, Object>> {
 
@@ -119,4 +119,3 @@ public class ThinkTool extends AbstractBaseTool<Map<String, Object>> {
 	}
 
 }
-

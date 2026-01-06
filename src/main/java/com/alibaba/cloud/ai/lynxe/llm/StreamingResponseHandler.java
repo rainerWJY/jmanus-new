@@ -226,8 +226,8 @@ public class StreamingResponseHandler {
 						messageTextContentRef.get().append(chatResponse.getResult().getOutput().getText());
 					}
 
-				messageToolCallRef.get().addAll(chatResponse.getResult().getOutput().getToolCalls());
-				messageMetadataMapRef.get().putAll(chatResponse.getResult().getOutput().getMetadata());
+					messageToolCallRef.get().addAll(chatResponse.getResult().getOutput().getToolCalls());
+					messageMetadataMapRef.get().putAll(chatResponse.getResult().getOutput().getMetadata());
 				}
 
 				// Early termination is disabled - always process the full stream

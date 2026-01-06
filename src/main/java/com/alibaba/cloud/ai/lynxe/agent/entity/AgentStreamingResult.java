@@ -22,9 +22,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
 
 /**
- * Data container for agent streaming response results.
- * Extracts commonly used data from StreamingResponseHandler.StreamingResult
- * for easier access in DynamicAgent.
+ * Data container for agent streaming response results. Extracts commonly used data from
+ * StreamingResponseHandler.StreamingResult for easier access in DynamicAgent.
  */
 public class AgentStreamingResult {
 
@@ -140,4 +139,3 @@ public class AgentStreamingResult {
 	}
 
 }
-

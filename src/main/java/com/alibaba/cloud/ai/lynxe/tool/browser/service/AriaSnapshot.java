@@ -95,9 +95,8 @@ public class AriaSnapshot {
 			if (options.getTimeout() != null && options.getTimeout() > 0) {
 				try {
 					page.waitForSelector(options.getSelector(),
-							new Page.WaitForSelectorOptions()
-									.setTimeout(options.getTimeout())
-									.setState(WaitForSelectorState.ATTACHED));
+							new Page.WaitForSelectorOptions().setTimeout(options.getTimeout())
+								.setState(WaitForSelectorState.ATTACHED));
 				}
 				catch (Exception e) {
 					log.warn("Selector wait timeout or failed, continuing anyway: {}", e.getMessage());
