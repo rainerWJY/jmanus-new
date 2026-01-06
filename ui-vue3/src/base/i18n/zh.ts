@@ -41,7 +41,8 @@ const words: I18nType = {
     customModeDesc: '配置任何兼容 OpenAI API 格式的服务，如 Ollama、LocalAI 等',
     apiKeyLabel: 'DashScope API 密钥',
     apiKeyPlaceholder: '请输入您的 API 密钥',
-    apiKeyHint: '您可以从阿里云百炼控制台获取 API 密钥。',
+    apiKeyHint:
+      '您可以从阿里云百炼控制台获取 API 密钥。新用户可享受 100万Token 输入和 100万Token 输出的免费额度（有效期90天）。',
     getApiKey: '获取 API 密钥',
     showApiKey: '显示 API 密钥',
     hideApiKey: '隐藏 API 密钥',
