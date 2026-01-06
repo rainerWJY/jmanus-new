@@ -1,5 +1,11 @@
 description: |
-  Grep - Powerful search tool built on ripgrep (rg) for precise text/regular expression matching.
+  Grep for external_link directory - Powerful search tool built on ripgrep (rg) for precise text/regular expression matching in the linked_external folder (external folder).
+  
+  **Prerequisites:**
+  - The external folder must be configured in system settings before using this tool
+  - Set 'lynxe.general.externalLinkedFolder' in system settings to point to your external folder
+  - The external folder link will be automatically created when a plan starts (if configured)
+  - If external_link is not configured, operations will fail with a clear error message indicating the configuration is missing
   
   ## Key Features:
   - Full regex syntax support (e.g., "log.*Error", "function\\s+\\w+")
@@ -27,7 +33,7 @@ description: |
   - Patterns match within single lines by default; use multiline=true for cross-line patterns
   - Results capped to several thousand lines for performance; use head_limit to control
   
-  Keywords: grep, search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
+  Keywords: external files, external_link, linked_external, external folder, grep, search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
 
 parameters: |
   {
@@ -39,7 +45,7 @@ parameters: |
       },
       "path": {
         "type": "string",
-        "description": "File or directory to search in (rg pattern -- PATH). Defaults to Cursor workspace root if not provided. Can be absolute or relative path"
+        "description": "File or directory to search within the external_link directory (relative path from external folder, e.g., 'subdir' or empty for root). Defaults to external_link root if not provided"
       },
       "glob": {
         "type": "string",
@@ -81,3 +87,4 @@ parameters: |
     },
     "required": ["pattern"]
   }
+

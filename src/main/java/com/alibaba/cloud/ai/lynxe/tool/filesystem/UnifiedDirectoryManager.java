@@ -47,7 +47,6 @@ public class UnifiedDirectoryManager {
 	private static final String EXTENSIONS_DIR = "extensions";
 
 	private static final String INNER_STORAGE_DIR = "inner_storage";
-
 	/**
 	 * Fixed directory name for external linked folder mapping
 	 */
@@ -270,6 +269,83 @@ public class UnifiedDirectoryManager {
 		// For linked_external, this checks the symlink path, not the resolved target
 		if (!resolvedPath.startsWith(rootPlanDirectory)) {
 			throw new IOException("Access denied: Path is outside root plan directory: " + relativePath);
+		}
+
+		return resolvedPath;
+	}
+
+	/**
+	 * Resolve and validate a path specifically for external_link directory operations.
+	 * This method resolves paths within the linked_external directory and validates
+	 * that the resolved path stays within the external directory.
+	 * 
+	 * @param rootPlanId The root plan ID
+	 * @param relativePath The relative path within external_link (with or without "linked_external/" prefix)
+	 * @return The resolved Path object pointing to the external directory
+	 * @throws IOException if the path is invalid or outside the external directory
+	 */
+	public Path resolveAndValidateExternalLinkPath(String rootPlanId, String relativePath) throws IOException {
+		if (rootPlanId == null || rootPlanId.trim().isEmpty()) {
+			throw new IllegalArgumentException("rootPlanId cannot be null or empty");
+		}
+
+		if (relativePath == null || relativePath.isEmpty()) {
+			throw new IllegalArgumentException("relativePath cannot be null or empty");
+		}
+
+		// Get the linked external directory
+		Path linkedExternalDir = getLinkedExternalDirectory(rootPlanId);
+
+		// Normalize the relative path - remove "linked_external/" prefix if present
+		String normalizedPath = relativePath.trim();
+		while (normalizedPath.startsWith("/")) {
+			normalizedPath = normalizedPath.substring(1);
+		}
+
+		if (normalizedPath.startsWith(LINKED_EXTERNAL_DIR + "/")) {
+			normalizedPath = normalizedPath.substring(LINKED_EXTERNAL_DIR.length() + 1);
+		}
+		else if (normalizedPath.equals(LINKED_EXTERNAL_DIR)) {
+			normalizedPath = "";
+		}
+
+		// Remove "./" prefix if present
+		if (normalizedPath.startsWith("./")) {
+			normalizedPath = normalizedPath.substring(2);
+		}
+
+		// Remove plan ID prefix if present
+		if (normalizedPath.matches("^plan-[^/]+/.*")) {
+			normalizedPath = normalizedPath.replaceFirst("^plan-[^/]+/", "");
+		}
+
+		// Resolve path within external directory
+		Path resolvedPath;
+		if (normalizedPath.isEmpty()) {
+			resolvedPath = linkedExternalDir;
+		}
+		else {
+			resolvedPath = linkedExternalDir.resolve(normalizedPath).normalize();
+		}
+
+		// Security check: ensure resolved path stays within external directory
+		// Use toRealPath() to resolve the symlink and check the actual target
+		try {
+			Path externalDirRealPath = linkedExternalDir.toRealPath();
+			Path resolvedRealPath = resolvedPath.toRealPath();
+
+			if (!resolvedRealPath.startsWith(externalDirRealPath)) {
+				throw new IOException("Access denied: Path is outside external directory: " + relativePath);
+			}
+		}
+		catch (IOException e) {
+			// If toRealPath() fails (e.g., symlink doesn't exist), fall back to string comparison
+			// This is less secure but handles edge cases
+			String externalDirStr = linkedExternalDir.toString();
+			String resolvedStr = resolvedPath.toString();
+			if (!resolvedStr.startsWith(externalDirStr)) {
+				throw new IOException("Access denied: Path is outside external directory: " + relativePath);
+			}
 		}
 
 		return resolvedPath;
