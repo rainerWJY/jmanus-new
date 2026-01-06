@@ -75,7 +75,6 @@ import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.micrometer.common.util.StringUtils;
@@ -1083,8 +1082,23 @@ public class DynamicAgent extends ReActAgent {
 			}
 		}
 		catch (Exception e) {
-			log.warn("Failed to parse tool arguments as JSON: {}. Using empty map.", arguments);
-			return new HashMap<>();
+			// Try to fix common JSON issues (like unescaped newlines in string values)
+			try {
+				String fixedJson = fixJsonString(cleanedArguments);
+				Object parsed = objectMapper.readValue(fixedJson, Object.class);
+				if (parsed instanceof Map) {
+					return (Map<String, Object>) parsed;
+				}
+				else {
+					Map<String, Object> result = new HashMap<>();
+					result.put("value", parsed);
+					return result;
+				}
+			}
+			catch (Exception e2) {
+				log.warn("Failed to parse tool arguments as JSON: {}. Using empty map.", arguments, e);
+				return new HashMap<>();
+			}
 		}
 	}
 
@@ -1202,6 +1216,115 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
+	 * Fix common JSON formatting issues, such as unescaped newlines, quotes, and other
+	 * special characters in string values. This method properly escapes all characters
+	 * that need to be escaped inside JSON string values.
+	 * @param json The JSON string that may contain formatting issues
+	 * @return Fixed JSON string with properly escaped characters
+	 */
+	private String fixJsonString(String json) {
+		if (json == null || json.isEmpty()) {
+			return json;
+		}
+
+		StringBuilder fixed = new StringBuilder();
+		boolean inString = false;
+		boolean escaped = false;
+
+		for (int i = 0; i < json.length(); i++) {
+			char c = json.charAt(i);
+
+			if (escaped) {
+				// We're in an escape sequence, just append the character
+				fixed.append(c);
+				escaped = false;
+				continue;
+			}
+
+			if (c == '\\') {
+				// Start of escape sequence
+				fixed.append(c);
+				escaped = true;
+				continue;
+			}
+
+			if (c == '"') {
+				if (inString) {
+					// We're inside a string, check if this is a valid string terminator
+					// Look ahead to see if this quote is followed by valid JSON structure
+					// Skip whitespace and check for comma, colon, closing brace/bracket
+					boolean isValidTerminator = false;
+					// Skip whitespace after the quote
+					int j = i + 1;
+					while (j < json.length() && Character.isWhitespace(json.charAt(j))) {
+						j++;
+					}
+					if (j < json.length()) {
+						char nextChar = json.charAt(j);
+						if (nextChar == ',' || nextChar == ':' || nextChar == '}' || nextChar == ']') {
+							// This looks like a valid string terminator
+							isValidTerminator = true;
+						}
+					}
+					else {
+						// End of string, must be terminator
+						isValidTerminator = true;
+					}
+
+					if (isValidTerminator) {
+						// Valid string terminator
+						inString = false;
+						fixed.append(c);
+					}
+					else {
+						// Unescaped quote inside string value - escape it
+						fixed.append("\\\"");
+					}
+				}
+				else {
+					// Start of string
+					inString = true;
+					fixed.append(c);
+				}
+				continue;
+			}
+
+			if (inString) {
+				// Inside a string value, escape special characters
+				if (c == '\n') {
+					fixed.append("\\n");
+				}
+				else if (c == '\r') {
+					fixed.append("\\r");
+				}
+				else if (c == '\t') {
+					fixed.append("\\t");
+				}
+				else if (c == '\b') {
+					fixed.append("\\b");
+				}
+				else if (c == '\f') {
+					fixed.append("\\f");
+				}
+				else if (c < 32) {
+					// Other control characters (ASCII < 32)
+					fixed.append(String.format("\\u%04x", (int) c));
+				}
+				else {
+					// Regular character, append as-is
+					fixed.append(c);
+				}
+			}
+			else {
+				// Outside string, append as-is
+				fixed.append(c);
+			}
+		}
+
+		return fixed.toString();
+	}
+
+	/**
 	 * Handle FormInputTool specific logic with exclusive storage (async version). This
 	 * method asynchronously waits for user input without blocking business threads.
 	 */
@@ -1310,95 +1433,7 @@ public class DynamicAgent extends ReActAgent {
 	 * @return Processed result with unescaped JSON if applicable
 	 */
 	private String processToolResult(String result) {
-		if (result == null || result.trim().isEmpty()) {
-			return result;
-		}
-
-		// Try to parse and re-serialize if it's a valid JSON string
-		// This removes escaping that might have been added by DefaultToolCallingManager
-		try {
-			// First, try to parse as JSON object using LinkedHashMap to preserve order
-			// Try as Map first, if it fails, fall back to Object.class
-			Object jsonObject;
-			try {
-				jsonObject = objectMapper.readValue(result, new TypeReference<LinkedHashMap<String, Object>>() {
-				});
-			}
-			catch (Exception e) {
-				// If parsing as Map fails, try as generic Object
-				jsonObject = objectMapper.readValue(result, Object.class);
-			}
-
-			// Check if it's a Map with "output" field (from DefaultToolCallingManager
-			// format)
-			if (jsonObject instanceof Map<?, ?> map) {
-				Object outputValue = map.get("output");
-				if (outputValue instanceof String outputString) {
-					// The output field contains an escaped JSON string, parse it
-					try {
-						// Use TypeReference with LinkedHashMap to preserve property order
-						Object innerJsonObject = objectMapper.readValue(outputString,
-								new TypeReference<LinkedHashMap<String, Object>>() {
-								});
-						// Recursively convert any nested HashMaps to LinkedHashMaps
-						innerJsonObject = convertToLinkedHashMap(innerJsonObject);
-						// Create a new map with the parsed inner JSON object, preserving
-						// the "output" field
-						// Use LinkedHashMap to preserve insertion order
-						Map<String, Object> resultMap = new LinkedHashMap<>();
-						// Copy all entries from the original map (preserve order if it's
-						// already LinkedHashMap)
-						for (Map.Entry<?, ?> entry : map.entrySet()) {
-							if (entry.getKey() instanceof String key) {
-								resultMap.put(key, entry.getValue());
-							}
-						}
-						resultMap.put("output", innerJsonObject);
-						// Return the unescaped JSON string with output field preserved
-						return objectMapper.writeValueAsString(resultMap);
-					}
-					catch (Exception innerException) {
-						// If inner parsing fails, return the original map as-is
-						return objectMapper.writeValueAsString(jsonObject);
-					}
-				}
-				else {
-					// It's a Map but no "output" field or output is not a string,
-					// Convert to LinkedHashMap to preserve order, then re-serialize
-					Object convertedObject = convertToLinkedHashMap(jsonObject);
-					return objectMapper.writeValueAsString(convertedObject);
-				}
-			}
-			// If the parsed object is a String, it means the input was a JSON string
-			// (e.g., "\"{\\\"message\\\":[...]}\""), so we need to parse it again
-			else if (jsonObject instanceof String jsonString) {
-				// Try to parse the inner JSON string
-				try {
-					// Use TypeReference with LinkedHashMap to preserve property order
-					Object innerJsonObject = objectMapper.readValue(jsonString,
-							new TypeReference<LinkedHashMap<String, Object>>() {
-							});
-					// Recursively convert any nested HashMaps to LinkedHashMaps
-					innerJsonObject = convertToLinkedHashMap(innerJsonObject);
-					// Re-serialize the inner JSON object
-					return objectMapper.writeValueAsString(innerJsonObject);
-				}
-				catch (Exception innerException) {
-					// If inner parsing fails, return the parsed string as-is
-					return jsonString;
-				}
-			}
-			else {
-				// It's already a JSON object, convert to LinkedHashMap to preserve order,
-				// then re-serialize
-				Object convertedObject = convertToLinkedHashMap(jsonObject);
-				return objectMapper.writeValueAsString(convertedObject);
-			}
-		}
-		catch (Exception e) {
-			// If it's not valid JSON, return as-is
-			return result;
-		}
+		return result;
 	}
 
 	/**

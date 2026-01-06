@@ -15,7 +15,6 @@
  */
 
 import { CommonApiService } from '@/api/common-api-service'
-import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useTaskStore } from '@/stores/task'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { reactive, readonly, ref } from 'vue'
@@ -231,10 +230,8 @@ export function usePlanExecution() {
             pollCount: currentPollCount,
           })
 
-          // Clear uploaded files after successful execution (similar to execution state management)
-          const fileUpload = useFileUploadSingleton()
-          fileUpload.clearFiles()
-          console.log(`[usePlanExecution] Cleared uploaded files after execution completion`)
+          // Note: Uploaded files are NOT automatically cleared - users should remove them manually
+          // This allows users to reuse uploaded files across multiple plan executions
 
           // Delete execution details from backend
           try {
