@@ -15,6 +15,7 @@
  */
 
 import { DirectApiService } from '@/api/direct-api-service'
+import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useTaskStore } from '@/stores/task'
 import { computed, ref } from 'vue'
 
@@ -24,6 +25,7 @@ import { computed, ref } from 'vue'
  */
 export function useTaskStop() {
   const taskStore = useTaskStore()
+  const planExecution = usePlanExecutionSingleton()
   const isStopping = ref(false)
 
   /**
@@ -37,10 +39,9 @@ export function useTaskStop() {
    * Stop a running task by plan ID
    * Checks execution status before and after stopping to handle backend restart scenarios
    * @param planId Plan ID to stop. If not provided, uses planId from currentTask
-   * @param updateTaskState Whether to update taskStore state after stopping (default: true)
    * @returns Promise<boolean> - true if stop was successful or task was already stopped, false otherwise
    */
-  const stopTask = async (planId?: string, updateTaskState: boolean = true): Promise<boolean> => {
+  const stopTask = async (planId?: string): Promise<boolean> => {
     // Determine which planId to use
     const targetPlanId = planId || taskStore.currentTask?.planId
 
@@ -58,25 +59,40 @@ export function useTaskStop() {
     isStopping.value = true
 
     try {
+      // Optimistic update: immediately update state for instant UI feedback
+      if (taskStore.currentTask) {
+        taskStore.currentTask.isRunning = false
+      }
+
+      // Untrack plan immediately
+      if (planExecution.trackedPlanIds.value.has(targetPlanId)) {
+        planExecution.untrackPlan(targetPlanId)
+        console.log('[useTaskStop] Untracked plan:', targetPlanId)
+      }
+
+      // Update plan execution record to mark as stopped
+      const record = planExecution.getPlanExecutionRecord(targetPlanId)
+      if (record && (!record.completed || record.status !== 'failed')) {
+        planExecution.setCachedPlanRecord(targetPlanId, {
+          ...record,
+          completed: true,
+          status: 'failed',
+          summary: record.summary || 'Task stopped by user',
+        })
+        console.log('[useTaskStop] Marked plan execution record as stopped:', targetPlanId)
+      }
+
       // Check execution status before stopping to handle backend restart scenario
       let taskStatus
       try {
         taskStatus = await DirectApiService.getTaskStatus(targetPlanId)
         console.log('[useTaskStop] Task status before stop:', taskStatus)
 
-        // If task doesn't exist or is not running, reset frontend state
+        // If task doesn't exist or is not running, state already updated optimistically
         if (!taskStatus.exists || !taskStatus.isRunning) {
           console.log(
-            '[useTaskStop] Task is not actually running (backend may have restarted), resetting frontend state'
+            '[useTaskStop] Task is not actually running (backend may have restarted), state already updated'
           )
-          if (
-            updateTaskState &&
-            taskStore.currentTask &&
-            taskStore.currentTask.planId === targetPlanId
-          ) {
-            taskStore.currentTask.isRunning = false
-          }
-          // Reset stopping flag before returning
           isStopping.value = false
           return true // Consider this a success since task is already stopped
         }
@@ -92,43 +108,32 @@ export function useTaskStop() {
       await DirectApiService.stopTask(targetPlanId)
       console.log('[useTaskStop] Task stop request sent successfully')
 
-      // Verify status after stopping
+      // Verify status after stopping (optional, for confirmation)
       try {
         // Wait a bit for the backend to process the stop request
         await new Promise(resolve => setTimeout(resolve, 500))
         taskStatus = await DirectApiService.getTaskStatus(targetPlanId)
         console.log('[useTaskStop] Task status after stop:', taskStatus)
 
-        // Update task state based on actual backend status
-        if (
-          updateTaskState &&
-          taskStore.currentTask &&
-          taskStore.currentTask.planId === targetPlanId
-        ) {
-          // Set isRunning to false if task is not running or doesn't exist
+        // Update state based on actual backend status (if different from optimistic update)
+        if (taskStore.currentTask && taskStore.currentTask.planId === targetPlanId) {
           taskStore.currentTask.isRunning = taskStatus.exists && taskStatus.isRunning
           if (!taskStatus.isRunning) {
             console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
           }
         }
       } catch (statusError) {
-        console.warn(
-          '[useTaskStop] Failed to verify task status after stop, updating state anyway:',
-          statusError
-        )
-        // Update state optimistically
-        if (
-          updateTaskState &&
-          taskStore.currentTask &&
-          taskStore.currentTask.planId === targetPlanId
-        ) {
-          taskStore.currentTask.isRunning = false
-        }
+        console.warn('[useTaskStop] Failed to verify task status after stop:', statusError)
+        // State already updated optimistically, so this is fine
       }
 
       return true
     } catch (error) {
       console.error('[useTaskStop] Failed to stop task:', error)
+      // Keep state updated (user clicked stop, so state should reflect that)
+      if (taskStore.currentTask) {
+        taskStore.currentTask.isRunning = false
+      }
       return false
     } finally {
       isStopping.value = false

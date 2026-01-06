@@ -50,6 +50,7 @@ import org.springframework.ai.model.tool.ToolExecutionResult;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.util.CollectionUtils;
 
+import com.alibaba.cloud.ai.lynxe.agent.entity.AgentStreamingResult;
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.event.LynxeEventPublisher;
 import com.alibaba.cloud.ai.lynxe.event.PlanExceptionClearedEvent;
@@ -71,6 +72,7 @@ import com.alibaba.cloud.ai.lynxe.tool.ErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.SystemErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminableTool;
+import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
 import com.alibaba.cloud.ai.lynxe.tool.ToolStateInfo;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
@@ -111,6 +113,8 @@ public class DynamicAgent extends ReActAgent {
 	private ChatResponse response;
 
 	private StreamingResponseHandler.StreamingResult streamResult;
+
+	private AgentStreamingResult agentStreamingResult;
 
 	private Prompt userPrompt;
 
@@ -242,9 +246,8 @@ public class DynamicAgent extends ReActAgent {
 	private boolean executeWithRetry(int maxRetries) throws Exception {
 		int attempt = 0;
 		Exception lastException = null;
-		// Track early termination count to prevent infinite loops
-		int earlyTerminationCount = 0;
-		final int EARLY_TERMINATION_THRESHOLD = 3; // Fail after 3 early terminations
+		// Track no-tool-selected count to add IMPORTANT hints when repeated
+		int noToolSelectedCount = 0;
 		// Clear exception list at the start of retry cycle
 		llmCallExceptions.clear();
 		latestLlmException = null;
@@ -268,14 +271,14 @@ public class DynamicAgent extends ReActAgent {
 				// Use current env as user message
 				Message currentStepEnvMessage = currentStepEnvMessage();
 
-				// If early termination occurred in previous attempt, add explicit tool
-				// call requirement
-				if (earlyTerminationCount > 0) {
-					String toolCallRequirement = String
-						.format("\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
-								+ "Previous attempt returned only text without tool calls (early termination detected %d time(s)). "
-								+ "Do not provide explanations or reasoning - call a tool immediately.",
-								earlyTerminationCount);
+				// If no tools were selected in previous attempts, add explicit tool call
+				// requirement
+				if (noToolSelectedCount > 0) {
+					String toolCallRequirement = String.format(
+							"\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
+									+ "Previous %d attempt(s) did not select any tools. "
+									+ "Do not provide explanations or reasoning - call a tool immediately.",
+							noToolSelectedCount);
 					// Append requirement to current step env message
 					String enhancedEnvText = currentStepEnvMessage.getText() + toolCallRequirement;
 					// Create new UserMessage with enhanced text, preserving metadata
@@ -284,8 +287,8 @@ public class DynamicAgent extends ReActAgent {
 						enhancedMessage.getMetadata().putAll(currentStepEnvMessage.getMetadata());
 					}
 					currentStepEnvMessage = enhancedMessage;
-					log.info("Added explicit tool call requirement to retry message (early termination count: {})",
-							earlyTerminationCount);
+					log.info("Added explicit tool call requirement to retry message (no tool selected count: {})",
+							noToolSelectedCount);
 				}
 				// Record think message
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
@@ -374,48 +377,66 @@ public class DynamicAgent extends ReActAgent {
 				streamResult = streamingResponseHandler.processStreamingResponse(responseFlux,
 						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true, inputCharCount);
 
-				response = streamResult.getLastResponse();
-
-				// Use merged content from streaming handler
+				// Extract commonly used data into AgentStreamingResult
 				List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
 				String responseByLLm = streamResult.getEffectiveText();
-
-				// Get input and output character counts from StreamingResult
 				int finalInputCharCount = streamResult.getInputCharCount();
 				int finalOutputCharCount = streamResult.getOutputCharCount();
-				log.info("Input character count: {}, Output character count: {}", finalInputCharCount,
+
+				agentStreamingResult = new AgentStreamingResult(toolCalls, responseByLLm, finalInputCharCount,
 						finalOutputCharCount);
 
-				// Check for early termination
-				boolean isEarlyTerminated = streamResult.isEarlyTerminated();
-				if (isEarlyTerminated) {
-					earlyTerminationCount++;
-					log.warn(
-							"Early termination detected (attempt {}): thinking-only response with no tool calls. Count: {}/{}",
-							attempt, earlyTerminationCount, EARLY_TERMINATION_THRESHOLD);
+				// Keep response for backward compatibility (used in
+				// extractAssistantMessageFromResponse)
+				response = streamResult.getLastResponse();
 
-					// If early termination threshold reached, fail gracefully
-					if (earlyTerminationCount >= EARLY_TERMINATION_THRESHOLD) {
-						log.error(
-								"Early termination threshold ({}) reached. LLM repeatedly returned thinking-only responses without tool calls. Failing gracefully.",
-								EARLY_TERMINATION_THRESHOLD);
-						// Store a special exception to indicate early termination failure
-						latestLlmException = new Exception(
-								"Early termination threshold reached: LLM returned thinking-only responses without tool calls "
-										+ earlyTerminationCount + " times. The model must call tools to proceed.");
-						return false; // Return false to trigger failure handling in
-										// step()
+				log.info("Input character count: {}, Output character count: {}",
+						agentStreamingResult.getInputCharCount(), agentStreamingResult.getOutputCharCount());
+
+				log.info(String.format("✨ %s's thoughts: %s", getName(), agentStreamingResult.getResponseText()));
+				log.info(String.format("🛠️ %s selected %d tools to use", getName(),
+						agentStreamingResult.getToolCalls().size()));
+
+				// If no tools selected, wrap message in ThinkTool and create a ToolCall
+				if (!agentStreamingResult.hasToolCalls()) {
+					noToolSelectedCount++;
+					log.warn("Attempt {}: No tools selected. Creating ThinkTool call... (no tool selected count: {})",
+							attempt, noToolSelectedCount);
+
+					try {
+						// Prepare ThinkTool input
+						Map<String, Object> thinkToolInput = new HashMap<>();
+						thinkToolInput.put("message", agentStreamingResult.getResponseText() != null
+								? agentStreamingResult.getResponseText() : "No response from LLM");
+
+						// Create ThinkTool ToolCall
+						String thinkToolCallId = planIdDispatcher.generateToolCallId();
+						String thinkToolArguments = objectMapper.writeValueAsString(thinkToolInput);
+						ToolCall thinkToolCall = new ToolCall(thinkToolCallId, "function",
+								ThinkTool.SERVICE_GROUP + "-" + ThinkTool.name, thinkToolArguments);
+
+						// Add ThinkTool call to agentStreamingResult
+						List<ToolCall> toolCallsWithThink = new ArrayList<>();
+						toolCallsWithThink.add(thinkToolCall);
+						agentStreamingResult.setToolCalls(toolCallsWithThink);
+
+						log.info("Created ThinkTool call, will be executed in unified tool processing flow");
+					}
+					catch (Exception e) {
+						log.error("Failed to create ThinkTool call: {}", e.getMessage(), e);
+						// Continue with normal retry flow if ThinkTool creation fails
 					}
 				}
 
-				log.info(String.format("✨ %s's thoughts: %s", getName(), responseByLLm));
-				log.info(String.format("🛠️ %s selected %d tools to use", getName(), toolCalls.size()));
-
-				if (!toolCalls.isEmpty()) {
-					// Reset early termination count on successful tool call
-					earlyTerminationCount = 0;
+				// Unified tool processing flow (handles both regular tools and ThinkTool)
+				if (agentStreamingResult.hasToolCalls()) {
+					// Reset no-tool-selected count on successful tool call
+					noToolSelectedCount = 0;
 					log.info(String.format("🧰 Tools being prepared: %s",
-							toolCalls.stream().map(ToolCall::name).collect(Collectors.toList())));
+							agentStreamingResult.getToolCalls()
+								.stream()
+								.map(ToolCall::name)
+								.collect(Collectors.toList())));
 
 					String stepId = super.step.getStepId();
 					String thinkActId = planIdDispatcher.generateThinkActId();
@@ -425,16 +446,17 @@ public class DynamicAgent extends ReActAgent {
 					// present
 					// This ensures each tool has its own toolCallId for proper sub-plan
 					// linkage
-					for (ToolCall toolCall : toolCalls) {
-						String toolCallIdForTool = (toolCalls.size() > 1) ? planIdDispatcher.generateToolCallId()
-								: toolcallId;
+					for (ToolCall toolCall : agentStreamingResult.getToolCalls()) {
+						String toolCallIdForTool = (agentStreamingResult.getToolCalls().size() > 1)
+								? planIdDispatcher.generateToolCallId() : toolcallId;
 						ActToolParam actToolInfo = new ActToolParam(toolCall.name(), toolCall.arguments(),
 								toolCallIdForTool);
 						actToolInfoList.add(actToolInfo);
 					}
 
 					ThinkActRecordParams paramsN = new ThinkActRecordParams(thinkActId, stepId, thinkInput,
-							responseByLLm, null, finalInputCharCount, finalOutputCharCount, actToolInfoList);
+							agentStreamingResult.getResponseText(), null, agentStreamingResult.getInputCharCount(),
+							agentStreamingResult.getOutputCharCount(), actToolInfoList);
 					planExecutionRecorder.recordThinkingAndAction(step, paramsN);
 
 					// Clear exception cache if this was a retry attempt
@@ -444,16 +466,6 @@ public class DynamicAgent extends ReActAgent {
 					}
 
 					return true;
-				}
-
-				// No tool calls - check if this is due to early termination
-				if (isEarlyTerminated) {
-					log.warn(
-							"Attempt {}: Early termination - no tools selected (thinking-only response). Retrying with explicit tool call requirement...",
-							attempt);
-				}
-				else {
-					log.warn("Attempt {}: No tools selected. Retrying...", attempt);
 				}
 
 			}
@@ -532,20 +544,6 @@ public class DynamicAgent extends ReActAgent {
 				// Check if we have a latest exception from LLM calls (max retries
 				// reached)
 				if (latestLlmException != null) {
-					// Check if failure was due to early termination threshold
-					if (latestLlmException.getMessage() != null
-							&& latestLlmException.getMessage().contains("Early termination threshold reached")) {
-						log.error(
-								"Agent {} failed due to early termination threshold. LLM repeatedly returned thinking-only responses without tool calls.",
-								getName());
-						// Return FAILED state to stop infinite retry loop
-						return CompletableFuture.completedFuture(new AgentExecResult(
-								"Agent failed: LLM repeatedly returned thinking-only responses without tool calls. "
-										+ "Please ensure the model is configured to call tools. "
-										+ latestLlmException.getMessage(),
-								AgentState.FAILED));
-					}
-
 					log.error(
 							"Agent {} thinking failed after all retries. Simulating full flow with SystemErrorReportTool",
 							getName());
@@ -632,15 +630,18 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		try {
-			List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
+			if (agentStreamingResult == null) {
+				return CompletableFuture.completedFuture(
+						new AgentExecResult("Agent streaming result is null, please retry", AgentState.IN_PROGRESS));
+			}
 
-			if (toolCalls == null || toolCalls.isEmpty()) {
+			if (!agentStreamingResult.hasToolCalls()) {
 				return CompletableFuture
 					.completedFuture(new AgentExecResult("tool call is empty, please retry", AgentState.IN_PROGRESS));
 			}
 
 			// Unified call to processTools() - chain the async result
-			return processTools(toolCalls);
+			return processTools(agentStreamingResult.getToolCalls());
 		}
 		catch (Exception e) {
 			log.error("Error executing tools: {}", e.getMessage(), e);
@@ -1019,8 +1020,15 @@ public class DynamicAgent extends ReActAgent {
 	private void buildAndProcessMemory(List<ToolResponseMessage.ToolResponse> toolResponses) {
 		ToolResponseMessage toolResponseMessage = ToolResponseMessage.builder().responses(toolResponses).build();
 
-		// Get AssistantMessage
-		AssistantMessage assistantMessage = extractAssistantMessageFromResponse(response);
+		// Get AssistantMessage from agentStreamingResult if available, otherwise fall
+		// back to response
+		AssistantMessage assistantMessage;
+		if (agentStreamingResult != null && agentStreamingResult.hasToolCalls()) {
+			assistantMessage = agentStreamingResult.createAssistantMessage();
+		}
+		else {
+			assistantMessage = extractAssistantMessageFromResponse(response);
+		}
 
 		// Build conversationHistory
 		List<Message> conversationHistory = new ArrayList<>();
@@ -1216,6 +1224,77 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
+	 * Fix incorrectly escaped key-value pairs in JSON. Fixes the pattern "key\":\"value"
+	 * to "key":"value"
+	 * @param json The JSON string that may contain incorrectly escaped key-value pairs
+	 * @return Fixed JSON string
+	 */
+	private String fixIncorrectlyEscapedKeyValuePairs(String json) {
+		if (json == null || json.isEmpty()) {
+			return json;
+		}
+
+		// Pattern to fix: "key\":\"value" -> "key":"value"
+		// This happens when quotes around key-value pairs are incorrectly escaped
+		// We need to find patterns like: " followed by \" followed by : followed by \"
+		// This indicates an incorrectly escaped key-value separator
+		// We'll use a targeted replacement that checks context to ensure it's a key-value
+		// boundary
+
+		StringBuilder fixed = new StringBuilder();
+		int i = 0;
+		while (i < json.length()) {
+			// Look for the pattern: " followed by \" followed by : followed by \"
+			// This is the pattern ":\" which indicates incorrectly escaped key-value
+			// separator
+			if (i + 5 < json.length() && json.charAt(i) == '"' && json.charAt(i + 1) == '\\'
+					&& json.charAt(i + 2) == '"' && json.charAt(i + 3) == ':' && json.charAt(i + 4) == '\\'
+					&& json.charAt(i + 5) == '"') {
+				// Found the pattern ":\" - this is an incorrectly escaped key-value
+				// separator
+				// Check context to ensure this is indeed a key-value separator
+				// Look backwards to see if we're after a key name
+				boolean isValidContext = false;
+				if (i > 0) {
+					// Look backwards skipping whitespace to find the start of the key
+					int lookBack = i - 1;
+					while (lookBack >= 0 && Character.isWhitespace(json.charAt(lookBack))) {
+						lookBack--;
+					}
+					if (lookBack >= 0) {
+						char charBeforeSpace = json.charAt(lookBack);
+						// If we're after a quote (end of key name), comma, or opening
+						// brace, it's valid
+						if (charBeforeSpace == '"' || charBeforeSpace == ',' || charBeforeSpace == '{'
+								|| charBeforeSpace == '[') {
+							isValidContext = true;
+						}
+					}
+				}
+				else {
+					// At the start, could be valid if it's the first key
+					isValidContext = true;
+				}
+
+				if (isValidContext) {
+					// Fix: ":\" -> ":"
+					fixed.append('"');
+					fixed.append(':');
+					fixed.append('"');
+					i += 6; // Skip the 6 characters we just processed ("\":\")
+					continue;
+				}
+			}
+
+			// Not the pattern we're looking for, append character as-is
+			fixed.append(json.charAt(i));
+			i++;
+		}
+
+		return fixed.toString();
+	}
+
+	/**
 	 * Fix common JSON formatting issues, such as unescaped newlines, quotes, and other
 	 * special characters in string values. This method properly escapes all characters
 	 * that need to be escaped inside JSON string values.
@@ -1226,6 +1305,10 @@ public class DynamicAgent extends ReActAgent {
 		if (json == null || json.isEmpty()) {
 			return json;
 		}
+
+		// First, fix the pattern "key\":\"value" -> "key":"value"
+		// This pattern occurs when quotes around key-value pairs are incorrectly escaped
+		json = fixIncorrectlyEscapedKeyValuePairs(json);
 
 		StringBuilder fixed = new StringBuilder();
 		boolean inString = false;
@@ -1727,6 +1810,40 @@ public class DynamicAgent extends ReActAgent {
 	@Override
 	public CompletableFuture<AgentExecResult> run() {
 		return super.run();
+	}
+
+	@Override
+	protected void handleFailedExecution(List<AgentExecResult> results) {
+		log.info("Handling failed execution - performing cleanup");
+		// Perform cleanup when execution fails (e.g., LLM timeout)
+		String planId = getCurrentPlanId();
+		if (planId != null) {
+			try {
+				clearUp(planId);
+				log.info("Successfully cleaned up resources after failed execution for planId: {}", planId);
+			}
+			catch (Exception e) {
+				log.error("Error during cleanup after failed execution for planId: {}", planId, e);
+			}
+		}
+		super.handleFailedExecution(results);
+	}
+
+	@Override
+	protected void handleInterruptedExecution(List<AgentExecResult> results) {
+		log.info("Handling interrupted execution - performing cleanup");
+		// Perform cleanup when execution is interrupted
+		String planId = getCurrentPlanId();
+		if (planId != null) {
+			try {
+				clearUp(planId);
+				log.info("Successfully cleaned up resources after interrupted execution for planId: {}", planId);
+			}
+			catch (Exception e) {
+				log.error("Error during cleanup after interrupted execution for planId: {}", planId, e);
+			}
+		}
+		super.handleInterruptedExecution(results);
 	}
 
 	@Override

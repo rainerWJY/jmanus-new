@@ -85,6 +85,7 @@ import { useAvailableToolsSingleton, type useAvailableTools } from '@/composable
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionState'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
 import { useTaskStore } from '@/stores/task'
@@ -98,12 +99,13 @@ const taskStore = useTaskStore()
 const templateConfig = usePlanTemplateConfigSingleton()
 const messageDialog = useMessageDialogSingleton()
 const { stopTask } = useTaskStop()
+const taskExecutionState = useTaskExecutionStateSingleton()
 const fileUpload = useFileUploadSingleton()
 const availableToolsStore: ReturnType<typeof useAvailableTools> = useAvailableToolsSingleton()
 const toast = useToast()
 
-// Track if task is running
-const isTaskRunning = computed(() => taskStore.hasRunningTask())
+// Track if task is running - use unified state
+const isTaskRunning = computed(() => taskExecutionState.isTaskRunning.value)
 
 interface Props {
   initialValue?: string

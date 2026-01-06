@@ -237,19 +237,18 @@ import {
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
 import PublishServiceModal from '@/components/publish-service-modal/PublishServiceModal.vue'
 import SaveConfirmationDialog from '@/components/sidebar/SaveConfirmationDialog.vue'
+import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
-import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionState'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
 import { parameterHistoryStore } from '@/stores/parameterHistory'
 import { templateStore } from '@/stores/templateStore'
-import { useTaskStore } from '@/stores/task'
 import type { PlanData, PlanExecutionRequestPayload } from '@/types/plan-execution'
 import { Icon } from '@iconify/vue'
-import { computed, onMounted, ref, watch, watchEffect } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -264,11 +263,10 @@ const availableToolsStore = useAvailableToolsSingleton()
 // Message dialog singleton for executing plans
 const messageDialog = useMessageDialogSingleton()
 
-// Plan execution singleton to track execution state
-const planExecution = usePlanExecutionSingleton()
+// Unified task execution state (Single Source of Truth)
+const taskExecutionState = useTaskExecutionStateSingleton()
 
-// Task store and stop functionality
-const taskStore = useTaskStore()
+// Task stop functionality
 const { stopTask, isStopping } = useTaskStop()
 
 // Shared file upload state
@@ -298,7 +296,6 @@ const isLoadingParameters = ref(false)
 const activeTab = ref('post-async')
 const parameterErrors = ref<Record<string, string>>({})
 const isValidationError = ref(false)
-const isExecutingPlan = ref(false) // Flag to prevent parameter reload during execution
 const lastPlanId = ref<string | null>(null) // Track last returned plan ID
 const lastRefreshTimestamp = ref<number>(0) // Track last refresh time for debouncing
 const REFRESH_DEBOUNCE_MS = 500 // Debounce time for parameter refresh
@@ -437,43 +434,21 @@ const buttonText = computed(() => {
     : t('sidebar.publishMcpService')
 })
 
-// Computed property for disabled state - same as InputArea.vue
-const isDisabled = computed(() => messageDialog.isLoading.value)
-
-// Check if a plan is currently running
-const isPlanRunning = computed(() => {
-  return (
-    taskStore.hasRunningTask() ||
-    planExecution.trackedPlanIds.value.size > 0 ||
-    isExecutingPlan.value
-  )
-})
+// Check if a plan is currently running - use unified state
+const isPlanRunning = computed(() => taskExecutionState.isTaskRunning.value)
 
 const canExecute = computed(() => {
-  // Disable if messageDialog is loading (same validation as InputArea)
-  if (isDisabled.value) {
+  // Use unified canExecute as base check
+  if (!taskExecutionState.canExecute.value) {
     return false
   }
 
+  // Additional check for props.isExecuting
   if (props.isExecuting) {
     return false
   }
 
-  // Disable if there's a plan execution in progress (prevents duplicate submissions)
-  if (isExecutingPlan.value) {
-    return false
-  }
-
-  // Also check if there are any tracked plans or running plans
-  const hasTrackedPlans = planExecution.trackedPlanIds.value.size > 0
-  const recordsArray = Object.entries(planExecution.planExecutionRecords.value)
-  const hasRunningPlansInRecords = recordsArray.some(
-    ([, record]) => record && !record.completed && record.status !== 'failed'
-  )
-  if (hasTrackedPlans || hasRunningPlansInRecords) {
-    return false
-  }
-
+  // Parameter validation
   if (parameterRequirements.value.hasParameters) {
     // Check if all required parameters are filled
     return parameterRequirements.value.parameters.every(param => {
@@ -525,13 +500,12 @@ const handleExecutePlan = async () => {
   // Mark that user has attempted to execute (for validation message)
   hasAttemptedExecute.value = true
 
-  // Check if there's already an execution in progress
-  if (props.isExecuting || messageDialog.isLoading.value || isExecutingPlan.value) {
+  // Check if there's already an execution in progress using unified state
+  if (!taskExecutionState.canExecute.value || props.isExecuting) {
     console.log(
-      '[ExecutionController] ⏸️ Execution already in progress. isExecuting: {}, messageDialog.isLoading: {}, isExecutingPlan: {}',
-      props.isExecuting,
-      messageDialog.isLoading.value,
-      isExecutingPlan.value
+      '[ExecutionController] ⏸️ Execution already in progress. canExecute: {}, isExecuting: {}',
+      taskExecutionState.canExecute.value,
+      props.isExecuting
     )
     toast.error(t('sidebar.executionInProgress'))
     return
@@ -576,21 +550,21 @@ const handleExecutePlan = async () => {
 
 const proceedWithExecution = async () => {
   // Double-check execution state before proceeding (defense in depth)
-  if (props.isExecuting || messageDialog.isLoading.value || isExecutingPlan.value) {
+  if (!taskExecutionState.canExecute.value || props.isExecuting) {
     console.log(
       '[ExecutionController] ⏸️ Execution already in progress in proceedWithExecution. Skipping.'
     )
     return
   }
 
-  // Set execution flag to prevent parameter reload and concurrent execution
-  isExecutingPlan.value = true
-  console.log('[ExecutionController] 🔒 Set isExecutingPlan to true')
+  // Start local execution flag to prevent concurrent execution during API call
+  taskExecutionState.startLocalExecution()
+  console.log('[ExecutionController] 🔒 Started local execution')
 
   // Validate parameters before execution
   if (!validateParameters()) {
     console.log('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
-    isExecutingPlan.value = false // Reset flag on validation failure
+    taskExecutionState.stopLocalExecution() // Reset flag on validation failure
     // Keep hasAttemptedExecute as true to show validation message
     return
   }
@@ -602,7 +576,7 @@ const proceedWithExecution = async () => {
       '[ExecutionController] ❌ Tool validation failed:',
       toolsValidation.nonExistentTools
     )
-    isExecutingPlan.value = false // Reset flag on validation failure
+    taskExecutionState.stopLocalExecution() // Reset flag on validation failure
     const toolList = toolsValidation.nonExistentTools
       .map(tool => {
         // Parse "Step X: toolName" format
@@ -632,7 +606,7 @@ const proceedWithExecution = async () => {
     if (!templateConfig.selectedTemplate.value) {
       console.log('[ExecutionController] ❌ No template selected, returning')
       toast.error(t('sidebar.selectPlanFirst'))
-      isExecutingPlan.value = false
+      taskExecutionState.stopLocalExecution()
       return
     }
 
@@ -666,7 +640,7 @@ const proceedWithExecution = async () => {
     if (!toolName || toolName.trim() === '') {
       console.error('[ExecutionController] ❌ Tool name is required but not found')
       toast.error(t('sidebar.toolNameRequired') || 'Tool name is required for execution')
-      isExecutingPlan.value = false
+      taskExecutionState.stopLocalExecution()
       return
     }
 
@@ -715,9 +689,11 @@ const proceedWithExecution = async () => {
     console.error('[ExecutionController] ❌ Error executing plan:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     toast.error(t('sidebar.executeFailed') + ': ' + message)
-    isExecutingPlan.value = false
+    taskExecutionState.stopLocalExecution()
   } finally {
     console.log('[ExecutionController] 🧹 Cleaning up after execution')
+    // Stop local execution flag (state will be updated by taskStore when plan starts)
+    taskExecutionState.stopLocalExecution()
     // Clear parameters after execution
     clearExecutionParams()
     console.log('[ExecutionController] ✅ Cleanup completed')
@@ -882,10 +858,8 @@ const handleStop = async () => {
   const success = await stopTask()
   if (success) {
     console.log('[ExecutionController] Task stopped successfully')
-    // Reset execution flag immediately to synchronize button state
-    isExecutingPlan.value = false
-    console.log('[ExecutionController] Reset isExecutingPlan flag')
-    toast.success(t('input.stop') || 'Stopped')
+    // State is automatically updated by useTaskStop.stopTask()
+    // No need to manually update flags - unified state handles it
   } else {
     console.error('[ExecutionController] Failed to stop task')
     toast.error(t('sidebar.executeFailed') || 'Failed to stop task')
@@ -898,8 +872,8 @@ const clearExecutionParams = () => {
   // Clear parameter values as well
   parameterValues.value = {}
 
-  // Note: isExecutingPlan is NOT reset here - it will be reset when the plan execution completes
-  // This prevents concurrent executions while a plan is still running
+  // Note: Local execution flag is managed by useTaskExecutionState
+  // State is automatically updated when plan execution starts/completes
 
   console.log('[ExecutionController] ✅ After clear - parameterValues cleared')
   // Execution params are now managed internally, no need to emit
@@ -1278,7 +1252,7 @@ watch(
   (newId, oldId) => {
     if (newId && newId !== oldId) {
       // Skip parameter reload if we're currently executing a plan
-      if (isExecutingPlan.value) {
+      if (taskExecutionState.isExecutionInProgress.value) {
         console.log('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
         return
       }
@@ -1311,7 +1285,7 @@ watch(
     // When modification flag changes from true to false, it means save was completed
     if (oldValue === true && newValue === false && templateConfig.currentPlanTemplateId.value) {
       // Skip if currently executing
-      if (isExecutingPlan.value) {
+      if (taskExecutionState.isExecutionInProgress.value) {
         console.log('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
         return
       }
@@ -1337,33 +1311,8 @@ watch(
   }
 )
 
-// Watch for plan execution completion to reset isExecutingPlan
-watchEffect(() => {
-  const records = planExecution.planExecutionRecords.value
-  const recordsArray = Object.entries(records)
-
-  // Check both trackedPlanIds and planExecutionRecords to handle the case where
-  // a plan has just started but hasn't been polled yet (no record in planExecutionRecords)
-  const hasTrackedPlans = planExecution.trackedPlanIds.value.size > 0
-  const hasRunningPlansInRecords = recordsArray.some(
-    ([, record]) => record && !record.completed && record.status !== 'failed'
-  )
-
-  // If there are tracked plans but no records yet, consider it as running
-  // This handles the race condition where a plan just started but hasn't been polled
-  const hasRunningPlans = hasTrackedPlans || hasRunningPlansInRecords
-
-  // Reset isExecutingPlan when all plans are completed
-  if (!hasRunningPlans && isExecutingPlan.value) {
-    console.log('[ExecutionController] All plans completed, resetting isExecutingPlan', {
-      hasTrackedPlans,
-      hasRunningPlansInRecords,
-      trackedPlanIds: Array.from(planExecution.trackedPlanIds.value),
-      recordsCount: recordsArray.length,
-    })
-    isExecutingPlan.value = false
-  }
-})
+// Note: State management is now handled by useTaskExecutionState
+// No need for watchEffect - state is automatically updated when taskStore.currentTask.isRunning changes
 
 // Execution params are now managed internally, no need to emit updates
 

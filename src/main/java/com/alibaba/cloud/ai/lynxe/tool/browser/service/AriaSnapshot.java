@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.TimeoutError;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
 /**
  * Utility class for generating ARIA snapshots of pages, using Playwright's native
@@ -89,10 +90,13 @@ public class AriaSnapshot {
 
 			// Wait for selector if timeout is specified (similar to frame.timeout in
 			// Playwright)
+			// Use ATTACHED instead of VISIBLE to handle pages where body may be hidden
+			// (e.g., permission pages, loading pages)
 			if (options.getTimeout() != null && options.getTimeout() > 0) {
 				try {
 					page.waitForSelector(options.getSelector(),
-							new Page.WaitForSelectorOptions().setTimeout(options.getTimeout()));
+							new Page.WaitForSelectorOptions().setTimeout(options.getTimeout())
+								.setState(WaitForSelectorState.ATTACHED));
 				}
 				catch (Exception e) {
 					log.warn("Selector wait timeout or failed, continuing anyway: {}", e.getMessage());

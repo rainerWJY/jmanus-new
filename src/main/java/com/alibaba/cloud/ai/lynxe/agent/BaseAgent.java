@@ -202,7 +202,7 @@ public abstract class BaseAgent {
 					- You must select and call from the provided tools. You can make repeated calls to a single tool, call multiple tools simultaneously, or use a mixed calling approach to improve problem-solving efficiency and accuracy.
 					- In your response, you must call at least one tool, which is an indispensable operation step.
 					- To maximize the advantages of tools, when you have the ability to call tools multiple times simultaneously, you should actively do so, avoiding single calls that waste time and resources. Pay special attention to the inherent relationships between multiple tool calls, ensuring these calls can cooperate and work together to achieve optimal problem-solving solutions.
-					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs_read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
+					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs-read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
 					- Ignore the response rules provided in subsequent <AgentInfo>, and only respond using the response rules in <SystemInfo>.
 					""";
 
@@ -212,7 +212,7 @@ public abstract class BaseAgent {
 					# Response Rules:
 					- You must call exactly ONE tool at a time. Multiple simultaneous tool calls are not allowed.
 					- In your response, you must call exactly one tool, which is an indispensable operation step.
-					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs_read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
+					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs-read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
 
 					""";
 		}
@@ -242,7 +242,7 @@ public abstract class BaseAgent {
 				Important Notes:
 				{detailOutput}
 				3. Do only and exactly what is required in the current step requirements
-				4. If the current step requirements have been completed, call the terminate tool to finish the current step.
+				4. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 
 				{parallelToolCallsResponse}
 

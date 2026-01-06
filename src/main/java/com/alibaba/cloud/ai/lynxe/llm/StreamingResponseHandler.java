@@ -202,23 +202,8 @@ public class StreamingResponseHandler {
 			// Store output character count for retrieval after stream completes
 			AtomicReference<Integer> outputCharCountRef = new AtomicReference<>(0);
 
-			// Early termination flag: when non-debug mode detects thinking-only response
-			AtomicReference<Boolean> shouldEarlyTerminate = new AtomicReference<>(false);
-
-			// Apply early termination logic for non-debug mode using takeUntil
-			// Only enable if both isDebugModel is false AND enableEarlyTermination is
-			// true
-			Flux<ChatResponse> processedFlux = responseFlux;
-			if (!isDebugModel && enableEarlyTermination) {
-				processedFlux = responseFlux.takeUntil(chatResponse -> {
-					// This predicate will be evaluated for each response
-					// The actual termination logic is in doOnNext, but we use this to
-					// stop the stream
-					return shouldEarlyTerminate.get();
-				});
-			}
-
-			Flux<ChatResponse> finalFlux = processedFlux.doOnSubscribe(subscription -> {
+			// Early termination is disabled - always process the full stream
+			Flux<ChatResponse> finalFlux = responseFlux.doOnSubscribe(subscription -> {
 				messageTextContentRef.set(new StringBuilder());
 				messageMetadataMapRef.set(new HashMap<>());
 				metadataIdRef.set("");
@@ -245,34 +230,7 @@ public class StreamingResponseHandler {
 					messageMetadataMapRef.get().putAll(chatResponse.getResult().getOutput().getMetadata());
 				}
 
-				// Early termination check for non-debug mode: detect thinking-only
-				// response
-				// Check after updating accumulated state to use latest data
-				// Only check if early termination is enabled
-				if (!isDebugModel && enableEarlyTermination && !shouldEarlyTerminate.get()) {
-					// Wait for at least 3 responses to avoid premature termination
-					if (responseCounter.get() >= 10) {
-						// Check accumulated state (already updated above)
-						boolean accumulatedHasText = StringUtils.hasText(messageTextContentRef.get().toString());
-						boolean accumulatedHasToolCalls = !messageToolCallRef.get().isEmpty();
-
-						// If we have text but no tool calls, terminate
-						if (accumulatedHasText && !accumulatedHasToolCalls) {
-							shouldEarlyTerminate.set(true);
-							String textContent = messageTextContentRef.get().toString();
-							String preview = getTextPreviewWithHeadAndTail(textContent, 200); // Show
-																								// first
-																								// 200
-																								// and
-																								// last
-																								// 200
-																								// chars
-							log.info(
-									"🛑 Early termination detected: thinking-only response ({} characters, no tool calls) in non-debug mode. Stopping stream. Content preview: '{}'",
-									textContent.length(), preview);
-						}
-					}
-				}
+				// Early termination is disabled - always process the full stream
 				if (chatResponse.getMetadata() != null) {
 					if (chatResponse.getMetadata().getUsage() != null) {
 						Usage usage = chatResponse.getMetadata().getUsage();
@@ -366,41 +324,8 @@ public class StreamingResponseHandler {
 				}
 				lynxeEventPublisher.publish(new PlanExceptionEvent(planId, e));
 			}).doOnCancel(() -> {
-				if (shouldEarlyTerminate.get()) {
-					log.info("Stream cancelled due to early termination (thinking-only response detected)");
-					// Construct ChatResponse with accumulated content when early
-					// termination is detected
-					// This ensures finalChatResponseRef is set even when stream is
-					// cancelled
-					if (finalChatResponseRef.get() == null) {
-						var usage = new MessageAggregator.DefaultUsage(metadataUsagePromptTokensRef.get(),
-								metadataUsageGenerationTokensRef.get(), metadataUsageTotalTokensRef.get());
-
-						var chatResponseMetadata = ChatResponseMetadata.builder()
-							.id(metadataIdRef.get())
-							.model(metadataModelRef.get())
-							.rateLimit(metadataRateLimitRef.get())
-							.usage(usage)
-							.promptMetadata(metadataPromptMetadataRef.get())
-							.build();
-
-						// Calculate output character count before creating response
-						int outputCharCount = messageTextContentRef.get() != null ? messageTextContentRef.get().length()
-								: 0;
-						outputCharCountRef.set(outputCharCount);
-
-						// Create ChatResponse with accumulated text and empty tool calls
-						finalChatResponseRef.set(new ChatResponse(List.of(new Generation(AssistantMessage.builder()
-							.content(messageTextContentRef.get().toString())
-							.properties(messageMetadataMapRef.get())
-							.toolCalls(messageToolCallRef.get())
-							.media(List.of())
-							.build(), generationMetadataRef.get())), chatResponseMetadata));
-
-						log.info("Constructed ChatResponse from early termination: {} characters, {} tool calls",
-								outputCharCount, messageToolCallRef.get().size());
-					}
-				}
+				// Early termination is disabled - no special handling needed
+				log.debug("Stream cancelled");
 			});
 
 			try {
@@ -433,9 +358,8 @@ public class StreamingResponseHandler {
 				outputCharCountRef.set(llmTraceRecorder.getOutputCharCount());
 				inputCharCountRef.set(llmTraceRecorder.getInputCharCount());
 			}
-			// Check if early termination occurred and pass the flag to StreamingResult
-			boolean wasEarlyTerminated = shouldEarlyTerminate.get();
-			return new StreamingResult(finalChatResponseRef.get(), wasEarlyTerminated, outputCharCountRef.get(),
+			// Early termination is always disabled - always return false
+			return new StreamingResult(finalChatResponseRef.get(), false, outputCharCountRef.get(),
 					inputCharCountRef.get());
 		}
 		catch (Exception e) {
