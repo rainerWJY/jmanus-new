@@ -74,8 +74,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Note: Literal braces need escaping in patterns (use interface\\{\\} to find interface{}
  * in code)
  *
- * Keywords: external files, external_link, linked_external, external folder, grep, search,
- * find text, regex, ripgrep, rg, pattern matching, text search, exact match
+ * Keywords: external files, external_link, linked_external, external folder, grep,
+ * search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
  */
 public class EnhanceExternalLinkGrep extends AbstractBaseTool<EnhanceExternalLinkGrep.GrepInput> {
 
@@ -318,11 +318,9 @@ public class EnhanceExternalLinkGrep extends AbstractBaseTool<EnhanceExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
@@ -372,11 +370,9 @@ public class EnhanceExternalLinkGrep extends AbstractBaseTool<EnhanceExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Error executing grep: " + errorMessage);
@@ -436,7 +432,8 @@ public class EnhanceExternalLinkGrep extends AbstractBaseTool<EnhanceExternalLin
 	 */
 	private Path getSearchRoot(String path) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for external_link file operations but is null or empty");
+			throw new IOException(
+					"Error: rootPlanId is required for external_link file operations but is null or empty");
 		}
 
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();

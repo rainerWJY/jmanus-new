@@ -47,6 +47,7 @@ public class UnifiedDirectoryManager {
 	private static final String EXTENSIONS_DIR = "extensions";
 
 	private static final String INNER_STORAGE_DIR = "inner_storage";
+
 	/**
 	 * Fixed directory name for external linked folder mapping
 	 */
@@ -276,11 +277,11 @@ public class UnifiedDirectoryManager {
 
 	/**
 	 * Resolve and validate a path specifically for external_link directory operations.
-	 * This method resolves paths within the linked_external directory and validates
-	 * that the resolved path stays within the external directory.
-	 * 
+	 * This method resolves paths within the linked_external directory and validates that
+	 * the resolved path stays within the external directory.
 	 * @param rootPlanId The root plan ID
-	 * @param relativePath The relative path within external_link (with or without "linked_external/" prefix)
+	 * @param relativePath The relative path within external_link (with or without
+	 * "linked_external/" prefix)
 	 * @return The resolved Path object pointing to the external directory
 	 * @throws IOException if the path is invalid or outside the external directory
 	 */
@@ -339,7 +340,8 @@ public class UnifiedDirectoryManager {
 			}
 		}
 		catch (IOException e) {
-			// If toRealPath() fails (e.g., symlink doesn't exist), fall back to string comparison
+			// If toRealPath() fails (e.g., symlink doesn't exist), fall back to string
+			// comparison
 			// This is less secure but handles edge cases
 			String externalDirStr = linkedExternalDir.toString();
 			String resolvedStr = resolvedPath.toString();

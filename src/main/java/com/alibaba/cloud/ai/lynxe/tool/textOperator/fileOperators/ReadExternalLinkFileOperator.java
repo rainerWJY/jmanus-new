@@ -35,8 +35,8 @@ import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
  * Read file operator specifically for external_link directory. This operator reads file
  * contents from the linked_external directory (external folder).
  *
- * Keywords: external files, external_link, linked_external, external folder, external file
- * read operations.
+ * Keywords: external files, external_link, linked_external, external folder, external
+ * file read operations.
  */
 public class ReadExternalLinkFileOperator extends AbstractBaseTool<ReadExternalLinkFileOperator.ReadFileInput> {
 
@@ -153,34 +153,33 @@ public class ReadExternalLinkFileOperator extends AbstractBaseTool<ReadExternalL
 		catch (Exception e) {
 			log.error("ReadExternalLinkFileOperator execution failed", e);
 			String errorMessage = e.getMessage();
-			
+
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
-			
+
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
 		}
 	}
-
 
 	/**
 	 * Validate and get the absolute path within the external_link directory
 	 */
 	private Path validateExternalLinkPath(String filePath) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for external_link file operations but is null or empty");
+			throw new IOException(
+					"Error: rootPlanId is required for external_link file operations but is null or empty");
 		}
 
 		// Normalize the file path to remove plan ID prefixes
 		String normalizedPath = baseOperator.normalizeFilePath(filePath);
 
 		// Check file type for non-directory operations
-		if (!normalizedPath.isEmpty() && !normalizedPath.endsWith("/") && !baseOperator.isSupportedFileType(normalizedPath)) {
+		if (!normalizedPath.isEmpty() && !normalizedPath.endsWith("/")
+				&& !baseOperator.isSupportedFileType(normalizedPath)) {
 			throw new IOException("Unsupported file type. Only text-based files are supported.");
 		}
 
@@ -188,7 +187,6 @@ public class ReadExternalLinkFileOperator extends AbstractBaseTool<ReadExternalL
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 		return directoryManager.resolveAndValidateExternalLinkPath(this.rootPlanId, normalizedPath);
 	}
-
 
 	/**
 	 * Read file contents with optional offset and limit
@@ -271,16 +269,14 @@ public class ReadExternalLinkFileOperator extends AbstractBaseTool<ReadExternalL
 		catch (IOException e) {
 			log.error("Error reading file: {}", filePath, e);
 			String errorMessage = e.getMessage();
-			
+
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
-			
+
 			return new ToolExecuteResult("Error reading file: " + errorMessage);
 		}
 	}
@@ -329,4 +325,3 @@ public class ReadExternalLinkFileOperator extends AbstractBaseTool<ReadExternalL
 	}
 
 }
-

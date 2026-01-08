@@ -36,8 +36,8 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
  * (markdown, code, HTML, etc.) into smaller pieces in the linked_external directory
  * (external folder).
  *
- * Keywords: external files, external_link, linked_external, external folder, external file
- * split operations, split file.
+ * Keywords: external files, external_link, linked_external, external folder, external
+ * file split operations, split file.
  */
 public class SplitExternalLinkFileTool extends AbstractBaseTool<SplitExternalLinkFileTool.SplitFileInput> {
 
@@ -137,11 +137,9 @@ public class SplitExternalLinkFileTool extends AbstractBaseTool<SplitExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
@@ -153,7 +151,8 @@ public class SplitExternalLinkFileTool extends AbstractBaseTool<SplitExternalLin
 	 */
 	private Path validateExternalLinkPath(String filePath) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for external_link file operations but is null or empty");
+			throw new IOException(
+					"Error: rootPlanId is required for external_link file operations but is null or empty");
 		}
 
 		// Check file type
@@ -270,11 +269,9 @@ public class SplitExternalLinkFileTool extends AbstractBaseTool<SplitExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Error splitting file: " + errorMessage);
@@ -328,4 +325,3 @@ public class SplitExternalLinkFileTool extends AbstractBaseTool<SplitExternalLin
 	}
 
 }
-

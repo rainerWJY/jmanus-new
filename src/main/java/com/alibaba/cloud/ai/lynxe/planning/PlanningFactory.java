@@ -338,17 +338,18 @@ public class PlanningFactory {
 					toolI18nService));
 			toolDefinitions.add(new WriteExternalLinkFileOperator(textFileService, innerStorageService, shortUrlService,
 					toolI18nService));
-			toolDefinitions.add(new DeleteExternalLinkFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
-			toolDefinitions.add(new ReplaceExternalLinkFileOperator(textFileService, innerStorageService, shortUrlService,
-					toolI18nService));
+			toolDefinitions.add(new DeleteExternalLinkFileOperator(textFileService, innerStorageService,
+					shortUrlService, toolI18nService));
+			toolDefinitions.add(new ReplaceExternalLinkFileOperator(textFileService, innerStorageService,
+					shortUrlService, toolI18nService));
 			// External link file tools (split, count, list, grep, glob)
 			toolDefinitions.add(new SplitExternalLinkFileTool(textFileService, toolI18nService));
 			toolDefinitions.add(new CountExternalLinkFileTool(textFileService, toolI18nService));
 			toolDefinitions.add(new ListExternalLinkFilesTool(unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new GlobExternalLinkFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService,
 					gitIgnoreMatcher, lynxeProperties));
-			toolDefinitions.add(new EnhanceExternalLinkGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
+			toolDefinitions
+				.add(new EnhanceExternalLinkGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			toolDefinitions.add(new EnhancedGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			// Refactored file splitter (split action only, count removed)
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));

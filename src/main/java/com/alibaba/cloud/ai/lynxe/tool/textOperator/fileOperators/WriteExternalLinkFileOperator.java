@@ -35,11 +35,11 @@ import com.alibaba.cloud.ai.lynxe.tool.shortUrl.ShortUrlService;
 
 /**
  * Write file operator specifically for external_link directory. This operator creates new
- * files or overwrites existing files completely in the linked_external directory (external
- * folder).
+ * files or overwrites existing files completely in the linked_external directory
+ * (external folder).
  *
- * Keywords: external files, external_link, linked_external, external folder, external file
- * write operations, write file, create file.
+ * Keywords: external files, external_link, linked_external, external folder, external
+ * file write operations, write file, create file.
  */
 public class WriteExternalLinkFileOperator extends AbstractBaseTool<WriteExternalLinkFileOperator.WriteFileInput> {
 
@@ -119,34 +119,33 @@ public class WriteExternalLinkFileOperator extends AbstractBaseTool<WriteExterna
 		catch (Exception e) {
 			log.error("WriteExternalLinkFileOperator execution failed", e);
 			String errorMessage = e.getMessage();
-			
+
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
-			
+
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
 		}
 	}
-
 
 	/**
 	 * Validate and get the absolute path within the external_link directory
 	 */
 	private Path validateExternalLinkPath(String filePath) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for external_link file operations but is null or empty");
+			throw new IOException(
+					"Error: rootPlanId is required for external_link file operations but is null or empty");
 		}
 
 		// Normalize the file path to remove plan ID prefixes
 		String normalizedPath = baseOperator.normalizeFilePath(filePath);
 
 		// Check file type for non-directory operations
-		if (!normalizedPath.isEmpty() && !normalizedPath.endsWith("/") && !baseOperator.isSupportedFileType(normalizedPath)) {
+		if (!normalizedPath.isEmpty() && !normalizedPath.endsWith("/")
+				&& !baseOperator.isSupportedFileType(normalizedPath)) {
 			throw new IOException("Unsupported file type. Only text-based files are supported.");
 		}
 
@@ -154,7 +153,6 @@ public class WriteExternalLinkFileOperator extends AbstractBaseTool<WriteExterna
 		UnifiedDirectoryManager directoryManager = textFileService.getUnifiedDirectoryManager();
 		return directoryManager.resolveAndValidateExternalLinkPath(this.rootPlanId, normalizedPath);
 	}
-
 
 	/**
 	 * Write file (Write tool implementation) Creates new files or overwrites existing
@@ -196,16 +194,14 @@ public class WriteExternalLinkFileOperator extends AbstractBaseTool<WriteExterna
 		catch (IOException e) {
 			log.error("Error writing file: {}", filePath, e);
 			String errorMessage = e.getMessage();
-			
+
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
-			
+
 			return new ToolExecuteResult("Error writing file: " + errorMessage);
 		}
 	}
@@ -254,4 +250,3 @@ public class WriteExternalLinkFileOperator extends AbstractBaseTool<WriteExterna
 	}
 
 }
-

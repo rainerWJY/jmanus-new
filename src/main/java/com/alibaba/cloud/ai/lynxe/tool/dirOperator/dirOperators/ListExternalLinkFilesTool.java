@@ -96,11 +96,9 @@ public class ListExternalLinkFilesTool extends AbstractBaseTool<ListExternalLink
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
@@ -149,7 +147,8 @@ public class ListExternalLinkFilesTool extends AbstractBaseTool<ListExternalLink
 			// Get the external_link directory
 			Path externalLinkDir = unifiedDirectoryManager.getLinkedExternalDirectory(this.rootPlanId);
 
-			// If a subdirectory path is provided, resolve it within external_link directory
+			// If a subdirectory path is provided, resolve it within external_link
+			// directory
 			Path targetDirectory = externalLinkDir;
 			if (normalizedPath != null && !normalizedPath.isEmpty() && !normalizedPath.equals(".")
 					&& !normalizedPath.equals("root")) {
@@ -227,11 +226,9 @@ public class ListExternalLinkFilesTool extends AbstractBaseTool<ListExternalLink
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Error listing files: " + errorMessage);

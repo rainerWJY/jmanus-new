@@ -32,11 +32,12 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * Count file tool specifically for external_link directory. This tool counts the total lines
- * and characters in a given file in the linked_external directory (external folder).
+ * Count file tool specifically for external_link directory. This tool counts the total
+ * lines and characters in a given file in the linked_external directory (external
+ * folder).
  *
- * Keywords: external files, external_link, linked_external, external folder, external file
- * count operations, count file.
+ * Keywords: external files, external_link, linked_external, external folder, external
+ * file count operations, count file.
  */
 public class CountExternalLinkFileTool extends AbstractBaseTool<CountExternalLinkFileTool.CountFileInput> {
 
@@ -99,11 +100,9 @@ public class CountExternalLinkFileTool extends AbstractBaseTool<CountExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
@@ -115,7 +114,8 @@ public class CountExternalLinkFileTool extends AbstractBaseTool<CountExternalLin
 	 */
 	private Path validateExternalLinkPath(String filePath) throws IOException {
 		if (this.rootPlanId == null || this.rootPlanId.isEmpty()) {
-			throw new IOException("Error: rootPlanId is required for external_link file operations but is null or empty");
+			throw new IOException(
+					"Error: rootPlanId is required for external_link file operations but is null or empty");
 		}
 
 		// Check file type
@@ -197,11 +197,9 @@ public class CountExternalLinkFileTool extends AbstractBaseTool<CountExternalLin
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Error counting file: " + errorMessage);
@@ -255,4 +253,3 @@ public class CountExternalLinkFileTool extends AbstractBaseTool<CountExternalLin
 	}
 
 }
-

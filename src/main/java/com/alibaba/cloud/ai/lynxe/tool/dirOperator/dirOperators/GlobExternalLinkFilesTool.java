@@ -48,12 +48,12 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * Glob files tool specifically for external_link directory. This tool finds files matching
- * a glob pattern in the linked_external folder (external folder). Results are sorted by
- * modification time (most recently modified first).
+ * Glob files tool specifically for external_link directory. This tool finds files
+ * matching a glob pattern in the linked_external folder (external folder). Results are
+ * sorted by modification time (most recently modified first).
  *
- * Keywords: external files, external_link, linked_external, external folder, glob pattern,
- * file search, find files.
+ * Keywords: external files, external_link, linked_external, external folder, glob
+ * pattern, file search, find files.
  */
 public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLinkFilesTool.GlobFilesInput> {
 
@@ -109,8 +109,9 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 
 	private final LynxeProperties lynxeProperties;
 
-	public GlobExternalLinkFilesTool(UnifiedDirectoryManager unifiedDirectoryManager, SymbolicLinkDetector symlinkDetector,
-			ToolI18nService toolI18nService, GitIgnoreMatcher gitIgnoreMatcher, LynxeProperties lynxeProperties) {
+	public GlobExternalLinkFilesTool(UnifiedDirectoryManager unifiedDirectoryManager,
+			SymbolicLinkDetector symlinkDetector, ToolI18nService toolI18nService, GitIgnoreMatcher gitIgnoreMatcher,
+			LynxeProperties lynxeProperties) {
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
 		// Note: symlinkDetector parameter kept for backward compatibility but not used
 		// This tool now explicitly skips symbolic links (like grep/ripgrep)
@@ -137,11 +138,9 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Tool execution failed: " + errorMessage);
@@ -253,8 +252,10 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 				// Normalize target directory path
 				String normalizedTargetDir = normalizeFilePath(targetDirectory);
 
-				// Use the centralized method from UnifiedDirectoryManager for external_link paths
-				searchRoot = unifiedDirectoryManager.resolveAndValidateExternalLinkPath(this.rootPlanId, normalizedTargetDir);
+				// Use the centralized method from UnifiedDirectoryManager for
+				// external_link paths
+				searchRoot = unifiedDirectoryManager.resolveAndValidateExternalLinkPath(this.rootPlanId,
+						normalizedTargetDir);
 
 				// Check if target directory exists
 				if (!Files.exists(searchRoot)) {
@@ -558,7 +559,8 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 						catch (IOException | IllegalArgumentException e) {
 							// Fallback to original path if real path resolution fails
 							try {
-								Path externalLinkDir = unifiedDirectoryManager.getLinkedExternalDirectory(this.rootPlanId);
+								Path externalLinkDir = unifiedDirectoryManager
+									.getLinkedExternalDirectory(this.rootPlanId);
 								relativePath = externalLinkDir.relativize(path);
 							}
 							catch (IllegalArgumentException e2) {
@@ -579,14 +581,16 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 						try {
 							Path relativePath;
 							try {
-								Path externalLinkDir = unifiedDirectoryManager.getLinkedExternalDirectory(this.rootPlanId);
+								Path externalLinkDir = unifiedDirectoryManager
+									.getLinkedExternalDirectory(this.rootPlanId);
 								Path externalLinkDirRealPath = externalLinkDir.toRealPath();
 								Path fileRealPath = path.toRealPath();
 								relativePath = externalLinkDirRealPath.relativize(fileRealPath);
 							}
 							catch (IOException | IllegalArgumentException e2) {
 								try {
-									Path externalLinkDir = unifiedDirectoryManager.getLinkedExternalDirectory(this.rootPlanId);
+									Path externalLinkDir = unifiedDirectoryManager
+										.getLinkedExternalDirectory(this.rootPlanId);
 									relativePath = externalLinkDir.relativize(path);
 								}
 								catch (IllegalArgumentException e3) {
@@ -611,11 +615,9 @@ public class GlobExternalLinkFilesTool extends AbstractBaseTool<GlobExternalLink
 
 			// Provide more helpful error message if external_link is not configured
 			if (errorMessage != null && errorMessage.contains("External linked folder is not configured")) {
-				return new ToolExecuteResult(
-					"Error: External linked folder is not configured. " +
-					"Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. " +
-					"Original error: " + errorMessage
-				);
+				return new ToolExecuteResult("Error: External linked folder is not configured. "
+						+ "Please configure 'lynxe.general.externalLinkedFolder' in system settings before using external_link file operators. "
+						+ "Original error: " + errorMessage);
 			}
 
 			return new ToolExecuteResult("Error performing glob search: " + errorMessage);
