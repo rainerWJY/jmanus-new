@@ -89,7 +89,9 @@ import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.GetDatasourceI
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.GetTableMetaTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.databaseOperators.UuidGenerateTool;
 import com.alibaba.cloud.ai.lynxe.tool.database.service.DataSourceService;
+import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.GlobExternalLinkFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.GlobFilesTool;
+import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.ListExternalLinkFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.dirOperator.dirOperators.ListFilesTool;
 import com.alibaba.cloud.ai.lynxe.tool.excelProcessor.IExcelProcessingService;
 import com.alibaba.cloud.ai.lynxe.tool.filesystem.GitIgnoreMatcher;
@@ -108,12 +110,19 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingE
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountExternalLinkFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountFileTool;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.EnhanceExternalLinkGrep;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.EnhancedGrep;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReadFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReplaceExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.ReplaceFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitExternalLinkFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitFileTool;
+import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteFileOperator;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -324,6 +333,23 @@ public class PlanningFactory {
 				.add(new ReplaceFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
 			toolDefinitions
 				.add(new WriteFileOperator(textFileService, innerStorageService, shortUrlService, toolI18nService));
+			// External link file operators
+			toolDefinitions.add(new ReadExternalLinkFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
+			toolDefinitions.add(new WriteExternalLinkFileOperator(textFileService, innerStorageService, shortUrlService,
+					toolI18nService));
+			toolDefinitions.add(new DeleteExternalLinkFileOperator(textFileService, innerStorageService,
+					shortUrlService, toolI18nService));
+			toolDefinitions.add(new ReplaceExternalLinkFileOperator(textFileService, innerStorageService,
+					shortUrlService, toolI18nService));
+			// External link file tools (split, count, list, grep, glob)
+			toolDefinitions.add(new SplitExternalLinkFileTool(textFileService, toolI18nService));
+			toolDefinitions.add(new CountExternalLinkFileTool(textFileService, toolI18nService));
+			toolDefinitions.add(new ListExternalLinkFilesTool(unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new GlobExternalLinkFilesTool(unifiedDirectoryManager, symlinkDetector, toolI18nService,
+					gitIgnoreMatcher, lynxeProperties));
+			toolDefinitions
+				.add(new EnhanceExternalLinkGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			toolDefinitions.add(new EnhancedGrep(textFileService, toolI18nService, gitIgnoreMatcher, lynxeProperties));
 			// Refactored file splitter (split action only, count removed)
 			toolDefinitions.add(new SplitFileTool(textFileService, toolI18nService));

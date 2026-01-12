@@ -43,7 +43,8 @@ const words: I18nType = {
     customModeDesc: 'Configure any OpenAI API compatible service, such as Ollama, LocalAI, etc.',
     apiKeyLabel: 'DashScope API Key',
     apiKeyPlaceholder: 'Enter your API key',
-    apiKeyHint: 'You can get your API key from Alibaba Cloud Bailian Console.',
+    apiKeyHint:
+      'You can get your API key from Alibaba Cloud Bailian Console. New users can enjoy 1 million input tokens and 1 million output tokens free quota (valid for 90 days).',
     getApiKey: 'Get API Key',
     showApiKey: 'Show API Key',
     hideApiKey: 'Hide API Key',

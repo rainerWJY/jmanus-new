@@ -1,5 +1,11 @@
 description: |
-  Grep - 基于 ripgrep (rg) 构建的强大搜索工具，用于精确的文本/正则表达式匹配。
+  外部链接目录 Grep - 基于 ripgrep (rg) 构建的强大搜索工具，用于在 linked_external 文件夹（外部文件夹）中进行精确的文本/正则表达式匹配。
+  
+  **前置条件：**
+  - 使用此工具前，必须在系统设置中配置外部文件夹
+  - 在系统设置中设置 'lynxe.general.externalLinkedFolder' 指向您的外部文件夹
+  - 如果已配置，计划启动时将自动创建外部文件夹链接
+  - 如果未配置 external_link，操作将失败并显示清晰的错误消息，提示缺少配置
   
   ## 核心功能：
   - 完整的正则表达式语法支持（例如 "log.*Error"、"function\\s+\\w+"）
@@ -27,7 +33,7 @@ description: |
   - 模式默认在单行内匹配；使用 multiline=true 进行跨行模式匹配
   - 结果限制在数千行以提高性能；使用 head_limit 控制
   
-  关键词：grep、搜索、查找文本、正则表达式、ripgrep、rg、模式匹配、文本搜索、精确匹配
+  关键词：外部文件、external_link、linked_external、外部文件夹、grep、搜索、查找文本、正则表达式、ripgrep、rg、模式匹配、文本搜索、精确匹配
 
 parameters: |
   {
@@ -39,7 +45,7 @@ parameters: |
       },
       "path": {
         "type": "string",
-        "description": "要搜索的文件或目录（rg pattern -- PATH）。如果未提供，默认为 Cursor 工作区根目录。可以是绝对路径或相对路径"
+        "description": "要在 external_link 目录中搜索的文件或目录（相对于外部文件夹的相对路径，例如 'subdir' 或空字符串表示根目录）。如果未提供，默认为 external_link 根目录"
       },
       "glob": {
         "type": "string",
@@ -81,3 +87,4 @@ parameters: |
     },
     "required": ["pattern"]
   }
+
