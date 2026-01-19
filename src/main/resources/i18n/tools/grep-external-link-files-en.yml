@@ -30,8 +30,10 @@ description: |
   
   ## Pattern Notes:
   - Ripgrep syntax (not grep): Literal braces need escaping (use interface\\{\\} to find interface{})
+  - **IMPORTANT - Escaping Rules**: Use single backslash for braces: `\{planId\}` NOT `\\{planId\\}`. Double backslashes will match literal backslashes, not braces. Example: To match `@PostMapping("/submit-input/{planId}")`, use pattern `@PostMapping\("/submit-input/\{planId\}"\)` (single backslash before braces)
   - Patterns match within single lines by default; use multiline=true for cross-line patterns
   - Results capped to several thousand lines for performance; use head_limit to control
+  - **Common Error**: "Illegal repetition" usually means incorrect escaping - check that braces use single backslash `\{` not double `\\{`
   
   Keywords: external files, external_link, linked_external, external folder, grep, search, find text, regex, ripgrep, rg, pattern matching, text search, exact match
 
@@ -41,7 +43,7 @@ parameters: |
     "properties": {
       "pattern": {
         "type": "string",
-        "description": "The regular expression pattern to search for in file contents (required). Supports full regex syntax: 'log.*Error', 'function\\s+\\w+'. Use | (OR operator) to search multiple patterns: 'Repository|Service|Controller' matches any of these words. For whole words only, use '\\b(word1|word2)\\b'. Literal braces need escaping: use 'interface\\{\\}' to find 'interface{}'"
+        "description": "The regular expression pattern to search for in file contents (required). Supports full regex syntax: 'log.*Error', 'function\\s+\\w+'. Use | (OR operator) to search multiple patterns: 'Repository|Service|Controller' matches any of these words. For whole words only, use '\\b(word1|word2)\\b'. **CRITICAL - Brace Escaping**: Literal braces MUST use single backslash: use '\\{planId\\}' to match '{planId}' (NOT '\\\\{planId\\\\}' which matches literal backslashes). Example: '@PostMapping(\"/submit-input/\\{planId\\}\")' correctly matches '@PostMapping(\"/submit-input/{planId}\")'. Double backslashes cause 'Illegal repetition' errors."
       },
       "path": {
         "type": "string",

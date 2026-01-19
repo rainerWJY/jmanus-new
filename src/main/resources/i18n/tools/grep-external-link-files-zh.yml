@@ -30,8 +30,10 @@ description: |
   
   ## 模式注意事项：
   - Ripgrep 语法（非 grep）：字面量花括号需要转义（使用 interface\\{\\} 来查找 interface{}）
+  - **重要 - 转义规则**：花括号使用单反斜杠：`\{planId\}` 而不是 `\\{planId\\}`。双反斜杠会匹配字面量反斜杠，而不是花括号。示例：要匹配 `@PostMapping("/submit-input/{planId}")`，使用模式 `@PostMapping\("/submit-input/\{planId\}"\)`（花括号前使用单反斜杠）
   - 模式默认在单行内匹配；使用 multiline=true 进行跨行模式匹配
   - 结果限制在数千行以提高性能；使用 head_limit 控制
+  - **常见错误**："Illegal repetition"（非法重复）通常表示转义错误 - 检查花括号是否使用单反斜杠 `\{` 而不是双反斜杠 `\\{`
   
   关键词：外部文件、external_link、linked_external、外部文件夹、grep、搜索、查找文本、正则表达式、ripgrep、rg、模式匹配、文本搜索、精确匹配
 
@@ -41,7 +43,7 @@ parameters: |
     "properties": {
       "pattern": {
         "type": "string",
-        "description": "要在文件内容中搜索的正则表达式模式（必需）。支持完整的正则表达式语法：'log.*Error'、'function\\s+\\w+'。使用 |（OR 操作符）搜索多个模式：'Repository|Service|Controller' 可匹配这些词中的任意一个。仅匹配完整单词时，使用 '\\b(word1|word2)\\b'。字面量花括号需要转义：使用 'interface\\{\\}' 来查找 'interface{}'"
+        "description": "要在文件内容中搜索的正则表达式模式（必需）。支持完整的正则表达式语法：'log.*Error'、'function\\s+\\w+'。使用 |（OR 操作符）搜索多个模式：'Repository|Service|Controller' 可匹配这些词中的任意一个。仅匹配完整单词时，使用 '\\b(word1|word2)\\b'。**关键 - 花括号转义**：字面量花括号必须使用单反斜杠：使用 '\\{planId\\}' 来匹配 '{planId}'（不要使用 '\\\\{planId\\\\}'，那会匹配字面量反斜杠）。示例：'@PostMapping(\"/submit-input/\\{planId\\}\")' 正确匹配 '@PostMapping(\"/submit-input/{planId}\")'。双反斜杠会导致 'Illegal repetition'（非法重复）错误。"
       },
       "path": {
         "type": "string",

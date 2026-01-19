@@ -353,6 +353,29 @@ public class LynxeProperties {
 		this.llmReadTimeout = llmReadTimeout;
 	}
 
+	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "maxLinesForFullRead",
+			path = "lynxe.agent.maxLinesForFullRead",
+			description = "lynxe.agent.maxLinesForFullRead.description", defaultValue = "1",
+			inputType = ConfigInputType.NUMBER)
+	private volatile Integer maxLinesForFullRead;
+
+	public Integer getMaxLinesForFullRead() {
+		String configPath = "lynxe.agent.maxLinesForFullRead";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			maxLinesForFullRead = Integer.valueOf(value);
+		}
+		// Ensure a default value if not configured and not set
+		if (maxLinesForFullRead == null) {
+			maxLinesForFullRead = 1;
+		}
+		return maxLinesForFullRead;
+	}
+
+	public void setMaxLinesForFullRead(Integer maxLinesForFullRead) {
+		this.maxLinesForFullRead = maxLinesForFullRead;
+	}
+
 	// Agent Settings
 	// End-----------------------------------------------------------------------------------------------
 

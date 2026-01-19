@@ -494,6 +494,8 @@ const words: I18nType = {
         llmReadTimeout:
           'LLM read request timeout, which is the core timeout for socket connections. Default is 120 seconds.',
         parallelToolCalls: 'Parallel tool calls',
+        maxLinesForFullRead:
+          'Maximum number of lines allowed for full file reads without offset/limit. When a file exceeds this limit, users must use offset/limit parameters or set bypass_limit=true to read the entire file. Default is 1.',
       },
       // infiniteContext: { // TEMPORARILY COMMENTED OUT
       //   enabled: 'Whether to enable infinite context',

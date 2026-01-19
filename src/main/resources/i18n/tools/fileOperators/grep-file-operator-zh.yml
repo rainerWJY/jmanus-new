@@ -17,6 +17,11 @@ description: |
   - 支持区分大小写和不区分大小写的搜索
   - 支持完整单词匹配
   - 支持显示匹配行周围的上下文
+  
+  模式转义注意事项：
+  - 对于包含特殊字符的正则表达式模式，需要使用正确的转义
+  - 字面量花括号：使用单反斜杠 `\{planId\}` 而不是双反斜杠 `\\{planId\\}` 来匹配 `{planId}`
+  - 常见错误："Illegal repetition"（非法重复）通常表示花括号转义错误 - 使用 `\{` 而不是 `\\{`
 
 parameters: |
   {
@@ -28,7 +33,7 @@ parameters: |
           },
           "pattern": {
               "type": "string",
-              "description": "要搜索的文本模式"
+              "description": "要搜索的文本模式。对于包含花括号的正则表达式模式，使用单反斜杠转义：'\\{planId\\}' 来匹配 '{planId}'（不要使用 '\\\\{planId\\\\}'）。双反斜杠会导致 'Illegal repetition'（非法重复）错误。"
           },
           "case_sensitive": {
               "type": "boolean",

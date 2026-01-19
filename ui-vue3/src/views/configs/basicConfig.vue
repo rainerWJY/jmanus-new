@@ -431,6 +431,7 @@ const CONFIG_DISPLAY_NAMES: Record<string, string> = {
   executorPoolSize: 'config.basicConfig.agentSettings.executorPoolSize',
   llmReadTimeout: 'config.basicConfig.agentSettings.llmReadTimeout',
   parallelToolCalls: 'config.basicConfig.agentSettings.parallelToolCalls',
+  maxLinesForFullRead: 'config.basicConfig.agentSettings.maxLinesForFullRead',
 
   // Infinite Context - TEMPORARILY COMMENTED OUT
   // 'enabled': ('config.basicConfig.infiniteContext.enabled'),

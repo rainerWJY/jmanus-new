@@ -48,11 +48,6 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 	private static final String TOOL_NAME = "read-file-operator";
 
 	/**
-	 * Maximum number of lines allowed for full file reads without offset/limit
-	 */
-	private static final int MAX_LINES_FOR_FULL_READ = 300;
-
-	/**
 	 * Input class for read file operations
 	 */
 	public static class ReadFileInput {
@@ -331,7 +326,8 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 			// Unless bypassLimit flag is set to true
 			boolean isFullRead = (offset == null && limit == null);
 			boolean shouldBypassLimit = (bypassLimit != null && bypassLimit);
-			if (isFullRead && !shouldBypassLimit && lines.size() > MAX_LINES_FOR_FULL_READ) {
+			int maxLinesForFullRead = textFileService.getLynxeProperties().getMaxLinesForFullRead();
+			if (isFullRead && !shouldBypassLimit && lines.size() > maxLinesForFullRead) {
 				// Calculate character count from lines
 				long charCount = lines.stream().mapToLong(String::length).sum() + lines.size();
 				return new ToolExecuteResult(String
@@ -341,7 +337,7 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 							+ "2. Use search functionality to find relevant sections\n"
 							+ "3. Set bypass_limit=true to read the entire file (use with caution for very large files)\n\n"
 							+ "Example: Read first 100 lines with offset=1, limit=100", lines.size(), charCount,
-							MAX_LINES_FOR_FULL_READ));
+							maxLinesForFullRead));
 			}
 
 			// Determine read range

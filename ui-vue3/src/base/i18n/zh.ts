@@ -479,6 +479,8 @@ const words: I18nType = {
         llmReadTimeout: 'llm读请求超时，是socket最核心的超时时间，默认是120秒',
         parallelToolCalls:
           '并行工具调用，打开的话会引导模型做并行的tools调用，不过模型有时候不是很聪明，并行容易出现不少错误，默认关闭',
+        maxLinesForFullRead:
+          '完整文件读取的最大行数限制（不使用offset/limit时）。当文件超过此限制时，用户必须使用offset/limit参数或设置bypass_limit=true来读取整个文件。默认值为1。',
       },
       // infiniteContext: { // 临时注释掉
       //   enabled: '是否开启无限上下文',

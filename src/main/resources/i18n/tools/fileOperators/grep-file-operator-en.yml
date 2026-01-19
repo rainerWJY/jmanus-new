@@ -19,6 +19,11 @@ description: |
   - Supports case-sensitive and case-insensitive search
   - Supports whole word matching
   - Supports context lines display around matches
+  
+  Pattern Escaping Notes:
+  - For regex patterns with special characters, use proper escaping
+  - Literal braces: Use single backslash `\{planId\}` NOT double `\\{planId\\}` to match `{planId}`
+  - Common error: "Illegal repetition" usually indicates incorrect brace escaping - use `\{` not `\\{`
 
 parameters: |
   {
@@ -30,7 +35,7 @@ parameters: |
           },
           "pattern": {
               "type": "string",
-              "description": "Text pattern to search for"
+              "description": "Text pattern to search for. For regex patterns with braces, use single backslash escaping: '\\{planId\\}' to match '{planId}' (NOT '\\\\{planId\\\\}'). Double backslashes will cause 'Illegal repetition' errors."
           },
           "case_sensitive": {
               "type": "boolean",
