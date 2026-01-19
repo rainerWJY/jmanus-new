@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 
@@ -24,30 +24,27 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
  *
  * This composable provides a consistent interface for checking task execution state
  * across all components (InputArea, ExecutionController, etc.)
+ * 
+ * Unified state: messageDialog.isRunning is the single source of truth
  */
 export function useTaskExecutionState() {
   const taskStore = useTaskStore()
   const messageDialog = useMessageDialogSingleton()
 
-  // Local execution flag (for preventing concurrent execution during API call)
-  // This prevents race conditions when API request is in flight but taskStore hasn't updated yet
-  const isExecutingLocally = ref(false)
-
   /**
    * Check if a task is currently running
-   * Primary state source: taskStore.currentTask.isRunning
-   * This is the authoritative source of truth
+   * Computed from planId and messageDialog.isRunning
    */
   const isTaskRunning = computed(() => {
     return taskStore.hasRunningTask()
   })
 
   /**
-   * Check if execution is in progress (including local execution state)
-   * Used to prevent concurrent execution during API calls
+   * Check if execution is in progress
+   * Uses unified isRunning state
    */
   const isExecutionInProgress = computed(() => {
-    return isTaskRunning.value || isExecutingLocally.value || messageDialog.isLoading.value
+    return messageDialog.isRunning.value
   })
 
   /**
@@ -55,25 +52,9 @@ export function useTaskExecutionState() {
    * Validates all conditions before allowing execution
    */
   const canExecute = computed(() => {
-    // Block if execution is already in progress (includes task running, local execution, and messageDialog loading)
-    return !isExecutionInProgress.value
+    // Block if execution is already in progress
+    return !messageDialog.isRunning.value
   })
-
-  /**
-   * Start local execution (call before API request)
-   * Sets local flag to prevent concurrent execution
-   */
-  const startLocalExecution = () => {
-    isExecutingLocally.value = true
-  }
-
-  /**
-   * Stop local execution (call after API request completes or fails)
-   * Clears local flag
-   */
-  const stopLocalExecution = () => {
-    isExecutingLocally.value = false
-  }
 
   /**
    * Get current running plan ID
@@ -87,12 +68,7 @@ export function useTaskExecutionState() {
     isTaskRunning,
     isExecutionInProgress,
     canExecute,
-    isExecutingLocally: computed(() => isExecutingLocally.value),
     currentPlanId: getCurrentPlanId,
-
-    // Methods
-    startLocalExecution,
-    stopLocalExecution,
   }
 }
 

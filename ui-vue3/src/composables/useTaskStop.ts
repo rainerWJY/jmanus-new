@@ -16,6 +16,7 @@
 
 import { DirectApiService } from '@/api/direct-api-service'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
+import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { useTaskStore } from '@/stores/task'
 import { computed, ref } from 'vue'
 
@@ -26,6 +27,7 @@ import { computed, ref } from 'vue'
 export function useTaskStop() {
   const taskStore = useTaskStore()
   const planExecution = usePlanExecutionSingleton()
+  const messageDialog = useMessageDialogSingleton()
   const isStopping = ref(false)
 
   /**
@@ -60,8 +62,10 @@ export function useTaskStop() {
 
     try {
       // Optimistic update: immediately update state for instant UI feedback
+      // Reset isRunning and clear planId
+      messageDialog.isRunning.value = false
       if (taskStore.currentTask) {
-        taskStore.currentTask.isRunning = false
+        taskStore.currentTask.planId = undefined
       }
 
       // Untrack plan immediately
@@ -116,11 +120,10 @@ export function useTaskStop() {
         console.log('[useTaskStop] Task status after stop:', taskStatus)
 
         // Update state based on actual backend status (if different from optimistic update)
-        if (taskStore.currentTask && taskStore.currentTask.planId === targetPlanId) {
-          taskStore.currentTask.isRunning = taskStatus.exists && taskStatus.isRunning
-          if (!taskStatus.isRunning) {
-            console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
-          }
+        if (!taskStatus.isRunning && taskStore.currentTask?.planId === targetPlanId) {
+          messageDialog.isRunning.value = false
+          taskStore.currentTask.planId = undefined
+          console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
         }
       } catch (statusError) {
         console.warn('[useTaskStop] Failed to verify task status after stop:', statusError)
@@ -131,8 +134,9 @@ export function useTaskStop() {
     } catch (error) {
       console.error('[useTaskStop] Failed to stop task:', error)
       // Keep state updated (user clicked stop, so state should reflect that)
+      messageDialog.isRunning.value = false
       if (taskStore.currentTask) {
-        taskStore.currentTask.isRunning = false
+        taskStore.currentTask.planId = undefined
       }
       return false
     } finally {

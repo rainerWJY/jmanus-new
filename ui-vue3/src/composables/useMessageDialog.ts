@@ -56,8 +56,8 @@ export function useMessageDialog() {
     return rootPlanId.value
   })
 
-  // Loading state
-  const isLoading = ref(false)
+  // Running state - unified state for both chat streaming and plan execution
+  const isRunning = ref(false)
   const error = ref<string | null>(null)
   const streamingMessageId = ref<string | null>(null)
   const inputPlaceholder = ref<string | null>(null)
@@ -263,8 +263,8 @@ export function useMessageDialog() {
 
     try {
       // Check if there's an active running task based on our own state
-      // Disable new requests if we're currently loading
-      if (isLoading.value) {
+      // Disable new requests if we're currently running
+      if (isRunning.value) {
         const errorMsg = 'Please wait for the current task to complete before starting a new one'
         error.value = errorMsg
         return {
@@ -273,7 +273,7 @@ export function useMessageDialog() {
         }
       }
 
-      isLoading.value = true
+      isRunning.value = true
       error.value = null
 
       // Always create a new dialog for each conversation round
@@ -452,10 +452,10 @@ export function useMessageDialog() {
         error: errorMessage,
       }
     } finally {
-      // Only reset isLoading if no plan execution is in progress
-      // If a planId was returned, isLoading will be reset by watchEffect when plan completes
+      // Only reset isRunning if no plan execution is in progress
+      // If a planId was returned, isRunning will be reset by watchEffect when plan completes
       if (!response?.planId) {
-        isLoading.value = false
+        isRunning.value = false
       }
       // If planId exists, let watchEffect handle the reset when plan completes
     }
@@ -473,8 +473,8 @@ export function useMessageDialog() {
 
     try {
       // Check if there's an active running task based on our own state
-      // Disable new requests if we're currently loading
-      if (isLoading.value) {
+      // Disable new requests if we're currently running
+      if (isRunning.value) {
         const errorMsg = 'Please wait for the current task to complete before starting a new one'
         error.value = errorMsg
         return {
@@ -483,7 +483,7 @@ export function useMessageDialog() {
         }
       }
 
-      isLoading.value = true
+      isRunning.value = true
       error.value = null
 
       // Check if there's an existing conversationId from memoryStore (persisted)
@@ -638,8 +638,8 @@ export function useMessageDialog() {
         })
       }
 
-      // Reset isLoading on error since execution failed
-      isLoading.value = false
+      // Reset isRunning on error since execution failed
+      isRunning.value = false
 
       return {
         success: false,
@@ -804,15 +804,15 @@ export function useMessageDialog() {
    * Update input state (enabled/disabled)
    */
   const updateInputState = (enabled: boolean, placeholder?: string) => {
-    // isLoading is the inverse of enabled
-    isLoading.value = !enabled
+    // isRunning is the inverse of enabled
+    isRunning.value = !enabled
     if (placeholder !== undefined) {
       inputPlaceholder.value = placeholder
     }
     console.log('[useMessageDialog] Input state updated:', {
       enabled,
       placeholder,
-      isLoading: isLoading.value,
+      isRunning: isRunning.value,
     })
   }
 
@@ -833,7 +833,7 @@ export function useMessageDialog() {
     activeDialogId.value = null
     rootPlanId.value = null
     conversationId.value = null
-    isLoading.value = false
+    isRunning.value = false
     error.value = null
     inputPlaceholder.value = null
   }
@@ -1031,7 +1031,7 @@ export function useMessageDialog() {
       updateMessageWithPlanRecord(dialog, message, record)
     }
 
-    // Reset isLoading when all plans are completed
+    // Reset isRunning when all plans are completed
     // Check both trackedPlanIds and planExecutionRecords to handle the case where
     // a plan has just started but hasn't been polled yet (no record in planExecutionRecords)
     const hasTrackedPlans = planExecution.trackedPlanIds.value.size > 0
@@ -1039,18 +1039,46 @@ export function useMessageDialog() {
       ([, record]) => record && !record.completed && record.status !== 'failed'
     )
 
+    // Check if there are dialogs waiting for planId (dialogs created but planId not set yet)
+    // or dialogs with assistant messages that are streaming or have running planExecution
+    const hasDialogsWaitingForPlanId = dialogs.some(dialog => {
+      // Check if dialog has an assistant message that is streaming
+      const hasStreamingMessage = dialog.messages.some(
+        m => m.type === 'assistant' && m.isStreaming
+      )
+      if (hasStreamingMessage) return true
+
+      // Check if dialog has an assistant message with running planExecution
+      const hasRunningPlanExecution = dialog.messages.some(
+        m => m.type === 'assistant' && m.planExecution?.status === 'running'
+      )
+      if (hasRunningPlanExecution) return true
+
+      // Check if dialog exists but has no planId yet (created but waiting for API response)
+      // This handles the race condition where executePlan creates a dialog but planId hasn't arrived
+      if (!dialog.planId && dialog.messages.length > 0) {
+        // If there's a user message but no assistant message yet, it's likely waiting for planId
+        const hasUserMessage = dialog.messages.some(m => m.type === 'user')
+        const hasAssistantMessage = dialog.messages.some(m => m.type === 'assistant')
+        if (hasUserMessage && !hasAssistantMessage) return true
+      }
+
+      return false
+    })
+
     // If there are tracked plans but no records yet, consider it as running
     // This handles the race condition where a plan just started but hasn't been polled
-    const hasRunningPlans = hasTrackedPlans || hasRunningPlansInRecords
+    const hasRunningPlans = hasTrackedPlans || hasRunningPlansInRecords || hasDialogsWaitingForPlanId
 
-    if (!hasRunningPlans && isLoading.value) {
-      console.log('[useMessageDialog] All plans completed, resetting isLoading', {
+    if (!hasRunningPlans && isRunning.value) {
+      console.log('[useMessageDialog] All plans completed, resetting isRunning', {
         hasTrackedPlans,
         hasRunningPlansInRecords,
+        hasDialogsWaitingForPlanId,
         trackedPlanIds: Array.from(planExecution.trackedPlanIds.value),
         recordsCount: recordsArray.length,
       })
-      isLoading.value = false
+      isRunning.value = false
     }
   })
 
@@ -1060,7 +1088,7 @@ export function useMessageDialog() {
     activeDialogId: readonly(activeDialogId),
     rootPlanId: readonly(rootPlanId),
     conversationId: readonly(conversationId),
-    isLoading,
+    isRunning: readonly(isRunning),
     error,
     streamingMessageId: readonly(streamingMessageId),
     inputPlaceholder: readonly(inputPlaceholder),

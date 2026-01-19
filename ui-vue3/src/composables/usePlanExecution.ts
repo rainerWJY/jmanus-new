@@ -206,11 +206,9 @@ export function usePlanExecution() {
       if (details.completed) {
         console.log(`[usePlanExecution] Plan ${recordKey} completed, checking for summary...`)
 
-        // Mark task as no longer running
-        const taskStore = useTaskStore()
-        if (taskStore.currentTask && taskStore.currentTask.isRunning) {
-          taskStore.currentTask.isRunning = false
-        }
+        // Note: isRunning is now managed by messageDialog.watchEffect
+        // It will be reset when all plans are completed
+        // No need to manually set isRunning here
 
         // Check if we have summary or if we need to continue polling
         const hasSummary = details.summary || details.result || details.message

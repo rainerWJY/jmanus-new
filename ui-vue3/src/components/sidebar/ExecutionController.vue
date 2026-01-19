@@ -557,14 +557,13 @@ const proceedWithExecution = async () => {
     return
   }
 
-  // Start local execution flag to prevent concurrent execution during API call
-  taskExecutionState.startLocalExecution()
-  console.log('[ExecutionController] 🔒 Started local execution')
+  // Note: isRunning is now managed by messageDialog.executePlan()
+  // It will be set to true when execution starts and reset when it completes
+  // No need for local execution flag anymore
 
   // Validate parameters before execution
   if (!validateParameters()) {
     console.log('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
-    taskExecutionState.stopLocalExecution() // Reset flag on validation failure
     // Keep hasAttemptedExecute as true to show validation message
     return
   }
@@ -576,7 +575,6 @@ const proceedWithExecution = async () => {
       '[ExecutionController] ❌ Tool validation failed:',
       toolsValidation.nonExistentTools
     )
-    taskExecutionState.stopLocalExecution() // Reset flag on validation failure
     const toolList = toolsValidation.nonExistentTools
       .map(tool => {
         // Parse "Step X: toolName" format
@@ -606,7 +604,6 @@ const proceedWithExecution = async () => {
     if (!templateConfig.selectedTemplate.value) {
       console.log('[ExecutionController] ❌ No template selected, returning')
       toast.error(t('sidebar.selectPlanFirst'))
-      taskExecutionState.stopLocalExecution()
       return
     }
 
@@ -640,7 +637,6 @@ const proceedWithExecution = async () => {
     if (!toolName || toolName.trim() === '') {
       console.error('[ExecutionController] ❌ Tool name is required but not found')
       toast.error(t('sidebar.toolNameRequired') || 'Tool name is required for execution')
-      taskExecutionState.stopLocalExecution()
       return
     }
 
@@ -689,11 +685,9 @@ const proceedWithExecution = async () => {
     console.error('[ExecutionController] ❌ Error executing plan:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     toast.error(t('sidebar.executeFailed') + ': ' + message)
-    taskExecutionState.stopLocalExecution()
+    // Note: isRunning will be reset by messageDialog.executePlan() on error
   } finally {
     console.log('[ExecutionController] 🧹 Cleaning up after execution')
-    // Stop local execution flag (state will be updated by taskStore when plan starts)
-    taskExecutionState.stopLocalExecution()
     // Clear parameters after execution
     clearExecutionParams()
     console.log('[ExecutionController] ✅ Cleanup completed')
