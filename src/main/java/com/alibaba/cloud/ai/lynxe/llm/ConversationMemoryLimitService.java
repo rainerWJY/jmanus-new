@@ -44,7 +44,11 @@ public class ConversationMemoryLimitService {
 
 	private static final Logger log = LoggerFactory.getLogger(ConversationMemoryLimitService.class);
 
-	private static final double RETENTION_RATIO = 0.4; // Retain 40% of content
+	// Default retention ratio: 30% (configurable via LynxeProperties)
+	private static final double DEFAULT_RETENTION_RATIO = 0.3;
+
+	// Default compression threshold: 70% (configurable via LynxeProperties)
+	private static final double DEFAULT_COMPRESSION_THRESHOLD = 0.7;
 
 	private static final String COMPRESSION_CONFIRMATION_MESSAGE = "Got it. Thanks for the additional context!";
 
@@ -86,15 +90,21 @@ public class ConversationMemoryLimitService {
 
 			int totalTokens = calculateTotalTokens(messages);
 			int maxTokens = getMaxTokenCount();
-			if (totalTokens <= maxTokens) {
-				log.debug("Conversation memory size ({} tokens) is within limit ({} tokens) for conversationId: {}",
-						totalTokens, maxTokens, conversationId);
+			
+			// Get compression threshold (default 70%)
+			double compressionThreshold = getCompressionThreshold();
+			int thresholdTokens = (int) (maxTokens * compressionThreshold);
+			
+			// Trigger compression when reaching threshold (proactive)
+			if (totalTokens <= thresholdTokens) {
+				log.debug("Conversation memory size ({} tokens) is within compression threshold ({} tokens, {}%) for conversationId: {}",
+						totalTokens, thresholdTokens, (int)(compressionThreshold * 100), conversationId);
 				return;
 			}
 
 			log.info(
-					"Conversation memory size ({} tokens) exceeds limit ({} tokens) for conversationId: {}. Summarizing older messages...",
-					totalTokens, maxTokens, conversationId);
+					"Conversation memory size ({} tokens) exceeds compression threshold ({} tokens, {}% of limit {}) for conversationId: {}. Summarizing older messages...",
+					totalTokens, thresholdTokens, (int)(compressionThreshold * 100), maxTokens, conversationId);
 
 			// Summarize and trim messages
 			summarizeAndTrimMessages(chatMemory, conversationId, messages);
@@ -142,6 +152,30 @@ public class ConversationMemoryLimitService {
 		}
 
 		return sessionTokenLimit;
+	}
+
+	/**
+	 * Get the compression threshold ratio from configuration.
+	 * @return Compression threshold ratio (default: 0.7 = 70%)
+	 */
+	private double getCompressionThreshold() {
+		if (lynxeProperties == null) {
+			return DEFAULT_COMPRESSION_THRESHOLD;
+		}
+		Double threshold = lynxeProperties.getChatCompressionThreshold();
+		return threshold != null && threshold > 0 && threshold <= 1.0 ? threshold : DEFAULT_COMPRESSION_THRESHOLD;
+	}
+
+	/**
+	 * Get the retention ratio from configuration.
+	 * @return Retention ratio (default: 0.3 = 30%)
+	 */
+	private double getRetentionRatio() {
+		if (lynxeProperties == null) {
+			return DEFAULT_RETENTION_RATIO;
+		}
+		Double ratio = lynxeProperties.getChatCompressionRetentionRatio();
+		return ratio != null && ratio > 0 && ratio <= 1.0 ? ratio : DEFAULT_RETENTION_RATIO;
 	}
 
 	/**
@@ -214,9 +248,8 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize and trim messages: retain 40% of content (by character count), ensuring
-	 * at least one complete round is kept. Summarize older rounds into a 3000-4000 char
-	 * UserMessage.
+	 * Summarize and trim messages: retain configurable ratio (default 30%) of content (by character count), ensuring
+	 * at least one complete round is kept. Summarize older rounds into a summary UserMessage.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID
 	 * @param messages Current list of messages
@@ -233,8 +266,9 @@ public class ConversationMemoryLimitService {
 		// Calculate total character count of all rounds
 		int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
-		// Calculate target retention: 40% of total content
-		int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+		// Calculate target retention: configurable ratio (default 30%) of total content
+		double retentionRatio = getRetentionRatio();
+		int targetRetentionChars = (int) (totalChars * retentionRatio);
 
 		// If total is very small, keep all rounds
 		if (totalChars <= 0 || targetRetentionChars <= 0) {
@@ -244,8 +278,7 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Find which rounds to keep and which to summarize
-		// Strategy: Keep rounds from newest to oldest until accumulated chars reach 40%
-		// retention
+		// Strategy: Keep rounds from newest to oldest until accumulated chars reach retention ratio
 		List<DialogRound> roundsToKeep = new ArrayList<>();
 		List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -257,14 +290,14 @@ public class ConversationMemoryLimitService {
 			DialogRound round = dialogRounds.get(i);
 			int roundChars = round.getTotalChars(objectMapper);
 
-			// Always keep at least the newest round (even if it exceeds 40%)
+			// Always keep at least the newest round (even if it exceeds retention ratio)
 			if (i == dialogRounds.size() - 1) {
 				roundsToKeep.add(0, round);
 				accumulatedChars += roundChars;
 				hasKeptAtLeastOneRound = true;
 			}
 			else {
-				// For other rounds, check if we can add them within 40% retention limit
+				// For other rounds, check if we can add them within retention ratio limit
 				if (accumulatedChars + roundChars <= targetRetentionChars) {
 					roundsToKeep.add(0, round); // Add at beginning to maintain
 												// chronological order
@@ -583,8 +616,9 @@ public class ConversationMemoryLimitService {
 			// Calculate total character count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
-			// Calculate target retention: 40% of total content
-			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+			// Calculate target retention: configurable ratio (default 30%) of total content
+			double retentionRatio = getRetentionRatio();
+			int targetRetentionChars = (int) (totalChars * retentionRatio);
 
 			// If total is very small, keep all rounds
 			if (totalChars <= 0 || targetRetentionChars <= 0) {
@@ -594,7 +628,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Force compression: keep rounds from newest to oldest until accumulated
-			// chars reach 40% retention
+			// chars reach retention ratio (default 30%)
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -713,8 +747,9 @@ public class ConversationMemoryLimitService {
 			// Calculate total character count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
-			// Calculate target retention: 40% of total content
-			int targetRetentionChars = (int) (totalChars * RETENTION_RATIO);
+			// Calculate target retention: configurable ratio (default 30%) of total content
+			double retentionRatio = getRetentionRatio();
+			int targetRetentionChars = (int) (totalChars * retentionRatio);
 
 			// If total is very small, keep all rounds
 			if (totalChars <= 0 || targetRetentionChars <= 0) {
@@ -723,7 +758,7 @@ public class ConversationMemoryLimitService {
 			}
 
 			// Force compression: keep rounds from newest to oldest until accumulated
-			// chars reach 40% retention
+			// chars reach retention ratio (default 30%)
 			List<DialogRound> roundsToKeep = new ArrayList<>();
 			List<DialogRound> roundsToSummarize = new ArrayList<>();
 
