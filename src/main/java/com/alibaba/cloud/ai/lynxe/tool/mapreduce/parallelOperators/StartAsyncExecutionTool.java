@@ -175,8 +175,8 @@ public class StartAsyncExecutionTool extends AbstractBaseTool<StartAsyncExecutio
 			}
 			catch (JsonProcessingException e) {
 				logger.error("Error serializing result: {}", e.getMessage(), e);
-				return CompletableFuture
-					.completedFuture(new ToolExecuteResult("Started async execution of " + executions.size() + " functions"));
+				return CompletableFuture.completedFuture(
+						new ToolExecuteResult("Started async execution of " + executions.size() + " functions"));
 			}
 		}
 		catch (Exception e) {

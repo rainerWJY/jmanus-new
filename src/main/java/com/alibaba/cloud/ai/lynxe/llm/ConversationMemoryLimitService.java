@@ -63,6 +63,9 @@ public class ConversationMemoryLimitService {
 	@Autowired
 	private ObjectMapper objectMapper;
 
+	@Autowired
+	private TokenCountService tokenCountService;
+
 	/**
 	 * Check and limit conversation memory size for a given conversation ID. Maintains
 	 * recent 5000 chars (at least one complete dialog round) and summarizes older rounds
@@ -81,17 +84,17 @@ public class ConversationMemoryLimitService {
 				return;
 			}
 
-			int totalChars = calculateTotalCharacters(messages);
-			int maxChars = getMaxCharacterCount();
-			if (totalChars <= maxChars) {
-				log.debug("Conversation memory size ({}) is within limit ({}) for conversationId: {}", totalChars,
-						maxChars, conversationId);
+			int totalTokens = calculateTotalTokens(messages);
+			int maxTokens = getMaxTokenCount();
+			if (totalTokens <= maxTokens) {
+				log.debug("Conversation memory size ({} tokens) is within limit ({} tokens) for conversationId: {}",
+						totalTokens, maxTokens, conversationId);
 				return;
 			}
 
 			log.info(
-					"Conversation memory size ({}) exceeds limit ({}) for conversationId: {}. Summarizing older messages...",
-					totalChars, maxChars, conversationId);
+					"Conversation memory size ({} tokens) exceeds limit ({} tokens) for conversationId: {}. Summarizing older messages...",
+					totalTokens, maxTokens, conversationId);
 
 			// Summarize and trim messages
 			summarizeAndTrimMessages(chatMemory, conversationId, messages);
@@ -103,29 +106,42 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Calculate total character count of all messages by serializing to JSON. This gives
+	 * Calculate total token count of all messages using TokenCountService. This gives
 	 * a more accurate count of the actual data that would be sent to LLM.
 	 * @param messages List of messages
-	 * @return Total character count
+	 * @return Total token count
+	 * @throws IllegalStateException if TokenCountService is not available
 	 */
-	public int calculateTotalCharacters(List<Message> messages) {
+	public int calculateTotalTokens(List<Message> messages) {
 		if (messages == null || messages.isEmpty()) {
 			return 0;
 		}
 
-		try {
-			// Directly serialize the entire messages list to JSON
-			String json = objectMapper.writeValueAsString(messages);
-			return json.length();
+		if (tokenCountService == null) {
+			throw new IllegalStateException(
+					"TokenCountService is not available. Cannot calculate token count for messages.");
 		}
-		catch (Exception e) {
-			log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
-			// Fallback to simple text length calculation
-			return messages.stream().mapToInt(message -> {
-				String text = message.getText();
-				return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
-			}).sum();
+
+		return tokenCountService.countTokens(messages);
+	}
+
+	/**
+	 * Get the maximum token count limit from configuration.
+	 * @return Maximum token count
+	 * @throws IllegalStateException if LynxeProperties is not available
+	 */
+	private int getMaxTokenCount() {
+		if (lynxeProperties == null) {
+			throw new IllegalStateException("LynxeProperties is not available. Cannot get session token limit.");
 		}
+
+		Integer sessionTokenLimit = lynxeProperties.getSessionTokenLimit();
+		if (sessionTokenLimit == null || sessionTokenLimit <= 0) {
+			throw new IllegalStateException(
+					"Session token limit is not configured or invalid. Please configure lynxe.agent.sessionTokenLimit.");
+		}
+
+		return sessionTokenLimit;
 	}
 
 	/**
@@ -294,8 +310,7 @@ public class ConversationMemoryLimitService {
 			// Add confirmation AssistantMessage to maintain user-assistant pair pattern
 			AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 			chatMemory.add(conversationId, confirmationMessage);
-			log.info("Added summarized message ({} chars) with confirmation for conversationId: {}",
-					summaryMessage.getText().length(), conversationId);
+		
 		}
 
 		// Add recent rounds
@@ -305,13 +320,15 @@ public class ConversationMemoryLimitService {
 			}
 		}
 
-		int keptChars = calculateTotalCharacters(
+		int keptTokens = calculateTotalTokens(
 				roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
-		double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
+		int totalTokens = calculateTotalTokens(messages);
+		double actualRetentionRatio = totalTokens > 0 ? (double) keptTokens / totalTokens : 0.0;
+		int summaryTokens = summaryMessage != null ? calculateTotalTokens(List.of(summaryMessage)) : 0;
 		log.info(
-				"Summarized conversation memory for conversationId: {}. Kept {} recent rounds ({} chars, {:.1f}% retention), summarized {} older rounds into {} chars",
-				conversationId, roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
-				roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
+				"Summarized conversation memory for conversationId: {}. Kept {} recent rounds ({} tokens, {:.1f}% retention), summarized {} older rounds into {} tokens",
+				conversationId, roundsToKeep.size(), keptTokens, String.format("%.1f", actualRetentionRatio * 100),
+				roundsToSummarize.size(), summaryTokens);
 	}
 
 	/**
@@ -426,24 +443,11 @@ public class ConversationMemoryLimitService {
 			try {
 				conversationHistory = objectMapper.writeValueAsString(allMessages);
 			}
-			catch (Exception e) {
-				log.warn("Failed to serialize messages to JSON for summarization, using fallback", e);
-				// Fallback: build text representation
-				StringBuilder conversationText = new StringBuilder();
-				for (Message message : allMessages) {
-					String content = extractMessageContent(message);
-					if (message instanceof UserMessage) {
-						conversationText.append("User: ").append(content).append("\n\n");
-					}
-					else if (message instanceof AssistantMessage) {
-						conversationText.append("Assistant: ").append(content).append("\n\n");
-					}
-					else if (message instanceof ToolResponseMessage) {
-						conversationText.append("Tool Response: ").append(content).append("\n\n");
-					}
-				}
-				conversationHistory = conversationText.toString();
-			}
+		catch (Exception e) {
+			log.error("Failed to serialize messages to JSON for summarization", e);
+			throw new IllegalStateException("Failed to serialize messages to JSON for summarization: " + e.getMessage(),
+					e);
+		}
 
 			// Create summarization prompt with state_snapshot XML format requirement
 			String summaryPrompt = String.format(
@@ -506,16 +510,7 @@ public class ConversationMemoryLimitService {
 		}
 		catch (Exception e) {
 			log.error("Failed to summarize dialog rounds", e);
-			// Fallback: create a simple summary
-			String prefixExplanation = "The following content is a brief summary of previously executed actions. "
-					+ "The original content was too long and has been summarized:\n\n";
-			String fallbackSummary = String.format(
-					"Previous conversation history (%d dialog rounds) has been summarized due to length constraints.",
-					rounds.size());
-			String finalFallbackSummary = prefixExplanation + fallbackSummary;
-			UserMessage fallbackMessage = new UserMessage(finalFallbackSummary);
-			fallbackMessage.getMetadata().put(COMPRESSION_SUMMARY_METADATA_KEY, Boolean.TRUE);
-			return fallbackMessage;
+			throw new IllegalStateException("Failed to summarize dialog rounds: " + e.getMessage(), e);
 		}
 	}
 
@@ -546,12 +541,9 @@ public class ConversationMemoryLimitService {
 				return json.length();
 			}
 			catch (Exception e) {
-				log.warn("Failed to serialize messages to JSON for character count calculation: {}", e.getMessage());
-				// Fallback to simple text length calculation
-				return messages.stream().mapToInt(msg -> {
-					String text = msg.getText();
-					return text != null ? text.length() : 0;
-				}).sum();
+				log.error("Failed to serialize messages to JSON for character count calculation", e);
+				throw new IllegalStateException(
+						"Failed to serialize messages to JSON for character count calculation: " + e.getMessage(), e);
 			}
 		}
 
@@ -668,8 +660,9 @@ public class ConversationMemoryLimitService {
 				// pattern
 				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 				chatMemory.add(conversationId, confirmationMessage);
-				log.info("Added forced summary message ({} chars) with confirmation for conversationId: {}",
-						summaryMessage.getText().length(), conversationId);
+				int summaryTokens = calculateTotalTokens(List.of(summaryMessage));
+				log.info("Added forced summary message ({} tokens) with confirmation for conversationId: {}",
+						summaryTokens, conversationId);
 			}
 
 			// Add most recent round
@@ -679,13 +672,15 @@ public class ConversationMemoryLimitService {
 				}
 			}
 
-			int keptChars = calculateTotalCharacters(
+			int keptTokens = calculateTotalTokens(
 					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
-			double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
+			int totalTokens = calculateTotalTokens(messages);
+			double actualRetentionRatio = totalTokens > 0 ? (double) keptTokens / totalTokens : 0.0;
+			int summaryTokens = summaryMessage != null ? calculateTotalTokens(List.of(summaryMessage)) : 0;
 			log.info(
-					"Forced compression completed for conversationId: {}. Kept {} recent round(s) ({} chars, {}% retention), summarized {} older rounds into {} chars",
-					conversationId, roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
-					roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
+					"Forced compression completed for conversationId: {}. Kept {} recent round(s) ({} tokens, {}% retention), summarized {} older rounds into {} tokens",
+					conversationId, roundsToKeep.size(), keptTokens, String.format("%.1f", actualRetentionRatio * 100),
+					roundsToSummarize.size(), summaryTokens);
 		}
 		catch (Exception e) {
 			log.warn("Failed to force compress conversation memory for conversationId: {}", conversationId, e);
@@ -794,8 +789,8 @@ public class ConversationMemoryLimitService {
 				// pattern
 				AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 				compressedMessages.add(confirmationMessage);
-				log.info("Added forced summary message ({} chars) with confirmation",
-						summaryMessage.getText().length());
+				int summaryTokens = calculateTotalTokens(List.of(summaryMessage));
+				log.info("Added forced summary message ({} tokens) with confirmation", summaryTokens);
 			}
 
 			// Add most recent round
@@ -803,13 +798,15 @@ public class ConversationMemoryLimitService {
 				compressedMessages.addAll(round.getMessages());
 			}
 
-			int keptChars = calculateTotalCharacters(
+			int keptTokens = calculateTotalTokens(
 					roundsToKeep.stream().flatMap(round -> round.getMessages().stream()).toList());
-			double actualRetentionRatio = totalChars > 0 ? (double) keptChars / totalChars : 0.0;
+			int totalTokens = calculateTotalTokens(messages);
+			double actualRetentionRatio = totalTokens > 0 ? (double) keptTokens / totalTokens : 0.0;
+			int summaryTokens = summaryMessage != null ? calculateTotalTokens(List.of(summaryMessage)) : 0;
 			log.info(
-					"Forced compression completed. Kept {} recent round(s) ({} chars, {}% retention), summarized {} older rounds into {} chars",
-					roundsToKeep.size(), keptChars, String.format("%.1f", actualRetentionRatio * 100),
-					roundsToSummarize.size(), summaryMessage != null ? summaryMessage.getText().length() : 0);
+					"Forced compression completed. Kept {} recent round(s) ({} tokens, {}% retention), summarized {} older rounds into {} tokens",
+					roundsToKeep.size(), keptTokens, String.format("%.1f", actualRetentionRatio * 100),
+					roundsToSummarize.size(), summaryTokens);
 
 			return compressedMessages;
 		}
@@ -851,17 +848,18 @@ public class ConversationMemoryLimitService {
 			allMessages.addAll(conversationMessages);
 			allMessages.addAll(agentMessages);
 
-			// Calculate total character count
-			int totalChars = calculateTotalCharacters(allMessages);
-			int maxChars = getMaxCharacterCount();
+			// Calculate total token count
+			int totalTokens = calculateTotalTokens(allMessages);
+			int maxTokens = getMaxTokenCount();
 
-			if (totalChars <= maxChars) {
-				log.debug("Total memory size ({}) is within limit ({}), no compression needed", totalChars, maxChars);
+			if (totalTokens <= maxTokens) {
+				log.debug("Total memory size ({} tokens) is within limit ({} tokens), no compression needed",
+						totalTokens, maxTokens);
 				return agentMessages;
 			}
 
-			log.info("Total memory size ({}) exceeds limit ({}). Force compressing conversation and agent memory...",
-					totalChars, maxChars);
+			log.info("Total memory size ({} tokens) exceeds limit ({} tokens). Force compressing conversation and agent memory...",
+					totalTokens, maxTokens);
 
 			// Step 1: Force compress conversation memory first
 			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()
@@ -891,12 +889,6 @@ public class ConversationMemoryLimitService {
 		}
 	}
 
-	/**
-	 * Get the configured maximum character count from LynxeProperties.
-	 * @return Maximum character count
-	 */
-	public int getMaxCharacterCount() {
-		return lynxeProperties != null ? lynxeProperties.getConversationMemoryMaxChars() : 30000;
-	}
+	
 
 }

@@ -103,6 +103,12 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 	private ConversationMemoryLimitService conversationMemoryLimitService;
 
 	@Autowired(required = false)
+	private TokenCountService tokenCountService;
+
+	@Autowired(required = false)
+	private TokenLimitService tokenLimitService;
+
+	@Autowired(required = false)
 	private DynamicAgentStreamingFix dynamicAgentStreamingFix;
 
 	public LlmService() {
@@ -219,6 +225,33 @@ public class LlmService implements LynxeListener<ModelChangeEvent> {
 			}
 		}
 		return diaChatClient;
+	}
+
+	/**
+	 * Get the current default model name.
+	 * @return Model name, or null if not initialized
+	 */
+	public String getDefaultModelName() {
+		if (defaultModel == null) {
+			tryLazyInitialization();
+		}
+		return defaultModel != null ? defaultModel.getModelName() : null;
+	}
+
+	/**
+	 * Get token count service.
+	 * @return TokenCountService, or null if not available
+	 */
+	public TokenCountService getTokenCountService() {
+		return tokenCountService;
+	}
+
+	/**
+	 * Get token limit service.
+	 * @return TokenLimitService, or null if not available
+	 */
+	public TokenLimitService getTokenLimitService() {
+		return tokenLimitService;
 	}
 
 	public void clearConversationMemory(String memoryId) {

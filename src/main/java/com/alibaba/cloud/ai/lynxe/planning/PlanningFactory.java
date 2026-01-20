@@ -377,12 +377,14 @@ public class PlanningFactory {
 			StartParallelExecutionTool startParallelExecutionTool = new StartParallelExecutionTool(objectMapper,
 					toolCallbackMap, functionRegistryService, parallelExecutionService, toolI18nService);
 			toolDefinitions.add(startParallelExecutionTool);
-			StartAsyncExecutionTool startAsyncExecutionTool = new StartAsyncExecutionTool(objectMapper,
-					toolCallbackMap, functionRegistryService, parallelExecutionService, toolI18nService);
+			StartAsyncExecutionTool startAsyncExecutionTool = new StartAsyncExecutionTool(objectMapper, toolCallbackMap,
+					functionRegistryService, parallelExecutionService, toolI18nService);
 			toolDefinitions.add(startAsyncExecutionTool);
 			toolDefinitions.add(new ClearPendingExecutionTool(objectMapper, functionRegistryService, toolI18nService));
-			// Note: StartParallelExecutionTool and StartAsyncExecutionTool receive toolCallbackMap
-			// by reference, so they will automatically have access to all registered tools after
+			// Note: StartParallelExecutionTool and StartAsyncExecutionTool receive
+			// toolCallbackMap
+			// by reference, so they will automatically have access to all registered
+			// tools after
 			// the toolCallbackMap creation loop below completes
 			toolDefinitions.add(new FileBasedParallelExecutionTool(objectMapper, toolCallbackMap,
 					unifiedDirectoryManager, parallelExecutionService, toolI18nService));

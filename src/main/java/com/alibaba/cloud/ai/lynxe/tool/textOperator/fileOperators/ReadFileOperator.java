@@ -307,21 +307,20 @@ public class ReadFileOperator extends AbstractBaseTool<ReadFileOperator.ReadFile
 	 */
 	private ToolExecuteResult readFile(String filePath, Integer offset, Integer limit, Boolean bypassLimit) {
 		try {
-		Path absolutePath = validateGlobalPath(filePath);
+			Path absolutePath = validateGlobalPath(filePath);
 
-		// Check if file exists
-		if (!Files.exists(absolutePath)) {
-			return new ToolExecuteResult("Error: File does not exist: " + filePath);
-		}
+			// Check if file exists
+			if (!Files.exists(absolutePath)) {
+				return new ToolExecuteResult("Error: File does not exist: " + filePath);
+			}
 
-		// Check if path is a directory (Windows throws AccessDeniedException when
-		// trying to read a directory)
-		if (Files.isDirectory(absolutePath)) {
-			return new ToolExecuteResult(
-					"Error: Cannot read directory as file. Path is a directory: " + filePath);
-		}
+			// Check if path is a directory (Windows throws AccessDeniedException when
+			// trying to read a directory)
+			if (Files.isDirectory(absolutePath)) {
+				return new ToolExecuteResult("Error: Cannot read directory as file. Path is a directory: " + filePath);
+			}
 
-		java.util.List<String> lines = Files.readAllLines(absolutePath);
+			java.util.List<String> lines = Files.readAllLines(absolutePath);
 
 			// Handle empty file
 			if (lines.isEmpty()) {

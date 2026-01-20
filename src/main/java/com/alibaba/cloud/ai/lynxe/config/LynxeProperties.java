@@ -264,26 +264,50 @@ public class LynxeProperties {
 		this.enableSmartContentSaving = enableSmartContentSaving;
 	}
 
-	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "conversationMemoryMaxChars",
-			path = "lynxe.agent.conversationMemoryMaxChars",
-			description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue = "300000",
-			inputType = ConfigInputType.NUMBER)
-	private volatile Integer conversationMemoryMaxChars;
+	// @ConfigProperty(group = "lynxe", subGroup = "agent", key =
+	// "conversationMemoryMaxChars",
+	// path = "lynxe.agent.conversationMemoryMaxChars",
+	// description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue =
+	// "300000",
+	// inputType = ConfigInputType.NUMBER)
+	// private volatile Integer conversationMemoryMaxChars;
 
-	public Integer getConversationMemoryMaxChars() {
-		String configPath = "lynxe.agent.conversationMemoryMaxChars";
+	// public Integer getConversationMemoryMaxChars() {
+	// String configPath = "lynxe.agent.conversationMemoryMaxChars";
+	// String value = configService.getConfigValue(configPath);
+	// if (value != null) {
+	// conversationMemoryMaxChars = Integer.valueOf(value);
+	// }
+	// if (conversationMemoryMaxChars == null) {
+	// conversationMemoryMaxChars = 300000;
+	// }
+	// return conversationMemoryMaxChars;
+	// }
+
+	// public void setConversationMemoryMaxChars(Integer conversationMemoryMaxChars) {
+	// this.conversationMemoryMaxChars = conversationMemoryMaxChars;
+	// }
+
+	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "sessionTokenLimit",
+			path = "lynxe.agent.sessionTokenLimit", description = "lynxe.agent.sessionTokenLimit.description",
+			defaultValue = "131072", inputType = ConfigInputType.NUMBER)
+	private volatile Integer sessionTokenLimit;
+
+	public Integer getSessionTokenLimit() {
+		String configPath = "lynxe.agent.sessionTokenLimit";
 		String value = configService.getConfigValue(configPath);
 		if (value != null) {
-			conversationMemoryMaxChars = Integer.valueOf(value);
+			sessionTokenLimit = Integer.valueOf(value);
 		}
-		if (conversationMemoryMaxChars == null) {
-			conversationMemoryMaxChars = 300000;
+		if (sessionTokenLimit == null) {
+			sessionTokenLimit = 131072; // Default to DEFAULT_CONTEXT_LIMIT from
+										// TokenLimitService
 		}
-		return conversationMemoryMaxChars;
+		return sessionTokenLimit;
 	}
 
-	public void setConversationMemoryMaxChars(Integer conversationMemoryMaxChars) {
-		this.conversationMemoryMaxChars = conversationMemoryMaxChars;
+	public void setSessionTokenLimit(Integer sessionTokenLimit) {
+		this.sessionTokenLimit = sessionTokenLimit;
 	}
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "parallelToolCalls",
@@ -354,9 +378,8 @@ public class LynxeProperties {
 	}
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "maxLinesForFullRead",
-			path = "lynxe.agent.maxLinesForFullRead",
-			description = "lynxe.agent.maxLinesForFullRead.description", defaultValue = "1",
-			inputType = ConfigInputType.NUMBER)
+			path = "lynxe.agent.maxLinesForFullRead", description = "lynxe.agent.maxLinesForFullRead.description",
+			defaultValue = "1", inputType = ConfigInputType.NUMBER)
 	private volatile Integer maxLinesForFullRead;
 
 	public Integer getMaxLinesForFullRead() {

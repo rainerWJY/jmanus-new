@@ -54,9 +54,12 @@ import com.alibaba.cloud.ai.lynxe.agent.entity.AgentStreamingResult;
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.alibaba.cloud.ai.lynxe.event.LynxeEventPublisher;
 import com.alibaba.cloud.ai.lynxe.event.PlanExceptionClearedEvent;
+import com.alibaba.cloud.ai.lynxe.exception.TokenLimitExceededException;
 import com.alibaba.cloud.ai.lynxe.llm.ConversationMemoryLimitService;
 import com.alibaba.cloud.ai.lynxe.llm.LlmService;
 import com.alibaba.cloud.ai.lynxe.llm.StreamingResponseHandler;
+import com.alibaba.cloud.ai.lynxe.llm.TokenCountService;
+import com.alibaba.cloud.ai.lynxe.llm.TokenLimitService;
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory.ToolCallBackContext;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ActToolParam;
@@ -356,15 +359,63 @@ public class DynamicAgent extends ReActAgent {
 				else {
 					chatClient = llmService.getDynamicAgentChatClient(modelName);
 				}
-				// Calculate input character count from all messages by serializing to
-				// JSON
-				// This gives a more accurate count of the actual data sent to LLM
-				if (conversationMemoryLimitService == null) {
-					throw new IllegalStateException(
-							"ConversationMemoryLimitService is not available. Cannot calculate message character count.");
+				// Calculate input token count and check limits
+				int inputTokenCount = 0;
+				// Get token services from llmService (they're injected there)
+				TokenCountService tokenCountService = llmService.getTokenCountService();
+				TokenLimitService tokenLimitService = llmService.getTokenLimitService();
+
+				if (tokenCountService != null) {
+					inputTokenCount = tokenCountService.countTokens(messages);
+					log.info("User prompt token count: {}", inputTokenCount);
+
+					// Get model name for limit checking (use provided modelName or get
+					// default)
+					String effectiveModelName = (modelName != null && !modelName.isEmpty()) ? modelName
+							: llmService.getDefaultModelName();
+
+					if (effectiveModelName != null && tokenLimitService != null && lynxeProperties != null) {
+						// Get model context limit
+						int modelContextLimit = tokenLimitService.getContextLimit(effectiveModelName);
+
+						// Get session token limit from configuration
+						Integer sessionTokenLimit = lynxeProperties.getSessionTokenLimit();
+
+						// Determine effective limit (use the smaller of sessionTokenLimit
+						// and modelLimit)
+						int effectiveLimit = modelContextLimit;
+						if (sessionTokenLimit != null && sessionTokenLimit > 0) {
+							effectiveLimit = Math.min(sessionTokenLimit, modelContextLimit);
+						}
+
+						// Check if token count exceeds limit
+						if (inputTokenCount > effectiveLimit) {
+							String errorMessage = String.format(
+									"Token limit exceeded: current=%d, limit=%d, model=%s. Please reduce the input size or clear conversation history.",
+									inputTokenCount, effectiveLimit, effectiveModelName);
+							log.error(errorMessage);
+
+							// Throw exception to stop execution
+							throw new TokenLimitExceededException(inputTokenCount, effectiveLimit, effectiveModelName);
+						}
+
+						// Log warning if approaching limit (80% threshold)
+						if (effectiveLimit > 0 && inputTokenCount > effectiveLimit * 0.8) {
+							log.warn("Token count ({}) is approaching limit ({}) for model {}", inputTokenCount,
+									effectiveLimit, effectiveModelName);
+						}
+					}
 				}
-				int inputCharCount = conversationMemoryLimitService.calculateTotalCharacters(messages);
-				log.info("User prompt character count: {}", inputCharCount);
+				else {
+					// Fallback to character counting if token service not available
+					if (conversationMemoryLimitService == null) {
+						throw new IllegalStateException(
+								"Neither TokenCountService nor ConversationMemoryLimitService is available. Cannot calculate message count.");
+					}
+					int inputTokenCountFromService = conversationMemoryLimitService.calculateTotalTokens(messages);
+					log.info("User prompt token count: {} (using ConversationMemoryLimitService)", inputTokenCountFromService);
+					inputTokenCount = inputTokenCountFromService;
+				}
 
 				// Use streaming response handler for better user experience and content
 				// merging
@@ -374,8 +425,13 @@ public class DynamicAgent extends ReActAgent {
 					.chatResponse();
 				boolean isDebugModel = lynxeProperties.getDebugDetail() != null && lynxeProperties.getDebugDetail();
 				// Enable early termination for agent thinking (should have tool calls)
+				// Convert token count to character count for backward compatibility with
+				// StreamingResponseHandler
+				int inputCharCountForHandler = inputTokenCount * 4; // Approximate
+																	// conversion
 				streamResult = streamingResponseHandler.processStreamingResponse(responseFlux,
-						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true, inputCharCount);
+						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true,
+						inputCharCountForHandler);
 
 				// Extract commonly used data into AgentStreamingResult
 				List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();

@@ -47,18 +47,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		if (request instanceof ServletWebRequest servletRequest) {
 			HttpServletResponse response = servletRequest.getResponse();
 			HttpServletRequest httpRequest = servletRequest.getRequest();
-			
+
 			// Check if response is already committed (SSE stream likely)
 			if (response != null && response.isCommitted()) {
 				return true;
 			}
-			
+
 			// Check Content-Type header
 			String contentType = response != null ? response.getContentType() : null;
 			if (contentType != null && contentType.contains("text/event-stream")) {
 				return true;
 			}
-			
+
 			// Check Accept header
 			String acceptHeader = httpRequest.getHeader("Accept");
 			if (acceptHeader != null && acceptHeader.contains("text/event-stream")) {
@@ -91,12 +91,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * Handle SSE-related exceptions (broken pipe, disconnected clients)
-	 * These should be silently ignored as they're expected when clients disconnect
+	 * Handle SSE-related exceptions (broken pipe, disconnected clients) These should be
+	 * silently ignored as they're expected when clients disconnect
 	 */
 	@ExceptionHandler({ AsyncRequestNotUsableException.class })
 	public ResponseEntity<Void> handleSseException(AsyncRequestNotUsableException ex, WebRequest request) {
-		// If this is an SSE-related exception, ignore it (response already committed or client disconnected)
+		// If this is an SSE-related exception, ignore it (response already committed or
+		// client disconnected)
 		if (isSseException(request)) {
 			// Return empty response - Spring will handle committed responses gracefully
 			// For committed responses, Spring won't try to write anything
@@ -111,7 +112,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 	 */
 	@ExceptionHandler(IOException.class)
 	public ResponseEntity<Map<String, Object>> handleIOException(IOException ex, WebRequest request) {
-		// If this is an SSE-related exception, ignore it (response already committed or client disconnected)
+		// If this is an SSE-related exception, ignore it (response already committed or
+		// client disconnected)
 		if (isSseException(request)) {
 			// Return empty response - Spring will handle committed responses gracefully
 			return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
@@ -133,14 +135,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			// Already handled by handleSseException
 			return handleSseException((AsyncRequestNotUsableException) ex, request);
 		}
-		
+
 		// Check if this is an SSE-related exception (broken pipe, client disconnected)
 		if (isSseException(request)) {
 			// SSE request with broken pipe - silently ignore
 			// Return empty response - Spring will handle committed responses gracefully
 			return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
 		}
-		
+
 		Map<String, Object> response = new HashMap<>();
 		response.put("error", ex.getMessage());
 		return ResponseEntity.internalServerError().body(response);
