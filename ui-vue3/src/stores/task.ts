@@ -23,7 +23,7 @@ export interface TaskPayload {
   prompt: string
   timestamp: number
   processed?: boolean
-  planId?: string
+  planId?: string | undefined
   // Removed isRunning field - now computed from planId and messageDialog.isRunning
 }
 

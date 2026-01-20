@@ -33,10 +33,15 @@ export function useTaskExecutionState() {
 
   /**
    * Check if a task is currently running
-   * Computed from planId and messageDialog.isRunning
+   * Includes both plan execution (with planId) and chat streaming (without planId)
+   * Uses messageDialog.isRunning as the single source of truth
    */
   const isTaskRunning = computed(() => {
-    return taskStore.hasRunningTask()
+    // Check if there's a running plan execution (with planId)
+    const hasRunningPlan = taskStore.hasRunningTask()
+    // Check if there's active chat streaming (without planId but isRunning is true)
+    const hasActiveStream = messageDialog.isRunning.value && !taskStore.currentTask?.planId
+    return hasRunningPlan || hasActiveStream
   })
 
   /**

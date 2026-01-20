@@ -25,25 +25,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// import org.springframework.context.annotation.Primary;
-// import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
 
 /**
- * Example custom executor pool provider implementation. This is a simple example - you
- * can create your own implementation with custom logic.
- *
- * To use your custom executor pool provider: 1. Create a class implementing
- * ExecutorPoolProvider 2. Annotate it with @Component (or @Service) 3. Spring will
- * automatically use your implementation instead of LevelBasedExecutorPool
- *
+ * Example custom executor pool provider implementation.
+ * This is a simple example - you can create your own implementation with custom logic.
+ * 
+ * To use your custom executor pool provider:
+ * 1. Create a class implementing ExecutorPoolProvider
+ * 2. Annotate it with @Component (or @Service)
+ * 3. Spring will automatically use your implementation instead of LevelBasedExecutorPool
+ * 
  * Note: If you have multiple ExecutorPoolProvider beans, you may need to use @Primary
  * or @Qualifier to specify which one to use.
- *
- * NOTE: This class is currently disabled (no @Component annotation) to use
- * LevelBasedExecutorPool as default.
  */
-// @Component
-// @Primary // This makes this the default provider instead of LevelBasedExecutorPool
+@Component
+@Primary  // This makes this the default provider instead of LevelBasedExecutorPool
 public class CustomExecutorPoolProvider implements ExecutorPoolProvider {
 
 	private static final Logger log = LoggerFactory.getLogger(CustomExecutorPoolProvider.class);
@@ -105,3 +103,4 @@ public class CustomExecutorPoolProvider implements ExecutorPoolProvider {
 	}
 
 }
+
