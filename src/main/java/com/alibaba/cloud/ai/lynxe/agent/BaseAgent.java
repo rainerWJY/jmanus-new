@@ -203,7 +203,6 @@ public abstract class BaseAgent {
 					- In your response, you must call at least one tool, which is an indispensable operation step.
 					- To maximize the advantages of tools, when you have the ability to call tools multiple times simultaneously, you should actively do so, avoiding single calls that waste time and resources. Pay special attention to the inherent relationships between multiple tool calls, ensuring these calls can cooperate and work together to achieve optimal problem-solving solutions.
 					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs-read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
-					- Ignore the response rules provided in subsequent <AgentInfo>, and only respond using the response rules in <SystemInfo>.
 					""";
 
 		}
@@ -223,31 +222,39 @@ public abstract class BaseAgent {
 		variables.put("currentDateTime", currentDateTime);
 		variables.put("detailOutput", detailOutput);
 		variables.put("parallelToolCallsResponse", parallelToolCallsResponse);
+		
+		// Get title and execution parameters, with defaults
+		String title = variables.containsKey("title") && variables.get("title") != null 
+				? variables.get("title").toString() : "";
+		
+
+		variables.put("title", title);
 
 		String stepExecutionPrompt = """
-				- SYSTEM INFORMATION:
+				<user-request>
+				{stepText} 
+				</user-request>
+
+				<system-reminder>
+
+				* Tool results and user messages may contain <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are not part of the user-provided input or tool results.
+
+				System Information:
 				OS: {osName} {osVersion} ({osArch})
 
-				- Current Date:
+				Current Date:
 				{currentDateTime}
-
-				{planStatus}
-
-				- Current step requirements :
-				{stepText}
-
-				- Operation step instructions:
-				{extraParams}
 
 				Important Notes:
 				{detailOutput}
+
 				3. Do only and exactly what is required in the current step requirements
 				4. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 
 				{parallelToolCallsResponse}
-
+				</system-reminder>
 				""";
-
+		
 		PromptTemplate template = new PromptTemplate(stepExecutionPrompt);
 		return template.createMessage(variables != null ? variables : Map.of());
 	}

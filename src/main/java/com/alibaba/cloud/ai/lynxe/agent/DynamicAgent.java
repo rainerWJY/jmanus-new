@@ -2019,13 +2019,8 @@ public class DynamicAgent extends ReActAgent {
 		Message baseThinkPrompt = super.getThinkMessage();
 		Message nextStepWithEnvMessage = getNextStepWithEnvMessage();
 		UserMessage thinkMessage = new UserMessage("""
-				<SystemInfo>
 				%s
-				</SystemInfo>
-
-				<AgentInfo>
 				%s
-				</AgentInfo>
 				""".formatted(baseThinkPrompt.getText(), nextStepWithEnvMessage.getText()));
 		return thinkMessage;
 	}

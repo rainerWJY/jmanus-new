@@ -131,12 +131,13 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 
 		String planStatus = context.getPlan().getPlanExecutionStateStringFormat(true);
 		String stepText = step.getStepRequirement();
+		String title = context.getPlan().getTitle();
 
 		Map<String, Object> initSettings = new HashMap<>();
 		initSettings.put(PLAN_STATUS_KEY, planStatus);
 		initSettings.put(CURRENT_STEP_INDEX_KEY, String.valueOf(stepIndex));
 		initSettings.put(STEP_TEXT_KEY, stepText);
-		initSettings.put(EXTRA_PARAMS_KEY, context.getPlan().getExecutionParams());
+		initSettings.put(TITLE_KEY, title != null ? title : "");
 		if ("ConfigurableDynaAgent".equals(stepType)) {
 			String modelName = step.getModelName();
 			List<String> selectedToolKeys = step.getSelectedToolKeys();

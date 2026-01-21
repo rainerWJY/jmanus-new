@@ -91,7 +91,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	public static final String STEP_TEXT_KEY = "stepText";
 
-	public static final String EXTRA_PARAMS_KEY = "extraParams";
+
+	public static final String TITLE_KEY = "title";
 
 	public static final String EXECUTION_ENV_STRING_KEY = "current_step_env_data";
 
