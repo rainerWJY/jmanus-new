@@ -183,9 +183,17 @@
                             >
                               <Icon icon="carbon:copy" />
                             </button>
-                            <span class="char-count-badge"
-                              >{{ tas.inputCharCount ?? 0 }} chars</span
-                            >
+                            <span class="char-count-badge">
+                              {{ tas.inputCharCount ?? 0 }} chars
+                              <span
+                                v-if="
+                                  calculateContextUsagePercentage(tas.inputCharCount, tas.modelContextLimit) !== null
+                                "
+                              >
+                                {{ calculateContextUsagePercentage(tas.inputCharCount, tas.modelContextLimit) }}
+                                context used
+                              </span>
+                            </span>
                           </div>
                         </div>
                         <div class="pre-container">
@@ -417,6 +425,21 @@ const props = defineProps<Props>()
 
 const { t } = useI18n()
 const toast = useToast()
+
+// Calculate context usage percentage
+const calculateContextUsagePercentage = (
+  inputCharCount: number | undefined | null,
+  modelContextLimit: number | undefined | null
+): string | null => {
+  if (!inputCharCount || !modelContextLimit || modelContextLimit <= 0) {
+    return null
+  }
+  // inputCharCount is approximate character count (inputTokenCount * 4)
+  // modelContextLimit is in tokens
+  // Convert modelContextLimit to character count: modelContextLimit * 4
+  const percentage = (inputCharCount / (modelContextLimit * 4)) * 100
+  return `${percentage.toFixed(1)}%`
+}
 
 // Copy to clipboard function
 const copyToClipboard = async (text: string | null | undefined) => {

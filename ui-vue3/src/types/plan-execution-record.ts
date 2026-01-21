@@ -97,6 +97,9 @@ export interface ThinkActRecord {
   /** Output character count (total characters in LLM response) */
   outputCharCount?: number
 
+  /** Model context limit (in tokens) used for this think-act cycle */
+  modelContextLimit?: number
+
   /**
    * @deprecated This field is abandoned and kept only for database compatibility.
    * Use actToolInfoList instead, which contains ActToolInfo objects with name and parameters.

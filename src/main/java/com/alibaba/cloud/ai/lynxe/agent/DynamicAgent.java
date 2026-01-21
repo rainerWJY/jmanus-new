@@ -168,6 +168,12 @@ public class DynamicAgent extends ReActAgent {
 	 */
 	private List<Message> extraMessage = new ArrayList<>();
 
+	/**
+	 * Model context limit (in tokens) used for the current think-act cycle.
+	 * Set during checkAndCompressMemoryIfNeeded() and used when recording ThinkActRecord.
+	 */
+	private Integer currentModelContextLimit = null;
+
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
 		for (ToolCallBackContext toolCallBack : toolCallBackContext.values()) {
@@ -452,8 +458,10 @@ public class DynamicAgent extends ReActAgent {
 
 					ThinkActRecordParams paramsN = new ThinkActRecordParams(thinkActId, stepId, thinkInput,
 							agentStreamingResult.getResponseText(), null, agentStreamingResult.getInputCharCount(),
-							agentStreamingResult.getOutputCharCount(), actToolInfoList);
+							agentStreamingResult.getOutputCharCount(), currentModelContextLimit, actToolInfoList);
 					planExecutionRecorder.recordThinkingAndAction(step, paramsN);
+					// Reset after recording
+					currentModelContextLimit = null;
 
 					// Clear exception cache if this was a retry attempt
 					if (attempt > 1 && lynxeEventPublisher != null) {
@@ -1563,8 +1571,23 @@ public class DynamicAgent extends ReActAgent {
 			String thinkActId = planIdDispatcher.generateThinkActId();
 			String finalErrorMessage = step.getErrorMessage() != null ? step.getErrorMessage() : errorMessage;
 
+			// Try to get model context limit if available, otherwise use null
+			Integer errorModelContextLimit = currentModelContextLimit;
+			if (errorModelContextLimit == null && llmService != null && llmService.getTokenLimitService() != null) {
+				String effectiveModelName = (modelName != null && !modelName.isEmpty()) ? modelName
+						: llmService.getDefaultModelName();
+				if (effectiveModelName != null && !effectiveModelName.trim().isEmpty()) {
+					try {
+						errorModelContextLimit = llmService.getTokenLimitService().getContextLimit(effectiveModelName);
+					}
+					catch (Exception e) {
+						log.debug("Could not get model context limit for error record: {}", e.getMessage());
+					}
+				}
+			}
+
 			ThinkActRecordParams errorParams = new ThinkActRecordParams(thinkActId, stepId, thinkInput, thinkOutput,
-					finalErrorMessage, List.of(param));
+					finalErrorMessage, null, null, errorModelContextLimit, List.of(param));
 			planExecutionRecorder.recordThinkingAndAction(step, errorParams);
 			log.info("Recorded thinking and action for error tool, stepId: {}", stepId);
 		}
@@ -1766,6 +1789,8 @@ public class DynamicAgent extends ReActAgent {
 		}
 		
 		int modelContextLimit = tokenLimitService.getContextLimit(effectiveModelName);
+		// Store for later use when recording ThinkActRecord
+		this.currentModelContextLimit = modelContextLimit;
 
 		// Get compression threshold (default 70%)
 		double compressionThreshold = lynxeProperties != null

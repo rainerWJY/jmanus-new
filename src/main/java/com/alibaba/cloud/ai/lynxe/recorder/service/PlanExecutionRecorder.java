@@ -126,15 +126,24 @@ public interface PlanExecutionRecorder {
 
 		private final Integer outputCharCount;
 
+		private final Integer modelContextLimit;
+
 		private final List<ActToolParam> actToolInfoList;
 
 		public ThinkActRecordParams(String thinkActId, String stepId, String thinkInput, String thinkOutput,
 				String errorMessage, List<ActToolParam> actToolInfoList) {
-			this(thinkActId, stepId, thinkInput, thinkOutput, errorMessage, null, null, actToolInfoList);
+			this(thinkActId, stepId, thinkInput, thinkOutput, errorMessage, null, null, null, actToolInfoList);
 		}
 
 		public ThinkActRecordParams(String thinkActId, String stepId, String thinkInput, String thinkOutput,
 				String errorMessage, Integer inputCharCount, Integer outputCharCount,
+				List<ActToolParam> actToolInfoList) {
+			this(thinkActId, stepId, thinkInput, thinkOutput, errorMessage, inputCharCount, outputCharCount, null,
+					actToolInfoList);
+		}
+
+		public ThinkActRecordParams(String thinkActId, String stepId, String thinkInput, String thinkOutput,
+				String errorMessage, Integer inputCharCount, Integer outputCharCount, Integer modelContextLimit,
 				List<ActToolParam> actToolInfoList) {
 
 			this.thinkActId = thinkActId;
@@ -144,6 +153,7 @@ public interface PlanExecutionRecorder {
 			this.errorMessage = errorMessage;
 			this.inputCharCount = inputCharCount;
 			this.outputCharCount = outputCharCount;
+			this.modelContextLimit = modelContextLimit;
 			this.actToolInfoList = actToolInfoList;
 		}
 
@@ -177,6 +187,10 @@ public interface PlanExecutionRecorder {
 
 		public Integer getOutputCharCount() {
 			return outputCharCount;
+		}
+
+		public Integer getModelContextLimit() {
+			return modelContextLimit;
 		}
 
 	}

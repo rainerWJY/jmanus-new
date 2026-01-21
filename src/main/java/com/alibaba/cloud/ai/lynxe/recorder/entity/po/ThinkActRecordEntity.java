@@ -87,6 +87,10 @@ public class ThinkActRecordEntity {
 	@Column(name = "output_char_count")
 	private Integer outputCharCount;
 
+	// Model context limit (in tokens) used for this think-act cycle
+	@Column(name = "model_context_limit")
+	private Integer modelContextLimit;
+
 	// Action tool information(When disabling parallel tool calls, there is always only
 	// one)
 	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -166,6 +170,14 @@ public class ThinkActRecordEntity {
 
 	public void setOutputCharCount(Integer outputCharCount) {
 		this.outputCharCount = outputCharCount;
+	}
+
+	public Integer getModelContextLimit() {
+		return modelContextLimit;
+	}
+
+	public void setModelContextLimit(Integer modelContextLimit) {
+		this.modelContextLimit = modelContextLimit;
 	}
 
 	public List<ActToolInfoEntity> getActToolInfoList() {

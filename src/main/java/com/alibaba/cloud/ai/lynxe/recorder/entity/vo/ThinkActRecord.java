@@ -99,6 +99,9 @@ public class ThinkActRecord {
 	// Output character count (total characters in LLM response)
 	private Integer outputCharCount;
 
+	// Model context limit (in tokens) used for this think-act cycle
+	private Integer modelContextLimit;
+
 	// Tool name used for action (if applicable)
 	// @deprecated This field is abandoned and kept only for database compatibility.
 	// Use actToolInfoList instead, which contains ActToolInfo objects with name and
@@ -306,6 +309,14 @@ public class ThinkActRecord {
 
 	public void setOutputCharCount(Integer outputCharCount) {
 		this.outputCharCount = outputCharCount;
+	}
+
+	public Integer getModelContextLimit() {
+		return modelContextLimit;
+	}
+
+	public void setModelContextLimit(Integer modelContextLimit) {
+		this.modelContextLimit = modelContextLimit;
 	}
 
 	/**
