@@ -371,29 +371,26 @@ public class DynamicAgent extends ReActAgent {
 					.chatResponse();
 				boolean isDebugModel = lynxeProperties.getDebugDetail() != null && lynxeProperties.getDebugDetail();
 				// Enable early termination for agent thinking (should have tool calls)
-				// Convert token count to character count for backward compatibility with
-				// StreamingResponseHandler
-				int inputCharCountForHandler = inputTokenCount * 4; // Approximate
-																	// conversion
+				// Pass token count directly to StreamingResponseHandler
 				streamResult = streamingResponseHandler.processStreamingResponse(responseFlux,
 						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true,
-						inputCharCountForHandler);
+						inputTokenCount);
 
 				// Extract commonly used data into AgentStreamingResult
 				List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
 				String responseByLLm = streamResult.getEffectiveText();
-				int finalInputCharCount = streamResult.getInputCharCount();
-				int finalOutputCharCount = streamResult.getOutputCharCount();
+				int finalInputTokenCount = streamResult.getInputTokenCount();
+				int finalOutputTokenCount = streamResult.getOutputTokenCount();
 
-				agentStreamingResult = new AgentStreamingResult(toolCalls, responseByLLm, finalInputCharCount,
-						finalOutputCharCount);
+				agentStreamingResult = new AgentStreamingResult(toolCalls, responseByLLm, finalInputTokenCount,
+						finalOutputTokenCount);
 
 				// Keep response for backward compatibility (used in
 				// extractAssistantMessageFromResponse)
 				response = streamResult.getLastResponse();
 
-				log.info("Input character count: {}, Output character count: {}",
-						agentStreamingResult.getInputCharCount(), agentStreamingResult.getOutputCharCount());
+				log.info("Input token count: {}, Output token count: {}",
+						agentStreamingResult.getInputTokenCount(), agentStreamingResult.getOutputTokenCount());
 
 				log.info(String.format("✨ %s's thoughts: %s", getName(), agentStreamingResult.getResponseText()));
 				log.info(String.format("🛠️ %s selected %d tools to use", getName(),
@@ -457,8 +454,8 @@ public class DynamicAgent extends ReActAgent {
 					}
 
 					ThinkActRecordParams paramsN = new ThinkActRecordParams(thinkActId, stepId, thinkInput,
-							agentStreamingResult.getResponseText(), null, agentStreamingResult.getInputCharCount(),
-							agentStreamingResult.getOutputCharCount(), currentModelContextLimit, actToolInfoList);
+							agentStreamingResult.getResponseText(), null, agentStreamingResult.getInputTokenCount(),
+							agentStreamingResult.getOutputTokenCount(), currentModelContextLimit, actToolInfoList);
 					planExecutionRecorder.recordThinkingAndAction(step, paramsN);
 					// Reset after recording
 					currentModelContextLimit = null;

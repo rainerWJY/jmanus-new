@@ -184,7 +184,7 @@
                               <Icon icon="carbon:copy" />
                             </button>
                             <span class="char-count-badge">
-                              {{ tas.inputCharCount ?? 0 }} chars
+                              {{ tas.inputCharCount ?? 0 }} tokens
                               <span
                                 v-if="
                                   calculateContextUsagePercentage(tas.inputCharCount, tas.modelContextLimit) !== null
@@ -212,7 +212,7 @@
                               <Icon icon="carbon:copy" />
                             </button>
                             <span class="char-count-badge"
-                              >{{ tas.outputCharCount ?? 0 }} chars</span
+                              >{{ tas.outputCharCount ?? 0 }} tokens</span
                             >
                           </div>
                         </div>
@@ -428,16 +428,14 @@ const toast = useToast()
 
 // Calculate context usage percentage
 const calculateContextUsagePercentage = (
-  inputCharCount: number | undefined | null,
+  inputTokenCount: number | undefined | null,
   modelContextLimit: number | undefined | null
 ): string | null => {
-  if (!inputCharCount || !modelContextLimit || modelContextLimit <= 0) {
+  if (!inputTokenCount || !modelContextLimit || modelContextLimit <= 0) {
     return null
   }
-  // inputCharCount is approximate character count (inputTokenCount * 4)
-  // modelContextLimit is in tokens
-  // Convert modelContextLimit to character count: modelContextLimit * 4
-  const percentage = (inputCharCount / (modelContextLimit * 4)) * 100
+  // Both inputTokenCount and modelContextLimit are in tokens
+  const percentage = (inputTokenCount / modelContextLimit) * 100
   return `${percentage.toFixed(1)}%`
 }
 

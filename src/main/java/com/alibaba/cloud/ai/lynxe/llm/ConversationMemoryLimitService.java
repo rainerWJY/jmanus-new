@@ -34,7 +34,7 @@ import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Service to automatically limit conversation memory size based on character count. Uses
+ * Service to automatically limit conversation memory size based on token count. Uses
  * LLM to summarize older dialog rounds while maintaining recent 5000 characters.
  *
  * @author lynxe
@@ -190,7 +190,7 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize and trim messages: retain configurable ratio (default 30%) of content (by character count), ensuring
+	 * Summarize and trim messages: retain configurable ratio (default 30%) of content (by token count), ensuring
 	 * at least one complete round is kept. Summarize older rounds into a summary UserMessage.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID
@@ -205,7 +205,7 @@ public class ConversationMemoryLimitService {
 			return;
 		}
 
-		// Calculate total character count of all rounds
+		// Calculate total token count of all rounds
 		int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 		// Calculate target retention: configurable ratio (default 30%) of total content
@@ -214,7 +214,7 @@ public class ConversationMemoryLimitService {
 
 		// If total is very small, keep all rounds
 		if (totalChars <= 0 || targetRetentionChars <= 0) {
-			log.debug("Total character count ({}) is too small, keeping all rounds for conversationId: {}", totalChars,
+			log.debug("Total token count ({}) is too small, keeping all rounds for conversationId: {}", totalChars,
 					conversationId);
 			return;
 		}
@@ -511,14 +511,14 @@ public class ConversationMemoryLimitService {
 				return 0;
 			}
 			try {
-				// Serialize messages to JSON to get accurate character count
+				// Serialize messages to JSON to get accurate token count
 				String json = objectMapper.writeValueAsString(messages);
 				return json.length();
 			}
 			catch (Exception e) {
-				log.error("Failed to serialize messages to JSON for character count calculation", e);
+				log.error("Failed to serialize messages to JSON for token count calculation", e);
 				throw new IllegalStateException(
-						"Failed to serialize messages to JSON for character count calculation: " + e.getMessage(), e);
+						"Failed to serialize messages to JSON for token count calculation: " + e.getMessage(), e);
 			}
 		}
 
@@ -526,7 +526,7 @@ public class ConversationMemoryLimitService {
 
 	/**
 	 * Force compress conversation memory to break potential loops. This method compresses
-	 * the memory regardless of character count limits, keeping only the most recent round
+	 * the memory regardless of token count limits, keeping only the most recent round
 	 * and summarizing all older rounds.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID to compress memory for
@@ -555,7 +555,7 @@ public class ConversationMemoryLimitService {
 				return;
 			}
 
-			// Calculate total character count of all rounds
+			// Calculate total token count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: configurable ratio (default 30%) of total content
@@ -665,7 +665,7 @@ public class ConversationMemoryLimitService {
 
 	/**
 	 * Force compress agent memory to break potential loops caused by repeated tool call
-	 * results. This method compresses the memory regardless of character count limits.
+	 * results. This method compresses the memory regardless of token count limits.
 	 * @param messages The list of messages to compress
 	 * @return Compressed list of messages containing summary and most recent round
 	 */
@@ -686,7 +686,7 @@ public class ConversationMemoryLimitService {
 				return new ArrayList<>(messages);
 			}
 
-			// Calculate total character count of all rounds
+			// Calculate total token count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
 			// Calculate target retention: configurable ratio (default 30%) of total content
@@ -796,7 +796,7 @@ public class ConversationMemoryLimitService {
 
 	/**
 	 * Check if messages exceed the limit and compress both conversation and agent memory
-	 * if needed. This method checks the total character count of all messages
+	 * if needed. This method checks the total token count of all messages
 	 * (conversation + agent) and compresses them if they exceed the limit.
 	 * @param conversationMemory The conversation memory instance
 	 * @param conversationId The conversation ID

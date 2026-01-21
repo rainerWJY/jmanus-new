@@ -1584,12 +1584,16 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 					}
 				}
 				else {
-					// Fallback to character counting if token service not available
-					int inputCharCount = messages.stream().mapToInt(message -> {
+					// Fallback to approximate token estimation if token service not available
+					inputTokenCount = messages.stream().mapToInt(message -> {
 						String text = message.getText();
-						return (text != null && !text.trim().isEmpty()) ? text.length() : 0;
+						if (text != null && !text.trim().isEmpty()) {
+							// Approximate: 1 token ≈ 4 characters
+							return (int) Math.ceil(text.length() / 4.0);
+						}
+						return 0;
 					}).sum();
-					logger.info("Chat input character count: {} (token counting not available)", inputCharCount);
+					logger.info("Chat input token count (estimated): {} (TokenCountService not available)", inputTokenCount);
 				}
 
 				// Process streaming response and send chunks as they arrive
