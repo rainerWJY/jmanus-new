@@ -22,6 +22,8 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.model.tool.ToolCallingManager;
 
 import com.alibaba.cloud.ai.lynxe.agent.BaseAgent;
@@ -161,11 +163,31 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 		String description = "A configurable dynamic agent";
 		String nextStepPrompt = "Based on the current environment information and prompt to make a next step decision";
 
+		// Get conversation messages if conversation memory is enabled and conversationId is available
+		List<Message> extraMessage = new ArrayList<>();
+		if (lynxeProperties != null && lynxeProperties.getEnableConversationMemory() && conversationId != null
+				&& !conversationId.trim().isEmpty()) {
+			try {
+				ChatMemory conversationMemory = llmService.getConversationMemoryWithLimit(
+						lynxeProperties.getMaxMemory(), conversationId);
+				List<Message> messages = conversationMemory.get(conversationId);
+				if (messages != null && !messages.isEmpty()) {
+					extraMessage = new ArrayList<>(messages);
+					log.debug("Loaded {} conversation messages for conversationId: {}", extraMessage.size(),
+							conversationId);
+				}
+			}
+			catch (Exception e) {
+				log.warn("Failed to load conversation messages for conversationId: {}. Continuing without them.",
+						conversationId, e);
+			}
+		}
+
 		ConfigurableDynaAgent agent = new ConfigurableDynaAgent(llmService, getRecorder(), lynxeProperties, name,
 				description, nextStepPrompt, selectedToolKeys, toolCallingManager, initialAgentSetting,
 				userInputService, modelName, streamingResponseHandler, step, planIdDispatcher, lynxeEventPublisher,
 				agentInterruptionHelper, objectMapper, parallelExecutionService, conversationMemoryLimitService,
-				serviceGroupIndexService);
+				serviceGroupIndexService, extraMessage);
 
 		agent.setCurrentPlanId(planId);
 		agent.setRootPlanId(rootPlanId);

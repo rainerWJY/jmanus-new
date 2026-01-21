@@ -1555,15 +1555,8 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 						// Get model context limit
 						int modelContextLimit = tokenLimitService.getContextLimit(modelName);
 
-						// Get session token limit from configuration
-						Integer sessionTokenLimit = lynxeProperties.getSessionTokenLimit();
-
-						// Determine effective limit (use the smaller of sessionTokenLimit
-						// and modelLimit)
+						// Use model context limit only (no sessionTokenLimit)
 						int effectiveLimit = modelContextLimit;
-						if (sessionTokenLimit != null && sessionTokenLimit > 0) {
-							effectiveLimit = Math.min(sessionTokenLimit, modelContextLimit);
-						}
 
 						// Check if token count exceeds limit
 						if (inputTokenCount > effectiveLimit) {

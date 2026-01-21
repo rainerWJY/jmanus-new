@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.AssistantMessage.ToolCall;
 import org.springframework.ai.chat.messages.Message;
@@ -163,6 +162,12 @@ public class DynamicAgent extends ReActAgent {
 	 */
 	private List<Message> agentMessages = new ArrayList<>();
 
+	/**
+	 * Extra messages stored as a list. Set during agent initialization
+	 * to avoid repeated retrieval from ChatMemory.
+	 */
+	private List<Message> extraMessage = new ArrayList<>();
+
 	public void clearUp(String planId) {
 		Map<String, ToolCallBackContext> toolCallBackContext = toolCallbackProvider.getToolCallBackContext();
 		for (ToolCallBackContext toolCallBack : toolCallBackContext.values()) {
@@ -190,7 +195,7 @@ public class DynamicAgent extends ReActAgent {
 			LynxeEventPublisher lynxeEventPublisher, AgentInterruptionHelper agentInterruptionHelper,
 			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
-			ServiceGroupIndexService serviceGroupIndexService) {
+			ServiceGroupIndexService serviceGroupIndexService, List<Message> extraMessage) {
 		super(llmService, planExecutionRecorder, lynxeProperties, initialAgentSetting, step, planIdDispatcher);
 		this.objectMapper = objectMapper;
 		super.objectMapper = objectMapper; // Set parent's objectMapper as well
@@ -212,6 +217,7 @@ public class DynamicAgent extends ReActAgent {
 		this.parallelExecutionService = parallelExecutionService;
 		this.conversationMemoryLimitService = conversationMemoryLimitService;
 		this.serviceGroupIndexService = serviceGroupIndexService;
+		this.extraMessage = extraMessage != null ? new ArrayList<>(extraMessage) : new ArrayList<>();
 	}
 
 	@Override
@@ -278,7 +284,7 @@ public class DynamicAgent extends ReActAgent {
 				// requirement
 				if (noToolSelectedCount > 0) {
 					String toolCallRequirement = String.format(
-							"\n\n⚠️ IMPORTANT: You must call at least one tool to proceed. "
+							"\n\n IMPORTANT: You must call at least one tool to proceed. "
 									+ "Previous %d attempt(s) did not select any tools. "
 									+ "Do not provide explanations or reasoning - call a tool immediately.",
 							noToolSelectedCount);
@@ -297,40 +303,31 @@ public class DynamicAgent extends ReActAgent {
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
 				String thinkInput = thinkMessages.toString();
 
-				// Check and compress memory if needed before building prompt
-				// This also returns the conversation memory to avoid duplicate retrieval
-				ChatMemory conversationMemory = checkAndCompressMemoryIfNeeded();
+				// Merge extraMessage into agentMessages at the first round
+				if (getCurrentStep() == 1 && extraMessage != null && !extraMessage.isEmpty()) {
+					log.debug("First round: merging {} extra messages into agentMessages for conversationId: {}",
+							extraMessage.size(), getConversationId());
+					agentMessages.addAll(0, extraMessage);
+					// Clear extraMessage after merging to avoid duplicate processing
+					extraMessage.clear();
+				}
+
+				// Check and compress memory after merging extraMessage (if first round) and before building prompt
+				// This calculates the full prompt token count, compresses if needed, and checks against model context limit
+				int inputTokenCount = checkAndCompressMemoryIfNeeded(systemMessage, currentStepEnvMessage);
+
+				// Validate inputTokenCount
+				if (inputTokenCount <= 0) {
+					throw new IllegalStateException(
+							"Failed to calculate input token count. TokenCountService or ConversationMemoryLimitService must be available.");
+				}
 
 				// log.debug("Messages prepared for the prompt: {}", thinkMessages);
 				// Build current prompt. System message is the first message
 				List<Message> messages = new ArrayList<>();
-				// Add history message from agent memory
+				// Add history message from agent memory (already contains extraMessage if first round, and may be compressed)
 				List<Message> historyMem = agentMessages;
 
-				// Add conversation history from conversation memory if available
-				// Reuse the conversation memory retrieved in
-				// checkAndCompressMemoryIfNeeded()
-				if (conversationMemory != null) {
-					try {
-						List<Message> conversationHistory = conversationMemory.get(getConversationId());
-						if (conversationHistory != null && !conversationHistory.isEmpty()) {
-							log.debug("Adding {} conversation history messages for conversationId: {} (round {})",
-									conversationHistory.size(), getConversationId(), getCurrentStep());
-							// Insert conversation history before current step env
-							// message
-							// to maintain chronological order
-							messages.addAll(conversationHistory);
-						}
-					}
-					catch (Exception e) {
-						log.warn(
-								"Failed to retrieve conversation history for conversationId: {}. Continuing without it.",
-								getConversationId(), e);
-					}
-				}
-				else if (!lynxeProperties.getEnableConversationMemory()) {
-					log.debug("Conversation memory is disabled, skipping conversation history retrieval");
-				}
 				messages.addAll(Collections.singletonList(systemMessage));
 				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
@@ -358,63 +355,6 @@ public class DynamicAgent extends ReActAgent {
 				}
 				else {
 					chatClient = llmService.getDynamicAgentChatClient(modelName);
-				}
-				// Calculate input token count and check limits
-				int inputTokenCount = 0;
-				// Get token services from llmService (they're injected there)
-				TokenCountService tokenCountService = llmService.getTokenCountService();
-				TokenLimitService tokenLimitService = llmService.getTokenLimitService();
-
-				if (tokenCountService != null) {
-					inputTokenCount = tokenCountService.countTokens(messages);
-					log.info("User prompt token count: {}", inputTokenCount);
-
-					// Get model name for limit checking (use provided modelName or get
-					// default)
-					String effectiveModelName = (modelName != null && !modelName.isEmpty()) ? modelName
-							: llmService.getDefaultModelName();
-
-					if (effectiveModelName != null && tokenLimitService != null && lynxeProperties != null) {
-						// Get model context limit
-						int modelContextLimit = tokenLimitService.getContextLimit(effectiveModelName);
-
-						// Get session token limit from configuration
-						Integer sessionTokenLimit = lynxeProperties.getSessionTokenLimit();
-
-						// Determine effective limit (use the smaller of sessionTokenLimit
-						// and modelLimit)
-						int effectiveLimit = modelContextLimit;
-						if (sessionTokenLimit != null && sessionTokenLimit > 0) {
-							effectiveLimit = Math.min(sessionTokenLimit, modelContextLimit);
-						}
-
-						// Check if token count exceeds limit
-						if (inputTokenCount > effectiveLimit) {
-							String errorMessage = String.format(
-									"Token limit exceeded: current=%d, limit=%d, model=%s. Please reduce the input size or clear conversation history.",
-									inputTokenCount, effectiveLimit, effectiveModelName);
-							log.error(errorMessage);
-
-							// Throw exception to stop execution
-							throw new TokenLimitExceededException(inputTokenCount, effectiveLimit, effectiveModelName);
-						}
-
-						// Log warning if approaching limit (80% threshold)
-						if (effectiveLimit > 0 && inputTokenCount > effectiveLimit * 0.8) {
-							log.warn("Token count ({}) is approaching limit ({}) for model {}", inputTokenCount,
-									effectiveLimit, effectiveModelName);
-						}
-					}
-				}
-				else {
-					// Fallback to character counting if token service not available
-					if (conversationMemoryLimitService == null) {
-						throw new IllegalStateException(
-								"Neither TokenCountService nor ConversationMemoryLimitService is available. Cannot calculate message count.");
-					}
-					int inputTokenCountFromService = conversationMemoryLimitService.calculateTotalTokens(messages);
-					log.info("User prompt token count: {} (using ConversationMemoryLimitService)", inputTokenCountFromService);
-					inputTokenCount = inputTokenCountFromService;
 				}
 
 				// Use streaming response handler for better user experience and content
@@ -1777,30 +1717,118 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Check and compress memory if needed before calling LLM. This ensures memory is
-	 * within limits before building the prompt.
-	 * @return The conversation memory instance, or null if not available
+	 * Check and compress memory if needed based on the full prompt token count.
+	 * This method calculates the token count of the complete prompt (systemMessage + agentMessages + currentStepEnvMessage),
+	 * compresses agentMessages if needed, checks against model context limit, and returns the final input token count.
+	 * @param systemMessage System message
+	 * @param currentStepEnvMessage Current step environment message
+	 * @return The input token count of the final prompt (after compression if needed)
+	 * @throws TokenLimitExceededException if token count exceeds model context limit after compression
 	 */
-	private ChatMemory checkAndCompressMemoryIfNeeded() {
-		ChatMemory conversationMemory = null;
-		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
-				&& !getConversationId().trim().isEmpty()) {
-			try {
-				conversationMemory = llmService.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(),
-						getConversationId());
+	private int checkAndCompressMemoryIfNeeded(Message systemMessage, Message currentStepEnvMessage) {
+		// Build temporary prompt list to calculate total token count
+		List<Message> tempMessages = new ArrayList<>();
+		tempMessages.add(systemMessage);
+		if (agentMessages != null && !agentMessages.isEmpty()) {
+			tempMessages.addAll(agentMessages);
+		}
+		tempMessages.add(currentStepEnvMessage);
+
+		// Get token services
+		TokenCountService tokenCountService = llmService.getTokenCountService();
+		TokenLimitService tokenLimitService = llmService.getTokenLimitService();
+
+		// Calculate total token count using TokenCountService if available, otherwise use ConversationMemoryLimitService
+		int totalTokens;
+		if (tokenCountService != null) {
+			totalTokens = tokenCountService.countTokens(tempMessages);
+		}
+		else {
+			if (conversationMemoryLimitService == null) {
+				log.warn("Neither TokenCountService nor ConversationMemoryLimitService is available. Cannot calculate token count.");
+				// Return 0 as fallback - caller should handle this case
+				return 0;
 			}
-			catch (Exception e) {
-				log.warn("Failed to get conversation memory for compression check: {}", e.getMessage());
+			totalTokens = conversationMemoryLimitService.calculateTotalTokens(tempMessages);
+		}
+
+		// Get model context limit (use modelContextLimit only, no sessionTokenLimit)
+		if (tokenLimitService == null) {
+			throw new IllegalStateException(
+					"TokenLimitService is not available. Cannot get token limit for memory compression.");
+		}
+		
+		String effectiveModelName = (modelName != null && !modelName.isEmpty()) ? modelName
+				: llmService.getDefaultModelName();
+		if (effectiveModelName == null || effectiveModelName.trim().isEmpty()) {
+			throw new IllegalStateException(
+					"Model name is not available. Cannot get token limit for memory compression.");
+		}
+		
+		int modelContextLimit = tokenLimitService.getContextLimit(effectiveModelName);
+
+		// Get compression threshold (default 70%)
+		double compressionThreshold = lynxeProperties != null
+				? (lynxeProperties.getChatCompressionThreshold() != null ? lynxeProperties.getChatCompressionThreshold() : 0.7)
+				: 0.7;
+		int thresholdTokens = (int) (modelContextLimit * compressionThreshold);
+
+		// Only compress if exceeding threshold
+		if (totalTokens <= thresholdTokens) {
+			log.debug("Full prompt token count ({} tokens) is within compression threshold ({} tokens, {}% of model limit {})",
+					totalTokens, thresholdTokens, (int) (compressionThreshold * 100), modelContextLimit);
+		}
+		else {
+			log.info(
+					"Full prompt token count ({} tokens) exceeds compression threshold ({} tokens, {}% of model limit {}). Compressing agentMessages...",
+					totalTokens, thresholdTokens, (int) (compressionThreshold * 100), modelContextLimit);
+
+			// Compress agentMessages (which already contains extraMessage if first round)
+			if (conversationMemoryLimitService != null && agentMessages != null && !agentMessages.isEmpty()) {
+				try {
+					agentMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
+
+					// Rebuild temp prompt with compressed agentMessages and recalculate token count
+					tempMessages.clear();
+					tempMessages.add(systemMessage);
+					tempMessages.addAll(agentMessages);
+					tempMessages.add(currentStepEnvMessage);
+
+					// Recalculate token count after compression
+					if (tokenCountService != null) {
+						totalTokens = tokenCountService.countTokens(tempMessages);
+					}
+					else {
+						totalTokens = conversationMemoryLimitService.calculateTotalTokens(tempMessages);
+					}
+
+					log.info("Compression completed. Agent memory now contains {} messages. Final prompt token count: {}",
+							agentMessages.size(), totalTokens);
+				}
+				catch (Exception e) {
+					log.warn("Failed to compress memory", e);
+					// Continue with original token count if compression fails
+				}
 			}
 		}
 
-		if (conversationMemoryLimitService != null) {
-			agentMessages = conversationMemoryLimitService.checkAndCompressIfNeeded(conversationMemory,
-					getConversationId(), agentMessages);
+		// Check token limit against model context limit (after compression)
+		// Note: tokenLimitService and effectiveModelName are guaranteed to be non-null at this point
+		// Check if token count exceeds model context limit
+		if (totalTokens > modelContextLimit) {
+			String errorMessage = String.format(
+					"Token limit exceeded: current=%d, limit=%d, model=%s. Please reduce the input size or clear conversation history.",
+					totalTokens, modelContextLimit, effectiveModelName);
+			log.error(errorMessage);
+
+			// Throw exception to stop execution
+			throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
 		}
 
-		return conversationMemory;
+		log.info("User prompt token count: {}", totalTokens);
+		return totalTokens;
 	}
+
 
 	private void processMemory(ToolExecutionResult toolExecutionResult) {
 		if (toolExecutionResult == null) {
@@ -1813,26 +1841,7 @@ public class DynamicAgent extends ReActAgent {
 			return;
 		}
 
-		// Step 1: Remove all conversationHistory from conversation memory first
-		// These messages will be added to Agent Memory, so remove them from conversation
-		// memory to avoid duplicates
-		if (lynxeProperties.getEnableConversationMemory() && getConversationId() != null
-				&& !getConversationId().trim().isEmpty()) {
-			try {
-				ChatMemory conversationMemory = llmService
-					.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), getConversationId());
-				List<Message> conversationHistory = conversationMemory.get(getConversationId());
-				if (conversationHistory != null && !conversationHistory.isEmpty()) {
-					messages.removeAll(conversationHistory);
-				}
-			}
-			catch (Exception e) {
-				log.warn("Failed to remove duplicate messages from conversation memory for conversationId: {}",
-						getConversationId(), e);
-			}
-		}
-
-		// Step 2: Filter messages to keep only assistant message and tool_call message
+		// Filter messages to keep only assistant message and tool_call message
 		// Also preserve compression summary messages (UserMessages with special metadata)
 		List<Message> messagesToAdd = new ArrayList<>();
 		for (Message message : messages) {

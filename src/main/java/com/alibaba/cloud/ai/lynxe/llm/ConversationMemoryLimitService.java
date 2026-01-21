@@ -70,6 +70,9 @@ public class ConversationMemoryLimitService {
 	@Autowired
 	private TokenCountService tokenCountService;
 
+	@Autowired(required = false)
+	private TokenLimitService tokenLimitService;
+
 	/**
 	 * Check and limit conversation memory size for a given conversation ID. Maintains
 	 * recent 5000 chars (at least one complete dialog round) and summarizes older rounds
@@ -136,22 +139,30 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Get the maximum token count limit from configuration.
-	 * @return Maximum token count
-	 * @throws IllegalStateException if LynxeProperties is not available
+	 * Get the maximum token count limit from TokenLimitService based on the default model.
+	 * @return Maximum token count for the current model
+	 * @throws IllegalStateException if TokenLimitService or model name is not available
 	 */
 	private int getMaxTokenCount() {
-		if (lynxeProperties == null) {
-			throw new IllegalStateException("LynxeProperties is not available. Cannot get session token limit.");
-		}
-
-		Integer sessionTokenLimit = lynxeProperties.getSessionTokenLimit();
-		if (sessionTokenLimit == null || sessionTokenLimit <= 0) {
+		if (tokenLimitService == null) {
 			throw new IllegalStateException(
-					"Session token limit is not configured or invalid. Please configure lynxe.agent.sessionTokenLimit.");
+					"TokenLimitService is not available. Cannot get token limit for conversation memory compression.");
 		}
-
-		return sessionTokenLimit;
+		
+		if (llmService == null) {
+			throw new IllegalStateException(
+					"LlmService is not available. Cannot get default model name for token limit calculation.");
+		}
+		
+		String modelName = llmService.getDefaultModelName();
+		if (modelName == null || modelName.trim().isEmpty()) {
+			throw new IllegalStateException(
+					"Default model name is not available. Cannot get token limit for conversation memory compression.");
+		}
+		
+		int modelLimit = tokenLimitService.getContextLimit(modelName);
+		log.debug("Using model-specific token limit for model '{}': {}", modelName, modelLimit);
+		return modelLimit;
 	}
 
 	/**
@@ -176,75 +187,6 @@ public class ConversationMemoryLimitService {
 		}
 		Double ratio = lynxeProperties.getChatCompressionRetentionRatio();
 		return ratio != null && ratio > 0 && ratio <= 1.0 ? ratio : DEFAULT_RETENTION_RATIO;
-	}
-
-	/**
-	 * Extract text content from a message.
-	 * @param message The message
-	 * @return Text content, or empty string if content cannot be extracted
-	 */
-	private String extractMessageContent(Message message) {
-		if (message == null) {
-			return "";
-		}
-
-		try {
-			StringBuilder content = new StringBuilder();
-
-			// Extract text content
-			String text = message.getText();
-			if (text != null && !text.isEmpty()) {
-				content.append(text);
-			}
-
-			// Extract tool calls from AssistantMessage
-			if (message instanceof AssistantMessage assistantMessage) {
-				var toolCalls = assistantMessage.getToolCalls();
-				if (toolCalls != null && !toolCalls.isEmpty()) {
-					if (content.length() > 0) {
-						content.append("\n");
-					}
-					content.append("[Tool Calls: ");
-					for (int i = 0; i < toolCalls.size(); i++) {
-						var toolCall = toolCalls.get(i);
-						if (i > 0) {
-							content.append(", ");
-						}
-						content.append(toolCall.name()).append("(").append(toolCall.arguments()).append(")");
-					}
-					content.append("]");
-				}
-			}
-			// Extract tool responses from ToolResponseMessage
-			else if (message instanceof ToolResponseMessage toolResponseMessage) {
-				var responses = toolResponseMessage.getResponses();
-				if (responses != null && !responses.isEmpty()) {
-					if (content.length() > 0) {
-						content.append("\n");
-					}
-					content.append("[Tool Responses: ");
-					for (int i = 0; i < responses.size(); i++) {
-						var response = responses.get(i);
-						if (i > 0) {
-							content.append(", ");
-						}
-						String responseData = response.responseData();
-						// Limit response data length to avoid too long content
-						if (responseData != null && responseData.length() > 200) {
-							responseData = responseData.substring(0, 200) + "...";
-						}
-						content.append(responseData);
-					}
-					content.append("]");
-				}
-			}
-
-			return content.toString();
-		}
-		catch (Exception e) {
-			log.debug("Failed to extract content from message: {}", e.getMessage());
-			return "";
-		}
 	}
 
 	/**
@@ -870,17 +812,17 @@ public class ConversationMemoryLimitService {
 
 		try {
 			// Get conversation messages
-			List<Message> conversationMessages = new ArrayList<>();
+			List<Message> extraMessage = new ArrayList<>();
 			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()) {
 				List<Message> convMsgs = conversationMemory.get(conversationId);
 				if (convMsgs != null) {
-					conversationMessages = convMsgs;
+					extraMessage = convMsgs;
 				}
 			}
 
 			// Combine all messages to check total size
 			List<Message> allMessages = new ArrayList<>();
-			allMessages.addAll(conversationMessages);
+			allMessages.addAll(extraMessage);
 			allMessages.addAll(agentMessages);
 
 			// Calculate total token count
@@ -898,7 +840,7 @@ public class ConversationMemoryLimitService {
 
 			// Step 1: Force compress conversation memory first
 			if (conversationMemory != null && conversationId != null && !conversationId.trim().isEmpty()
-					&& !conversationMessages.isEmpty()) {
+					&& !extraMessage.isEmpty()) {
 				try {
 					forceCompressConversationMemory(conversationMemory, conversationId);
 					log.info("Force compressed conversation memory for conversationId: {}", conversationId);
