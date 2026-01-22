@@ -138,6 +138,10 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 		initSettings.put(CURRENT_STEP_INDEX_KEY, String.valueOf(stepIndex));
 		initSettings.put(STEP_TEXT_KEY, stepText);
 		initSettings.put(TITLE_KEY, title != null ? title : "");
+		// Add recursive call chain from ExecutionContext if available
+		if (context.getRecursiveCallChain() != null && !context.getRecursiveCallChain().isEmpty()) {
+			initSettings.put(RECURSIVE_CALL_CHAIN_KEY, context.getRecursiveCallChain());
+		}
 		if ("ConfigurableDynaAgent".equals(stepType)) {
 			String modelName = step.getModelName();
 			List<String> selectedToolKeys = step.getSelectedToolKeys();

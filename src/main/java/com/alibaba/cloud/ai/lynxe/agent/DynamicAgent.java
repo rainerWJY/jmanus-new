@@ -64,11 +64,13 @@ import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ActToolParam;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ThinkActRecordParams;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionStep;
+import com.alibaba.cloud.ai.lynxe.runtime.executor.AbstractPlanExecutor;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionCheckerService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
+import com.alibaba.cloud.ai.lynxe.subplan.model.vo.SubplanToolWrapper;
 import com.alibaba.cloud.ai.lynxe.tool.ErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.SystemErrorReportTool;
@@ -349,6 +351,8 @@ public class DynamicAgent extends ReActAgent {
 				Map<String, Object> toolContextMap = new HashMap<>();
 				toolContextMap.put("toolcallId", toolcallId);
 				toolContextMap.put("planDepth", getPlanDepth());
+				// NOTE: Do NOT add recursive call chain here - it should only be in tool execution contexts
+				// Adding it here can cause serialization issues with Spring AI
 				ToolCallingChatOptions chatOptions = ToolCallingChatOptions.builder()
 					.internalToolExecutionEnabled(false)
 					.toolContext(toolContextMap)
@@ -789,6 +793,7 @@ public class DynamicAgent extends ReActAgent {
 		// Create parent ToolContext
 		Map<String, Object> parentContextMap = new HashMap<>();
 		parentContextMap.put("planDepth", getPlanDepth());
+		addRecursiveCallChainToContext(parentContextMap);
 		ToolContext parentToolContext = new ToolContext(parentContextMap);
 
 		// Start with an empty list CompletableFuture
@@ -869,6 +874,7 @@ public class DynamicAgent extends ReActAgent {
 		// Create parent ToolContext
 		Map<String, Object> parentContextMap = new HashMap<>();
 		parentContextMap.put("planDepth", getPlanDepth());
+		addRecursiveCallChainToContext(parentContextMap);
 		ToolContext parentToolContext = new ToolContext(parentContextMap);
 
 		// Use ParallelExecutionService to execute in parallel
@@ -2019,6 +2025,24 @@ public class DynamicAgent extends ReActAgent {
 		data.putAll(getInitSettingData());
 		data.put(CURRENT_STEP_ENV_DATA_KEY, convertEnvDataToString());
 		return data;
+	}
+
+	/**
+	 * Add recursive call chain to ToolContext map if available in initSettings
+	 * @param toolContextMap The ToolContext map to add the recursive call chain to
+	 */
+	@SuppressWarnings("unchecked")
+	private void addRecursiveCallChainToContext(Map<String, Object> toolContextMap) {
+		Map<String, Object> initSettings = getInitSettingData();
+		Object chainObj = initSettings.get(AbstractPlanExecutor.RECURSIVE_CALL_CHAIN_KEY);
+		if (chainObj instanceof List) {
+			List<?> chain = (List<?>) chainObj;
+			// Validate that all elements are strings
+			boolean allStrings = chain.stream().allMatch(item -> item instanceof String);
+			if (allStrings) {
+				toolContextMap.put(SubplanToolWrapper.RECURSIVE_CALL_CHAIN_KEY, chain);
+			}
+		}
 	}
 
 	@Override

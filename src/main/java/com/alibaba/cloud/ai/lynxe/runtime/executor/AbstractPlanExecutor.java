@@ -93,6 +93,8 @@ public abstract class AbstractPlanExecutor implements PlanExecutorInterface {
 
 	public static final String TITLE_KEY = "title";
 
+	public static final String RECURSIVE_CALL_CHAIN_KEY = "recursiveCallChain";
+
 	public AbstractPlanExecutor(List<DynamicAgentEntity> agents, PlanExecutionRecorder recorder, LlmService llmService,
 			LynxeProperties lynxeProperties, LevelBasedExecutorPool levelBasedExecutorPool,
 			FileUploadService fileUploadService, AgentInterruptionHelper agentInterruptionHelper,
