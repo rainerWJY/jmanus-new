@@ -203,8 +203,8 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 
 			// Extract recursive call chain and check limit
 			List<String> existingCallChain = extractRecursiveCallChainFromContext(toolContext);
-			String currentPlanTemplateId = coordinatorToolConfig != null
-					? coordinatorToolConfig.getPlanTemplateId() : null;
+			String currentPlanTemplateId = coordinatorToolConfig != null ? coordinatorToolConfig.getPlanTemplateId()
+					: null;
 
 			if (currentPlanTemplateId != null) {
 				// Check if consecutive recursive calls exceed limit
@@ -226,7 +226,8 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 
 				// Build updated call chain
 				List<String> updatedCallChain = buildUpdatedCallChain(currentPlanTemplateId, existingCallChain);
-				logger.debug("Updated recursive call chain: {} (length: {})", updatedCallChain, updatedCallChain.size());
+				logger.debug("Updated recursive call chain: {} (length: {})", updatedCallChain,
+						updatedCallChain.size());
 
 				return executeSubplanWithToolCallIdAsync(input, toolCallId, subplanDepth, updatedCallChain);
 			}
@@ -316,10 +317,11 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 	}
 
 	/**
-	 * Extract recursive call chain from ToolContext. This method looks for recursiveCallChain
-	 * in the tool context.
+	 * Extract recursive call chain from ToolContext. This method looks for
+	 * recursiveCallChain in the tool context.
 	 * @param toolContext The tool context containing recursive call chain information
-	 * @return List of planTemplateIds representing the call chain, empty list if not found
+	 * @return List of planTemplateIds representing the call chain, empty list if not
+	 * found
 	 */
 	@SuppressWarnings("unchecked")
 	private List<String> extractRecursiveCallChainFromContext(ToolContext toolContext) {
@@ -343,8 +345,8 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 	}
 
 	/**
-	 * Check if consecutive recursive calls exceed the limit. Counts consecutive occurrences
-	 * of the same planTemplateId from the end of the call chain.
+	 * Check if consecutive recursive calls exceed the limit. Counts consecutive
+	 * occurrences of the same planTemplateId from the end of the call chain.
 	 * @param planTemplateId The plan template ID to check
 	 * @param callChain The existing call chain
 	 * @return true if limit exceeded, false otherwise
@@ -372,7 +374,8 @@ public class SubplanToolWrapper extends AbstractBaseTool<Map<String, Object>>
 	}
 
 	/**
-	 * Build updated call chain by adding the current planTemplateId to the existing chain.
+	 * Build updated call chain by adding the current planTemplateId to the existing
+	 * chain.
 	 * @param planTemplateId The current plan template ID to add
 	 * @param existingChain The existing call chain
 	 * @return Updated call chain with current planTemplateId appended

@@ -265,7 +265,8 @@ public class ExecutionContext {
 
 	/**
 	 * Set recursive call chain
-	 * @param recursiveCallChain List of planTemplateIds representing the recursive call chain
+	 * @param recursiveCallChain List of planTemplateIds representing the recursive call
+	 * chain
 	 */
 	public void setRecursiveCallChain(List<String> recursiveCallChain) {
 		this.recursiveCallChain = recursiveCallChain != null ? new ArrayList<>(recursiveCallChain) : new ArrayList<>();

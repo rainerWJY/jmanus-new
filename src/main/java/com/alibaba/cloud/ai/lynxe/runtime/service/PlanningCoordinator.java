@@ -92,7 +92,8 @@ public class PlanningCoordinator {
 	 * @param uploadKey Upload key
 	 * @param planDepth Plan depth
 	 * @param conversationId Conversation ID
-	 * @param recursiveCallChain Recursive call chain (list of planTemplateIds), can be null
+	 * @param recursiveCallChain Recursive call chain (list of planTemplateIds), can be
+	 * null
 	 * @return CompletableFuture that completes with plan execution result
 	 */
 	public CompletableFuture<PlanExecutionResult> executeByPlan(PlanInterface plan, String rootPlanId,

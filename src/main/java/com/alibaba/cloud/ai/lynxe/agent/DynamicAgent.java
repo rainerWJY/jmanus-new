@@ -351,7 +351,8 @@ public class DynamicAgent extends ReActAgent {
 				Map<String, Object> toolContextMap = new HashMap<>();
 				toolContextMap.put("toolcallId", toolcallId);
 				toolContextMap.put("planDepth", getPlanDepth());
-				// NOTE: Do NOT add recursive call chain here - it should only be in tool execution contexts
+				// NOTE: Do NOT add recursive call chain here - it should only be in tool
+				// execution contexts
 				// Adding it here can cause serialization issues with Spring AI
 				ToolCallingChatOptions chatOptions = ToolCallingChatOptions.builder()
 					.internalToolExecutionEnabled(false)

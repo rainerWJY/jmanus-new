@@ -169,8 +169,8 @@ public class McpCacheManager {
 	private final Map<String, ConnectionStatusInfo> connectionStatusMap = new ConcurrentHashMap<>();
 
 	/**
-	 * Track last error log time for each server to throttle error logging
-	 * (serverName -> lastErrorLogTime)
+	 * Track last error log time for each server to throttle error logging (serverName ->
+	 * lastErrorLogTime)
 	 */
 	private final Map<String, Long> lastErrorLogTimeMap = new ConcurrentHashMap<>();
 
@@ -181,8 +181,8 @@ public class McpCacheManager {
 	private final Map<String, Long> lastRebuildAttemptTimeMap = new ConcurrentHashMap<>();
 
 	/**
-	 * Track consecutive failure count for each server
-	 * (serverName -> consecutiveFailureCount)
+	 * Track consecutive failure count for each server (serverName ->
+	 * consecutiveFailureCount)
 	 */
 	private final Map<String, AtomicInteger> consecutiveFailureCountMap = new ConcurrentHashMap<>();
 
@@ -1090,7 +1090,8 @@ public class McpCacheManager {
 			return message;
 		}
 
-		return rootCause.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "Unknown error");
+		return rootCause.getClass().getSimpleName() + ": "
+				+ (e.getMessage() != null ? e.getMessage() : "Unknown error");
 	}
 
 	/**

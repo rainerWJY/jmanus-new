@@ -199,7 +199,8 @@ public class McpConnectionFactory {
 							e.getMessage());
 				}
 				else {
-					// Final attempt - log error but without full stack trace here (will log in final block)
+					// Final attempt - log error but without full stack trace here (will
+					// log in final block)
 					logger.warn("Final attempt ({}/{}) failed for {}: {}", attempt, maxRetries, mcpServerName,
 							e.getMessage());
 				}
@@ -239,14 +240,16 @@ public class McpConnectionFactory {
 		// Final error logging with comprehensive diagnosis (only if all attempts failed)
 		if (lastException != null) {
 			String finalDiagnosis = diagnoseInitializationError(lastException, mcpServerName);
-			// Log final error - this is the only place we log full stack trace for repeated failures
+			// Log final error - this is the only place we log full stack trace for
+			// repeated failures
 			logger.error(
 					"Failed to initialize MCP transport for {} after {} attempts. Error type: {}, Diagnosis: {}, Message: {}",
 					mcpServerName, maxRetries, lastException.getClass().getSimpleName(), finalDiagnosis,
 					lastException.getMessage(), lastException);
 			// Extract root cause message for better error reporting
 			String rootCauseMessage = extractRootCauseMessage(lastException);
-			// Throw IOException with root cause message, preserving the original exception as cause
+			// Throw IOException with root cause message, preserving the original
+			// exception as cause
 			throw new IOException(rootCauseMessage, lastException);
 		}
 		return null;
