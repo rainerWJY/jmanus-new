@@ -382,6 +382,11 @@ const words: I18nType = {
       exportFailed: '导出失败',
       statusToggleSuccess: '状态切换成功',
       statusToggleFailed: '状态切换失败',
+      connectionStatus: {
+        connected: '已连接',
+        disconnected: '未连接',
+        error: '错误',
+      },
       missingUrlField: '缺少url字段: {serverId} - 没有command时必须有url或baseUrl',
       urlFieldTip: '💡 需要提供 url 或 baseUrl 字段',
       serverConfigWarning: 'Server {serverId} has no command but also no url or baseUrl',

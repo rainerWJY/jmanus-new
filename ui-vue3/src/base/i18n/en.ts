@@ -397,6 +397,11 @@ const words: I18nType = {
       exportFailed: 'Export failed',
       statusToggleSuccess: 'Status toggle successful',
       statusToggleFailed: 'Status toggle failed',
+      connectionStatus: {
+        connected: 'Connected',
+        disconnected: 'Disconnected',
+        error: 'Error',
+      },
       missingUrlField: 'Missing url field: {serverId} - must have url or baseUrl when no command',
       urlFieldTip: '💡 Please provide url or baseUrl field',
       serverConfigWarning: 'Server {serverId} has no command but also no url or baseUrl',
