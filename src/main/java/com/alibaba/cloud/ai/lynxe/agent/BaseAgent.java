@@ -186,14 +186,17 @@ public abstract class BaseAgent {
 		String detailOutput = "";
 		if (isDebugModel) {
 			detailOutput = """
+			    Important Notes:
 					1. When using tool calls, you must provide explanations describing the reason for using this tool and the thinking behind it
+					2. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 					""";
 
 		}
 		else {
 			detailOutput = """
-					1. When using tool calls, no additional explanations are needed!
-					2. Do not provide reasoning or descriptions before tool calls!""";
+				Important Notes:
+					1.  If the current step requirements have been completed, call the default-terminate tool to finish the current step.
+				""";
 		}
 		String parallelToolCallsResponse = "";
 		if (lynxeProperties.getParallelToolCalls()) {
@@ -244,11 +247,9 @@ public abstract class BaseAgent {
 				Current Date:
 				{currentDateTime}
 
-				Important Notes:
+				
 				{detailOutput}
 
-				3. Do only and exactly what is required in the current step requirements
-				4. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 
 				{parallelToolCallsResponse}
 				</system-reminder>
