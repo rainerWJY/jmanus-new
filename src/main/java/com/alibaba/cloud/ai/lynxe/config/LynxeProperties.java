@@ -391,7 +391,7 @@ public class LynxeProperties {
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "maxLinesForFullRead",
 			path = "lynxe.agent.maxLinesForFullRead", description = "lynxe.agent.maxLinesForFullRead.description",
-			defaultValue = "1", inputType = ConfigInputType.NUMBER)
+			defaultValue = "700", inputType = ConfigInputType.NUMBER)
 	private volatile Integer maxLinesForFullRead;
 
 	public Integer getMaxLinesForFullRead() {
@@ -402,7 +402,7 @@ public class LynxeProperties {
 		}
 		// Ensure a default value if not configured and not set
 		if (maxLinesForFullRead == null) {
-			maxLinesForFullRead = 1;
+			maxLinesForFullRead = 700;
 		}
 		return maxLinesForFullRead;
 	}
