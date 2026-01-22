@@ -122,7 +122,8 @@ public interface PlanExecutionRecorder {
 
 		private final String errorMessage;
 
-		// Note: These fields store token counts, but keep the naming for database column compatibility
+		// Note: These fields store token counts, but keep the naming for database column
+		// compatibility
 		private final Integer inputCharCount; // Actually stores token count
 
 		private final Integer outputCharCount; // Actually stores token count
@@ -152,8 +153,10 @@ public interface PlanExecutionRecorder {
 			this.thinkInput = thinkInput;
 			this.thinkOutput = thinkOutput;
 			this.errorMessage = errorMessage;
-			this.inputCharCount = inputTokenCount; // Store token count in charCount field for DB compatibility
-			this.outputCharCount = outputTokenCount; // Store token count in charCount field for DB compatibility
+			this.inputCharCount = inputTokenCount; // Store token count in charCount field
+													// for DB compatibility
+			this.outputCharCount = outputTokenCount; // Store token count in charCount
+														// field for DB compatibility
 			this.modelContextLimit = modelContextLimit;
 			this.actToolInfoList = actToolInfoList;
 		}
@@ -183,7 +186,8 @@ public interface PlanExecutionRecorder {
 		}
 
 		/**
-		 * Get input token count (stored in inputCharCount field for database compatibility)
+		 * Get input token count (stored in inputCharCount field for database
+		 * compatibility)
 		 * @return Input token count
 		 */
 		public Integer getInputCharCount() {
@@ -191,7 +195,8 @@ public interface PlanExecutionRecorder {
 		}
 
 		/**
-		 * Get output token count (stored in outputCharCount field for database compatibility)
+		 * Get output token count (stored in outputCharCount field for database
+		 * compatibility)
 		 * @return Output token count
 		 */
 		public Integer getOutputCharCount() {

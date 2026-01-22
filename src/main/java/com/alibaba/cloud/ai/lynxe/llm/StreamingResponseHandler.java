@@ -287,7 +287,8 @@ public class StreamingResponseHandler {
 					outputTokenCount = tokenCountService.countTokens(messageTextContentRef.get().toString());
 				}
 				else if (messageTextContentRef.get() != null) {
-					// Fallback to approximate character-based estimation if TokenCountService not available
+					// Fallback to approximate character-based estimation if
+					// TokenCountService not available
 					outputTokenCount = (int) Math.ceil(messageTextContentRef.get().length() / 4.0);
 				}
 				// Store it in AtomicReference for later retrieval

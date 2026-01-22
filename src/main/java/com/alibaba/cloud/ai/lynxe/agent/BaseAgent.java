@@ -222,17 +222,16 @@ public abstract class BaseAgent {
 		variables.put("currentDateTime", currentDateTime);
 		variables.put("detailOutput", detailOutput);
 		variables.put("parallelToolCallsResponse", parallelToolCallsResponse);
-		
+
 		// Get title and execution parameters, with defaults
-		String title = variables.containsKey("title") && variables.get("title") != null 
+		String title = variables.containsKey("title") && variables.get("title") != null
 				? variables.get("title").toString() : "";
-		
 
 		variables.put("title", title);
 
 		String stepExecutionPrompt = """
 				<user-request>
-				{stepText} 
+				{stepText}
 				</user-request>
 
 				<system-reminder>
@@ -254,7 +253,7 @@ public abstract class BaseAgent {
 				{parallelToolCallsResponse}
 				</system-reminder>
 				""";
-		
+
 		PromptTemplate template = new PromptTemplate(stepExecutionPrompt);
 		return template.createMessage(variables != null ? variables : Map.of());
 	}

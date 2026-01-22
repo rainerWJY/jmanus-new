@@ -64,7 +64,6 @@ import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ActToolParam;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ThinkActRecordParams;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionStep;
-import com.alibaba.cloud.ai.lynxe.runtime.executor.AbstractPlanExecutor;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
@@ -163,14 +162,14 @@ public class DynamicAgent extends ReActAgent {
 	private List<Message> agentMessages = new ArrayList<>();
 
 	/**
-	 * Extra messages stored as a list. Set during agent initialization
-	 * to avoid repeated retrieval from ChatMemory.
+	 * Extra messages stored as a list. Set during agent initialization to avoid repeated
+	 * retrieval from ChatMemory.
 	 */
 	private List<Message> extraMessage = new ArrayList<>();
 
 	/**
-	 * Model context limit (in tokens) used for the current think-act cycle.
-	 * Set during checkAndCompressMemoryIfNeeded() and used when recording ThinkActRecord.
+	 * Model context limit (in tokens) used for the current think-act cycle. Set during
+	 * checkAndCompressMemoryIfNeeded() and used when recording ThinkActRecord.
 	 */
 	private Integer currentModelContextLimit = null;
 
@@ -318,8 +317,10 @@ public class DynamicAgent extends ReActAgent {
 					extraMessage.clear();
 				}
 
-				// Check and compress memory after merging extraMessage (if first round) and before building prompt
-				// This calculates the full prompt token count, compresses if needed, and checks against model context limit
+				// Check and compress memory after merging extraMessage (if first round)
+				// and before building prompt
+				// This calculates the full prompt token count, compresses if needed, and
+				// checks against model context limit
 				int inputTokenCount = checkAndCompressMemoryIfNeeded(systemMessage, currentStepEnvMessage);
 
 				// Validate inputTokenCount
@@ -331,7 +332,8 @@ public class DynamicAgent extends ReActAgent {
 				// log.debug("Messages prepared for the prompt: {}", thinkMessages);
 				// Build current prompt. System message is the first message
 				List<Message> messages = new ArrayList<>();
-				// Add history message from agent memory (already contains extraMessage if first round, and may be compressed)
+				// Add history message from agent memory (already contains extraMessage if
+				// first round, and may be compressed)
 				List<Message> historyMem = agentMessages;
 
 				messages.addAll(Collections.singletonList(systemMessage));
@@ -373,8 +375,7 @@ public class DynamicAgent extends ReActAgent {
 				// Enable early termination for agent thinking (should have tool calls)
 				// Pass token count directly to StreamingResponseHandler
 				streamResult = streamingResponseHandler.processStreamingResponse(responseFlux,
-						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true,
-						inputTokenCount);
+						"Agent " + getName() + " thinking", getCurrentPlanId(), isDebugModel, true, inputTokenCount);
 
 				// Extract commonly used data into AgentStreamingResult
 				List<ToolCall> toolCalls = streamResult.getEffectiveToolCalls();
@@ -389,8 +390,8 @@ public class DynamicAgent extends ReActAgent {
 				// extractAssistantMessageFromResponse)
 				response = streamResult.getLastResponse();
 
-				log.info("Input token count: {}, Output token count: {}",
-						agentStreamingResult.getInputTokenCount(), agentStreamingResult.getOutputTokenCount());
+				log.info("Input token count: {}, Output token count: {}", agentStreamingResult.getInputTokenCount(),
+						agentStreamingResult.getOutputTokenCount());
 
 				log.info(String.format("✨ %s's thoughts: %s", getName(), agentStreamingResult.getResponseText()));
 				log.info(String.format("🛠️ %s selected %d tools to use", getName(),
@@ -1737,13 +1738,15 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Check and compress memory if needed based on the full prompt token count.
-	 * This method calculates the token count of the complete prompt (systemMessage + agentMessages + currentStepEnvMessage),
-	 * compresses agentMessages if needed, checks against model context limit, and returns the final input token count.
+	 * Check and compress memory if needed based on the full prompt token count. This
+	 * method calculates the token count of the complete prompt (systemMessage +
+	 * agentMessages + currentStepEnvMessage), compresses agentMessages if needed, checks
+	 * against model context limit, and returns the final input token count.
 	 * @param systemMessage System message
 	 * @param currentStepEnvMessage Current step environment message
 	 * @return The input token count of the final prompt (after compression if needed)
-	 * @throws TokenLimitExceededException if token count exceeds model context limit after compression
+	 * @throws TokenLimitExceededException if token count exceeds model context limit
+	 * after compression
 	 */
 	private int checkAndCompressMemoryIfNeeded(Message systemMessage, Message currentStepEnvMessage) {
 		// Build temporary prompt list to calculate total token count
@@ -1758,14 +1761,16 @@ public class DynamicAgent extends ReActAgent {
 		TokenCountService tokenCountService = llmService.getTokenCountService();
 		TokenLimitService tokenLimitService = llmService.getTokenLimitService();
 
-		// Calculate total token count using TokenCountService if available, otherwise use ConversationMemoryLimitService
+		// Calculate total token count using TokenCountService if available, otherwise use
+		// ConversationMemoryLimitService
 		int totalTokens;
 		if (tokenCountService != null) {
 			totalTokens = tokenCountService.countTokens(tempMessages);
 		}
 		else {
 			if (conversationMemoryLimitService == null) {
-				log.warn("Neither TokenCountService nor ConversationMemoryLimitService is available. Cannot calculate token count.");
+				log.warn(
+						"Neither TokenCountService nor ConversationMemoryLimitService is available. Cannot calculate token count.");
 				// Return 0 as fallback - caller should handle this case
 				return 0;
 			}
@@ -1777,27 +1782,27 @@ public class DynamicAgent extends ReActAgent {
 			throw new IllegalStateException(
 					"TokenLimitService is not available. Cannot get token limit for memory compression.");
 		}
-		
+
 		String effectiveModelName = (modelName != null && !modelName.isEmpty()) ? modelName
 				: llmService.getDefaultModelName();
 		if (effectiveModelName == null || effectiveModelName.trim().isEmpty()) {
 			throw new IllegalStateException(
 					"Model name is not available. Cannot get token limit for memory compression.");
 		}
-		
+
 		int modelContextLimit = tokenLimitService.getContextLimit(effectiveModelName);
 		// Store for later use when recording ThinkActRecord
 		this.currentModelContextLimit = modelContextLimit;
 
 		// Get compression threshold (default 70%)
-		double compressionThreshold = lynxeProperties != null
-				? (lynxeProperties.getChatCompressionThreshold() != null ? lynxeProperties.getChatCompressionThreshold() : 0.7)
-				: 0.7;
+		double compressionThreshold = lynxeProperties != null ? (lynxeProperties.getChatCompressionThreshold() != null
+				? lynxeProperties.getChatCompressionThreshold() : 0.7) : 0.7;
 		int thresholdTokens = (int) (modelContextLimit * compressionThreshold);
 
 		// Only compress if exceeding threshold
 		if (totalTokens <= thresholdTokens) {
-			log.debug("Full prompt token count ({} tokens) is within compression threshold ({} tokens, {}% of model limit {})",
+			log.debug(
+					"Full prompt token count ({} tokens) is within compression threshold ({} tokens, {}% of model limit {})",
 					totalTokens, thresholdTokens, (int) (compressionThreshold * 100), modelContextLimit);
 		}
 		else {
@@ -1810,7 +1815,8 @@ public class DynamicAgent extends ReActAgent {
 				try {
 					agentMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
 
-					// Rebuild temp prompt with compressed agentMessages and recalculate token count
+					// Rebuild temp prompt with compressed agentMessages and recalculate
+					// token count
 					tempMessages.clear();
 					tempMessages.add(systemMessage);
 					tempMessages.addAll(agentMessages);
@@ -1824,7 +1830,8 @@ public class DynamicAgent extends ReActAgent {
 						totalTokens = conversationMemoryLimitService.calculateTotalTokens(tempMessages);
 					}
 
-					log.info("Compression completed. Agent memory now contains {} messages. Final prompt token count: {}",
+					log.info(
+							"Compression completed. Agent memory now contains {} messages. Final prompt token count: {}",
 							agentMessages.size(), totalTokens);
 				}
 				catch (Exception e) {
@@ -1835,7 +1842,8 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		// Check token limit against model context limit (after compression)
-		// Note: tokenLimitService and effectiveModelName are guaranteed to be non-null at this point
+		// Note: tokenLimitService and effectiveModelName are guaranteed to be non-null at
+		// this point
 		// Check if token count exceeds model context limit
 		if (totalTokens > modelContextLimit) {
 			String errorMessage = String.format(
@@ -1850,7 +1858,6 @@ public class DynamicAgent extends ReActAgent {
 		log.info("User prompt token count: {}", totalTokens);
 		return totalTokens;
 	}
-
 
 	private void processMemory(ToolExecutionResult toolExecutionResult) {
 		if (toolExecutionResult == null) {
@@ -2010,7 +2017,7 @@ public class DynamicAgent extends ReActAgent {
 	private Map<String, Object> getMergedData() {
 		Map<String, Object> data = new HashMap<>();
 		data.putAll(getInitSettingData());
-		data.put(AbstractPlanExecutor.EXECUTION_ENV_STRING_KEY, convertEnvDataToString());
+		data.put(CURRENT_STEP_ENV_DATA_KEY, convertEnvDataToString());
 		return data;
 	}
 

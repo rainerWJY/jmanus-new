@@ -268,7 +268,6 @@ public class LynxeProperties {
 		this.enableSmartContentSaving = enableSmartContentSaving;
 	}
 
-
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "chatCompressionThreshold",
 			path = "lynxe.agent.chatCompressionThreshold",
 			description = "lynxe.agent.chatCompressionThreshold.description", defaultValue = "0.7",

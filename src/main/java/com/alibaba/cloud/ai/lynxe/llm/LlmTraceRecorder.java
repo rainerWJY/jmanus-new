@@ -90,7 +90,8 @@ public class LlmTraceRecorder {
 							}
 						}
 						catch (IllegalStateException e) {
-							selfLogger.debug("Message contains non-string content (likely media), skipping token count");
+							selfLogger
+								.debug("Message contains non-string content (likely media), skipping token count");
 						}
 					}
 				}
@@ -177,7 +178,8 @@ public class LlmTraceRecorder {
 	}
 
 	/**
-	 * @deprecated Use setInputTokenCount() instead. This method is kept for backward compatibility.
+	 * @deprecated Use setInputTokenCount() instead. This method is kept for backward
+	 * compatibility.
 	 */
 	@Deprecated
 	public void setInputCharCount(int count) {
@@ -185,7 +187,8 @@ public class LlmTraceRecorder {
 	}
 
 	/**
-	 * @deprecated Use getInputTokenCount() instead. This method is kept for backward compatibility.
+	 * @deprecated Use getInputTokenCount() instead. This method is kept for backward
+	 * compatibility.
 	 */
 	@Deprecated
 	public int getInputCharCount() {
@@ -193,7 +196,8 @@ public class LlmTraceRecorder {
 	}
 
 	/**
-	 * @deprecated Use getOutputTokenCount() instead. This method is kept for backward compatibility.
+	 * @deprecated Use getOutputTokenCount() instead. This method is kept for backward
+	 * compatibility.
 	 */
 	@Deprecated
 	public int getOutputCharCount() {

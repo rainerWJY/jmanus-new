@@ -34,8 +34,8 @@ import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Service to automatically limit conversation memory size based on token count. Uses
- * LLM to summarize older dialog rounds while maintaining recent 5000 characters.
+ * Service to automatically limit conversation memory size based on token count. Uses LLM
+ * to summarize older dialog rounds while maintaining recent 5000 characters.
  *
  * @author lynxe
  */
@@ -93,21 +93,22 @@ public class ConversationMemoryLimitService {
 
 			int totalTokens = calculateTotalTokens(messages);
 			int maxTokens = getMaxTokenCount();
-			
+
 			// Get compression threshold (default 70%)
 			double compressionThreshold = getCompressionThreshold();
 			int thresholdTokens = (int) (maxTokens * compressionThreshold);
-			
+
 			// Trigger compression when reaching threshold (proactive)
 			if (totalTokens <= thresholdTokens) {
-				log.debug("Conversation memory size ({} tokens) is within compression threshold ({} tokens, {}%) for conversationId: {}",
-						totalTokens, thresholdTokens, (int)(compressionThreshold * 100), conversationId);
+				log.debug(
+						"Conversation memory size ({} tokens) is within compression threshold ({} tokens, {}%) for conversationId: {}",
+						totalTokens, thresholdTokens, (int) (compressionThreshold * 100), conversationId);
 				return;
 			}
 
 			log.info(
 					"Conversation memory size ({} tokens) exceeds compression threshold ({} tokens, {}% of limit {}) for conversationId: {}. Summarizing older messages...",
-					totalTokens, thresholdTokens, (int)(compressionThreshold * 100), maxTokens, conversationId);
+					totalTokens, thresholdTokens, (int) (compressionThreshold * 100), maxTokens, conversationId);
 
 			// Summarize and trim messages
 			summarizeAndTrimMessages(chatMemory, conversationId, messages);
@@ -119,8 +120,8 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Calculate total token count of all messages using TokenCountService. This gives
-	 * a more accurate count of the actual data that would be sent to LLM.
+	 * Calculate total token count of all messages using TokenCountService. This gives a
+	 * more accurate count of the actual data that would be sent to LLM.
 	 * @param messages List of messages
 	 * @return Total token count
 	 * @throws IllegalStateException if TokenCountService is not available
@@ -139,7 +140,8 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Get the maximum token count limit from TokenLimitService based on the default model.
+	 * Get the maximum token count limit from TokenLimitService based on the default
+	 * model.
 	 * @return Maximum token count for the current model
 	 * @throws IllegalStateException if TokenLimitService or model name is not available
 	 */
@@ -148,18 +150,18 @@ public class ConversationMemoryLimitService {
 			throw new IllegalStateException(
 					"TokenLimitService is not available. Cannot get token limit for conversation memory compression.");
 		}
-		
+
 		if (llmService == null) {
 			throw new IllegalStateException(
 					"LlmService is not available. Cannot get default model name for token limit calculation.");
 		}
-		
+
 		String modelName = llmService.getDefaultModelName();
 		if (modelName == null || modelName.trim().isEmpty()) {
 			throw new IllegalStateException(
 					"Default model name is not available. Cannot get token limit for conversation memory compression.");
 		}
-		
+
 		int modelLimit = tokenLimitService.getContextLimit(modelName);
 		log.debug("Using model-specific token limit for model '{}': {}", modelName, modelLimit);
 		return modelLimit;
@@ -190,8 +192,9 @@ public class ConversationMemoryLimitService {
 	}
 
 	/**
-	 * Summarize and trim messages: retain configurable ratio (default 30%) of content (by token count), ensuring
-	 * at least one complete round is kept. Summarize older rounds into a summary UserMessage.
+	 * Summarize and trim messages: retain configurable ratio (default 30%) of content (by
+	 * token count), ensuring at least one complete round is kept. Summarize older rounds
+	 * into a summary UserMessage.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID
 	 * @param messages Current list of messages
@@ -220,7 +223,8 @@ public class ConversationMemoryLimitService {
 		}
 
 		// Find which rounds to keep and which to summarize
-		// Strategy: Keep rounds from newest to oldest until accumulated chars reach retention ratio
+		// Strategy: Keep rounds from newest to oldest until accumulated chars reach
+		// retention ratio
 		List<DialogRound> roundsToKeep = new ArrayList<>();
 		List<DialogRound> roundsToSummarize = new ArrayList<>();
 
@@ -285,7 +289,7 @@ public class ConversationMemoryLimitService {
 			// Add confirmation AssistantMessage to maintain user-assistant pair pattern
 			AssistantMessage confirmationMessage = new AssistantMessage(COMPRESSION_CONFIRMATION_MESSAGE);
 			chatMemory.add(conversationId, confirmationMessage);
-		
+
 		}
 
 		// Add recent rounds
@@ -418,11 +422,11 @@ public class ConversationMemoryLimitService {
 			try {
 				conversationHistory = objectMapper.writeValueAsString(allMessages);
 			}
-		catch (Exception e) {
-			log.error("Failed to serialize messages to JSON for summarization", e);
-			throw new IllegalStateException("Failed to serialize messages to JSON for summarization: " + e.getMessage(),
-					e);
-		}
+			catch (Exception e) {
+				log.error("Failed to serialize messages to JSON for summarization", e);
+				throw new IllegalStateException(
+						"Failed to serialize messages to JSON for summarization: " + e.getMessage(), e);
+			}
 
 			// Create summarization prompt with state_snapshot XML format requirement
 			String summaryPrompt = String.format(
@@ -526,8 +530,8 @@ public class ConversationMemoryLimitService {
 
 	/**
 	 * Force compress conversation memory to break potential loops. This method compresses
-	 * the memory regardless of token count limits, keeping only the most recent round
-	 * and summarizing all older rounds.
+	 * the memory regardless of token count limits, keeping only the most recent round and
+	 * summarizing all older rounds.
 	 * @param chatMemory The chat memory instance
 	 * @param conversationId The conversation ID to compress memory for
 	 */
@@ -558,7 +562,8 @@ public class ConversationMemoryLimitService {
 			// Calculate total token count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
-			// Calculate target retention: configurable ratio (default 30%) of total content
+			// Calculate target retention: configurable ratio (default 30%) of total
+			// content
 			double retentionRatio = getRetentionRatio();
 			int targetRetentionChars = (int) (totalChars * retentionRatio);
 
@@ -689,7 +694,8 @@ public class ConversationMemoryLimitService {
 			// Calculate total token count of all rounds
 			int totalChars = dialogRounds.stream().mapToInt(round -> round.getTotalChars(objectMapper)).sum();
 
-			// Calculate target retention: configurable ratio (default 30%) of total content
+			// Calculate target retention: configurable ratio (default 30%) of total
+			// content
 			double retentionRatio = getRetentionRatio();
 			int targetRetentionChars = (int) (totalChars * retentionRatio);
 
@@ -796,8 +802,8 @@ public class ConversationMemoryLimitService {
 
 	/**
 	 * Check if messages exceed the limit and compress both conversation and agent memory
-	 * if needed. This method checks the total token count of all messages
-	 * (conversation + agent) and compresses them if they exceed the limit.
+	 * if needed. This method checks the total token count of all messages (conversation +
+	 * agent) and compresses them if they exceed the limit.
 	 * @param conversationMemory The conversation memory instance
 	 * @param conversationId The conversation ID
 	 * @param agentMessages The agent memory messages
@@ -835,7 +841,8 @@ public class ConversationMemoryLimitService {
 				return agentMessages;
 			}
 
-			log.info("Total memory size ({} tokens) exceeds limit ({} tokens). Force compressing conversation and agent memory...",
+			log.info(
+					"Total memory size ({} tokens) exceeds limit ({} tokens). Force compressing conversation and agent memory...",
 					totalTokens, maxTokens);
 
 			// Step 1: Force compress conversation memory first
@@ -865,7 +872,5 @@ public class ConversationMemoryLimitService {
 			return agentMessages;
 		}
 	}
-
-	
 
 }

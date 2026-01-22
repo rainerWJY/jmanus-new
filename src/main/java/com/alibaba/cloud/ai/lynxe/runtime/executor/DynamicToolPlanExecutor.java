@@ -164,13 +164,14 @@ public class DynamicToolPlanExecutor extends AbstractPlanExecutor {
 		String description = "A configurable dynamic agent";
 		String nextStepPrompt = "Based on the current environment information and prompt to make a next step decision";
 
-		// Get conversation messages if conversation memory is enabled and conversationId is available
+		// Get conversation messages if conversation memory is enabled and conversationId
+		// is available
 		List<Message> extraMessage = new ArrayList<>();
 		if (lynxeProperties != null && lynxeProperties.getEnableConversationMemory() && conversationId != null
 				&& !conversationId.trim().isEmpty()) {
 			try {
-				ChatMemory conversationMemory = llmService.getConversationMemoryWithLimit(
-						lynxeProperties.getMaxMemory(), conversationId);
+				ChatMemory conversationMemory = llmService
+					.getConversationMemoryWithLimit(lynxeProperties.getMaxMemory(), conversationId);
 				List<Message> messages = conversationMemory.get(conversationId);
 				if (messages != null && !messages.isEmpty()) {
 					extraMessage = new ArrayList<>(messages);

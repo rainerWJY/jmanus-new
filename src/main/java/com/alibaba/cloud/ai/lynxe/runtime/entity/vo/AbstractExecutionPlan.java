@@ -116,7 +116,6 @@ public abstract class AbstractExecutionPlan implements PlanInterface {
 		this.planningThinking = planningThinking;
 	}
 
-
 	// Abstract methods - must be implemented by subclasses
 
 	/**

@@ -80,12 +80,14 @@ public class ThinkActRecordEntity {
 	private String errorMessage;
 
 	// Input token count (total tokens in all messages sent to LLM)
-	// Note: Column name kept as input_char_count for backward compatibility, but stores token counts
+	// Note: Column name kept as input_char_count for backward compatibility, but stores
+	// token counts
 	@Column(name = "input_char_count")
 	private Integer inputCharCount;
 
 	// Output token count (total tokens in LLM response)
-	// Note: Column name kept as output_char_count for backward compatibility, but stores token counts
+	// Note: Column name kept as output_char_count for backward compatibility, but stores
+	// token counts
 	@Column(name = "output_char_count")
 	private Integer outputCharCount;
 
