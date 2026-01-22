@@ -63,6 +63,7 @@
               </div>
             </div>
             <input
+              v-if="!shouldUseTextarea(param)"
               v-model="parameterValues[param]"
               class="parameter-input"
               :class="{
@@ -71,6 +72,25 @@
               }"
               :placeholder="t('sidebar.enterValueFor', { param })"
               @input="updateParameterValue(param, ($event.target as HTMLInputElement).value)"
+              @keydown="handleInputKeydown($event, param)"
+              required
+            />
+            <textarea
+              v-else
+              :ref="
+                el => {
+                  if (el) textareaRefs[param] = el as HTMLTextAreaElement
+                }
+              "
+              v-model="parameterValues[param]"
+              class="parameter-input parameter-textarea"
+              :class="{
+                error: parameterErrors[param],
+                'viewing-history': getToolHistoryIndex() >= 0,
+              }"
+              :placeholder="t('sidebar.enterValueFor', { param })"
+              @input="updateParameterValue(param, ($event.target as HTMLTextAreaElement).value)"
+              rows="3"
               required
             />
             <div v-if="parameterErrors[param]" class="parameter-error">
@@ -248,7 +268,7 @@ import { parameterHistoryStore } from '@/stores/parameterHistory'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanData, PlanExecutionRequestPayload } from '@/types/plan-execution'
 import { Icon } from '@iconify/vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -300,6 +320,7 @@ const lastPlanId = ref<string | null>(null) // Track last returned plan ID
 const lastRefreshTimestamp = ref<number>(0) // Track last refresh time for debouncing
 const REFRESH_DEBOUNCE_MS = 500 // Debounce time for parameter refresh
 const hasAttemptedExecute = ref(false) // Track if user has attempted to execute (for validation message)
+const textareaRefs = ref<Record<string, HTMLTextAreaElement>>({}) // Refs for textarea elements
 
 // Computed property: whether to show publish MCP service button
 const showPublishButton = computed(() => {
@@ -1062,6 +1083,32 @@ const updateParameterValue = (paramName: string, value: string) => {
   updateExecutionParamsFromParameters()
 }
 
+// Check if a parameter should use textarea (contains newline)
+const shouldUseTextarea = (paramName: string): boolean => {
+  const value = parameterValues.value[paramName]
+  return value != null && value.includes('\n')
+}
+
+// Handle keydown event on input to switch to textarea when Enter is pressed
+const handleInputKeydown = async (event: KeyboardEvent, paramName: string) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    // Prevent default behavior (form submission)
+    event.preventDefault()
+    // Add a newline to trigger textarea mode
+    const currentValue = parameterValues.value[paramName] || ''
+    updateParameterValue(paramName, currentValue + '\n')
+    // Wait for Vue to render the textarea, then focus it and set cursor position
+    await nextTick()
+    const textarea = textareaRefs.value[paramName]
+    if (textarea) {
+      textarea.focus()
+      // Set cursor position at the end of the text
+      const length = textarea.value.length
+      textarea.setSelectionRange(length, length)
+    }
+  }
+}
+
 // Validate all parameters
 const validateParameters = (): boolean => {
   parameterErrors.value = {}
@@ -1438,6 +1485,13 @@ defineExpose({
         background: rgba(102, 126, 234, 0.15);
         border-color: rgba(102, 126, 234, 0.4);
       }
+    }
+
+    .parameter-textarea {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.5;
+      overflow-y: auto;
     }
 
     .parameter-history-navigation {
