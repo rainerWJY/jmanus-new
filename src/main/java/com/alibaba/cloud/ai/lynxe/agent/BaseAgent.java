@@ -416,12 +416,40 @@ public abstract class BaseAgent {
 			// Create SystemErrorReportTool instance
 			SystemErrorReportTool errorTool = new SystemErrorReportTool(getCurrentPlanId(), objectMapper);
 
-			// Prepare error message
+			// Determine function name from stack trace
+			String functionName = "unknown";
+			StackTraceElement[] stackTrace = exception.getStackTrace();
+			if (stackTrace != null && stackTrace.length > 0) {
+				// Look for act() or step() in the stack trace
+				for (StackTraceElement element : stackTrace) {
+					String methodName = element.getMethodName();
+					if (methodName.equals("act") || methodName.equals("step") || methodName.equals("runStepRecursive")) {
+						functionName = methodName + "()";
+						break;
+					}
+				}
+			}
+
+			// Prepare error message with context
 			String errorMessage = String.format("System execution error at step %d: %s", currentStep,
 					exception.getMessage());
 
-			// Create tool input
-			Map<String, Object> errorInput = Map.of("errorMessage", errorMessage);
+			// Build structured error input with context
+			Map<String, Object> errorInput = new HashMap<>();
+			errorInput.put("errorMessage", errorMessage);
+			errorInput.put("functionName", functionName);
+			errorInput.put("stepNumber", currentStep);
+			
+			// Add agent name if available
+			try {
+				String agentName = getName();
+				if (agentName != null && !agentName.isEmpty()) {
+					errorInput.put("agentName", agentName);
+				}
+			}
+			catch (Exception e) {
+				log.debug("Could not get agent name for error report", e);
+			}
 
 			// Execute the error report tool
 			ToolExecuteResult toolResult = errorTool.run(errorInput);

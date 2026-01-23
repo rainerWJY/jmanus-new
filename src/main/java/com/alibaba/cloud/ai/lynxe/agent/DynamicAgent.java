@@ -594,37 +594,134 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Build error message from the latest exception
-	 * @return Formatted error message with exception details
+	 * Build error message from the latest exception with context information
+	 * @param functionName Name of the function that failed (e.g., "think()", "act()")
+	 * @return Formatted error message with exception details and context
 	 */
-	private String buildErrorMessageFromLatestException() {
+	private String buildErrorMessageFromLatestException(String functionName) {
 		if (latestLlmException == null) {
 			return "Unknown error occurred during LLM call";
 		}
 
 		StringBuilder errorMessage = new StringBuilder();
-		errorMessage.append("LLM call failed after all retry attempts. ");
+		errorMessage.append("LLM call failed after all retry attempts.\n");
+
+		// Add function name
+		if (functionName != null && !functionName.isEmpty()) {
+			errorMessage.append("Function: ").append(functionName).append("\n");
+		}
+
+		// Add agent name
+		if (agentName != null && !agentName.isEmpty()) {
+			errorMessage.append("Agent: ").append(agentName).append("\n");
+		}
+
+		// Add step number
+		int stepNumber = getCurrentStep();
+		errorMessage.append("Step: ").append(stepNumber).append("\n");
+
+		// Add model name
+		String effectiveModelName = modelName;
+		if (effectiveModelName == null || effectiveModelName.isEmpty()) {
+			effectiveModelName = llmService != null ? llmService.getDefaultModelName() : "unknown";
+		}
+		errorMessage.append("Model: ").append(effectiveModelName).append("\n");
+
+		// Add input token count if available
+		int inputTokenCount = -1;
+		if (agentStreamingResult != null && agentStreamingResult.getInputTokenCount() > 0) {
+			inputTokenCount = agentStreamingResult.getInputTokenCount();
+		}
+		else if (streamResult != null && streamResult.getInputTokenCount() > 0) {
+			inputTokenCount = streamResult.getInputTokenCount();
+		}
+
+		// Handle TokenLimitExceededException specially
+		if (latestLlmException instanceof TokenLimitExceededException tokenLimitException) {
+			int currentTokens = tokenLimitException.getCurrentTokens();
+			int limit = tokenLimitException.getLimit();
+			String exceptionModelName = tokenLimitException.getModelName();
+			errorMessage.append("Input Tokens: ").append(currentTokens).append(" (Limit: ").append(limit).append(")\n");
+			if (exceptionModelName != null && !exceptionModelName.equals(effectiveModelName)) {
+				errorMessage.append("Model (from exception): ").append(exceptionModelName).append("\n");
+			}
+		}
+		else if (inputTokenCount > 0) {
+			errorMessage.append("Input Tokens: ").append(inputTokenCount).append("\n");
+		}
+
+		// Add prompt summary (first message or truncated)
+		if (userPrompt != null && userPrompt.getInstructions() != null && !userPrompt.getInstructions().isEmpty()) {
+			String promptSummary = buildPromptSummary(userPrompt.getInstructions());
+			if (promptSummary != null && !promptSummary.isEmpty()) {
+				errorMessage.append("Prompt Summary: ").append(promptSummary).append("\n");
+			}
+		}
 
 		// Add exception type and message
 		String exceptionType = latestLlmException.getClass().getSimpleName();
 		String exceptionMessage = latestLlmException.getMessage();
-
 		errorMessage.append("Latest error: [").append(exceptionType).append("] ").append(exceptionMessage);
 
 		// Add exception count information
 		if (!llmCallExceptions.isEmpty()) {
-			errorMessage.append(" (Total attempts: ").append(llmCallExceptions.size()).append(")");
+			errorMessage.append("\n(Total attempts: ").append(llmCallExceptions.size()).append(")");
 		}
 
 		// Add detailed error information for WebClientResponseException
 		if (latestLlmException instanceof org.springframework.web.reactive.function.client.WebClientResponseException webClientException) {
 			String responseBody = webClientException.getResponseBodyAsString();
 			if (responseBody != null && !responseBody.isEmpty()) {
-				errorMessage.append(". API Response: ").append(responseBody);
+				errorMessage.append("\nAPI Response: ").append(responseBody);
 			}
 		}
 
 		return errorMessage.toString();
+	}
+
+	/**
+	 * Build a summary of the prompt messages (truncated for display)
+	 * @param messages List of messages in the prompt
+	 * @return Truncated summary string
+	 */
+	private String buildPromptSummary(List<Message> messages) {
+		if (messages == null || messages.isEmpty()) {
+			return null;
+		}
+
+		StringBuilder summary = new StringBuilder();
+		int maxLength = 200; // Maximum length for prompt summary
+		int messageCount = 0;
+		int maxMessages = 3; // Show first 3 messages
+
+		for (Message message : messages) {
+			if (messageCount >= maxMessages) {
+				break;
+			}
+
+			String messageType = message.getClass().getSimpleName();
+			String messageText = message.getText();
+			if (messageText != null && !messageText.isEmpty()) {
+				if (summary.length() > 0) {
+					summary.append(" | ");
+				}
+				summary.append(messageType).append(": ");
+				if (messageText.length() > maxLength - summary.length()) {
+					summary.append(messageText.substring(0, Math.max(0, maxLength - summary.length() - 3))).append("...");
+					break;
+				}
+				else {
+					summary.append(messageText);
+				}
+			}
+			messageCount++;
+		}
+
+		if (messages.size() > maxMessages) {
+			summary.append(" ... (").append(messages.size()).append(" total messages)");
+		}
+
+		return summary.toString();
 	}
 
 	@Override
@@ -1614,10 +1711,46 @@ public class DynamicAgent extends ReActAgent {
 			SystemErrorReportTool errorTool = new SystemErrorReportTool(getCurrentPlanId(), objectMapper);
 
 			// Build error message from latest exception
-			String errorMessage = buildErrorMessageFromLatestException();
+			String errorMessage = buildErrorMessageFromLatestException("think()");
 
-			// Create tool input
-			Map<String, Object> errorInput = Map.of("errorMessage", errorMessage);
+			// Build structured error input with context
+			Map<String, Object> errorInput = new HashMap<>();
+			errorInput.put("errorMessage", errorMessage);
+			
+			// Add context fields
+			errorInput.put("functionName", "think()");
+			if (agentName != null && !agentName.isEmpty()) {
+				errorInput.put("agentName", agentName);
+			}
+			errorInput.put("stepNumber", getCurrentStep());
+			
+			String effectiveModelName = modelName;
+			if (effectiveModelName == null || effectiveModelName.isEmpty()) {
+				effectiveModelName = llmService != null ? llmService.getDefaultModelName() : null;
+			}
+			if (effectiveModelName != null && !effectiveModelName.isEmpty()) {
+				errorInput.put("modelName", effectiveModelName);
+			}
+			
+			// Add input token count if available
+			int inputTokenCount = -1;
+			if (agentStreamingResult != null && agentStreamingResult.getInputTokenCount() > 0) {
+				inputTokenCount = agentStreamingResult.getInputTokenCount();
+			}
+			else if (streamResult != null && streamResult.getInputTokenCount() > 0) {
+				inputTokenCount = streamResult.getInputTokenCount();
+			}
+			if (inputTokenCount > 0) {
+				errorInput.put("inputTokenCount", inputTokenCount);
+			}
+			
+			// Add prompt summary if available
+			if (userPrompt != null && userPrompt.getInstructions() != null && !userPrompt.getInstructions().isEmpty()) {
+				String promptSummary = buildPromptSummary(userPrompt.getInstructions());
+				if (promptSummary != null && !promptSummary.isEmpty()) {
+					errorInput.put("promptSummary", promptSummary);
+				}
+			}
 
 			// Execute the error report tool
 			ToolExecuteResult toolResult = errorTool.run(errorInput);
@@ -1653,7 +1786,7 @@ public class DynamicAgent extends ReActAgent {
 		}
 		catch (Exception e) {
 			log.error("Failed to handle LLM timeout with SystemErrorReportTool", e);
-			String fallbackError = "LLM timeout error: " + buildErrorMessageFromLatestException();
+			String fallbackError = "LLM timeout error: " + buildErrorMessageFromLatestException("think()");
 			step.setErrorMessage(fallbackError);
 			return new AgentExecResult(fallbackError, AgentState.FAILED);
 		}
@@ -1854,12 +1987,72 @@ public class DynamicAgent extends ReActAgent {
 		// Check if token count exceeds model context limit
 		if (totalTokens > modelContextLimit) {
 			String errorMessage = String.format(
-					"Token limit exceeded: current=%d, limit=%d, model=%s. Please reduce the input size or clear conversation history.",
+					"Token limit exceeded: current=%d, limit=%d, model=%s",
 					totalTokens, modelContextLimit, effectiveModelName);
 			log.error(errorMessage);
 
-			// Throw exception to stop execution
-			throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
+			// Last resort: Try aggressive compression one more time before throwing exception
+			if (conversationMemoryLimitService != null && agentMessages != null && !agentMessages.isEmpty()) {
+				try {
+					log.warn(
+							"Attempting aggressive compression as last resort. Current token count: {}, limit: {}",
+							totalTokens, modelContextLimit);
+					
+					// Force compress agentMessages again with more aggressive settings
+					List<Message> compressedMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
+					
+					// Rebuild temp prompt with aggressively compressed agentMessages
+					tempMessages.clear();
+					tempMessages.add(systemMessage);
+					tempMessages.addAll(compressedMessages);
+					tempMessages.add(currentStepEnvMessage);
+					
+					// Recalculate token count after aggressive compression
+					if (tokenCountService != null) {
+						totalTokens = tokenCountService.countTokens(tempMessages);
+					}
+					else {
+						totalTokens = conversationMemoryLimitService.calculateTotalTokens(tempMessages);
+					}
+					
+					// Update agentMessages with compressed version
+					agentMessages = compressedMessages;
+					
+					log.info(
+							"Aggressive compression completed. Agent memory now contains {} messages. Final prompt token count: {}",
+							agentMessages.size(), totalTokens);
+					
+					// Check again if we're still over the limit after aggressive compression
+					if (totalTokens > modelContextLimit) {
+						String finalErrorMessage = String.format(
+								"%s. Please reduce the input size or clear conversation history.",
+								errorMessage);
+						log.error("Token limit still exceeded after aggressive compression: {}", finalErrorMessage);
+						throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
+					}
+					else {
+						log.info("Aggressive compression succeeded. Token count reduced to {} (limit: {})", totalTokens,
+								modelContextLimit);
+					}
+				}
+				catch (TokenLimitExceededException e) {
+					// Re-throw TokenLimitExceededException
+					throw e;
+				}
+				catch (Exception e) {
+					log.warn("Failed to perform aggressive compression as last resort", e);
+					// Throw original exception if compression fails
+					throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
+				}
+			}
+			else {
+				// No compression service available or no messages to compress
+				String finalErrorMessage = String.format(
+						"%s. Please reduce the input size or clear conversation history.",
+						errorMessage);
+				log.error(finalErrorMessage);
+				throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
+			}
 		}
 
 		log.info("User prompt token count: {}", totalTokens);
