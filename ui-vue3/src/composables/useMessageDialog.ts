@@ -400,13 +400,19 @@ export function useMessageDialog() {
                 conversationId.value = chunk.conversationId
                 targetDialog.conversationId = chunk.conversationId
                 memoryStore.setConversationId(chunk.conversationId)
-                console.log('[useMessageDialog] Conversation ID set from stream:', chunk.conversationId)
-                
+                console.log(
+                  '[useMessageDialog] Conversation ID set from stream:',
+                  chunk.conversationId
+                )
+
                 // Update streamId if provided by backend
                 const chunkWithStreamId = chunk as { streamId?: string }
                 if (chunkWithStreamId.streamId) {
                   currentStreamId.value = chunkWithStreamId.streamId
-                  console.log('[useMessageDialog] Stream ID received from backend:', currentStreamId.value)
+                  console.log(
+                    '[useMessageDialog] Stream ID received from backend:',
+                    currentStreamId.value
+                  )
                 }
               } else if (chunk.type === 'chunk' && chunk.content) {
                 // Append chunk to accumulated content
@@ -896,7 +902,10 @@ export function useMessageDialog() {
         backendCancelled = false // Stream was already done, but we still need to clean up frontend
       } else {
         // For other errors, log but still proceed with cleanup
-        console.warn('[useMessageDialog] Backend cancellation failed, but continuing with cleanup:', error)
+        console.warn(
+          '[useMessageDialog] Backend cancellation failed, but continuing with cleanup:',
+          error
+        )
       }
     }
 
@@ -913,7 +922,8 @@ export function useMessageDialog() {
       const message = findMessage(currentStreamingMessageId)
       if (message && message.type === 'assistant') {
         updateMessage(currentStreamingMessageId, {
-          content: message.content || (backendCancelled ? 'Stream stopped by user' : 'Stream completed'),
+          content:
+            message.content || (backendCancelled ? 'Stream stopped by user' : 'Stream completed'),
           isStreaming: false,
           thinking: '',
         })
@@ -1198,9 +1208,7 @@ export function useMessageDialog() {
     // or dialogs with assistant messages that are streaming or have running planExecution
     const hasDialogsWaitingForPlanId = dialogs.some(dialog => {
       // Check if dialog has an assistant message that is streaming
-      const hasStreamingMessage = dialog.messages.some(
-        m => m.type === 'assistant' && m.isStreaming
-      )
+      const hasStreamingMessage = dialog.messages.some(m => m.type === 'assistant' && m.isStreaming)
       if (hasStreamingMessage) return true
 
       // Check if dialog has an assistant message with running planExecution
@@ -1223,7 +1231,8 @@ export function useMessageDialog() {
 
     // If there are tracked plans but no records yet, consider it as running
     // This handles the race condition where a plan just started but hasn't been polled
-    const hasRunningPlans = hasTrackedPlans || hasRunningPlansInRecords || hasDialogsWaitingForPlanId
+    const hasRunningPlans =
+      hasTrackedPlans || hasRunningPlansInRecords || hasDialogsWaitingForPlanId
 
     if (!hasRunningPlans && isRunning.value) {
       console.log('[useMessageDialog] All plans completed, resetting isRunning', {

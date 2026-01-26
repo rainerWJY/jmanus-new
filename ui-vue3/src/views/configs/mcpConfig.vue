@@ -70,8 +70,13 @@
                   :class="getConnectionStatusClass(server.connectionStatus)"
                   :title="getConnectionStatusTooltip(server)"
                 >
-                  <Icon :icon="getConnectionStatusIcon(server.connectionStatus)" class="status-icon" />
-                  <span class="status-text">{{ getConnectionStatusText(server.connectionStatus) }}</span>
+                  <Icon
+                    :icon="getConnectionStatusIcon(server.connectionStatus)"
+                    class="status-icon"
+                  />
+                  <span class="status-text">{{
+                    getConnectionStatusText(server.connectionStatus)
+                  }}</span>
                 </div>
               </div>
               <div class="server-status-toggle" @click.stop="toggleServerStatus(server)">

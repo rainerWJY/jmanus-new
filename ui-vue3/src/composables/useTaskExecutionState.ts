@@ -24,7 +24,7 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
  *
  * This composable provides a consistent interface for checking task execution state
  * across all components (InputArea, ExecutionController, etc.)
- * 
+ *
  * Unified state: messageDialog.isRunning is the single source of truth
  */
 export function useTaskExecutionState() {
