@@ -145,7 +145,7 @@ public class SystemErrorReportTool extends AbstractBaseTool<Map<String, Object>>
 		Map<String, Object> errorData = new HashMap<>();
 		errorData.put("errorMessage", errorMessage);
 		errorData.put("timestamp", errorReportTimestamp);
-		
+
 		// Add optional context fields if present
 		if (input.containsKey("functionName")) {
 			errorData.put("functionName", input.get("functionName"));

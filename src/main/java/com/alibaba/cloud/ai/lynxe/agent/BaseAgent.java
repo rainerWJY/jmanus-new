@@ -186,7 +186,7 @@ public abstract class BaseAgent {
 		String detailOutput = "";
 		if (isDebugModel) {
 			detailOutput = """
-			    Important Notes:
+					  Important Notes:
 					1. When using tool calls, you must provide explanations describing the reason for using this tool and the thinking behind it
 					2. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 					""";
@@ -194,9 +194,9 @@ public abstract class BaseAgent {
 		}
 		else {
 			detailOutput = """
-				Important Notes:
-					1.  If the current step requirements have been completed, call the default-terminate tool to finish the current step.
-				""";
+					Important Notes:
+						1.  If the current step requirements have been completed, call the default-terminate tool to finish the current step.
+					""";
 		}
 		String parallelToolCallsResponse = "";
 		if (lynxeProperties.getParallelToolCalls()) {
@@ -247,7 +247,7 @@ public abstract class BaseAgent {
 				Current Date:
 				{currentDateTime}
 
-				
+
 				{detailOutput}
 
 
@@ -423,7 +423,8 @@ public abstract class BaseAgent {
 				// Look for act() or step() in the stack trace
 				for (StackTraceElement element : stackTrace) {
 					String methodName = element.getMethodName();
-					if (methodName.equals("act") || methodName.equals("step") || methodName.equals("runStepRecursive")) {
+					if (methodName.equals("act") || methodName.equals("step")
+							|| methodName.equals("runStepRecursive")) {
 						functionName = methodName + "()";
 						break;
 					}
@@ -439,7 +440,7 @@ public abstract class BaseAgent {
 			errorInput.put("errorMessage", errorMessage);
 			errorInput.put("functionName", functionName);
 			errorInput.put("stepNumber", currentStep);
-			
+
 			// Add agent name if available
 			try {
 				String agentName = getName();

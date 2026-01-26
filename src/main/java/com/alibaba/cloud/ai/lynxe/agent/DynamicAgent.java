@@ -707,7 +707,8 @@ public class DynamicAgent extends ReActAgent {
 				}
 				summary.append(messageType).append(": ");
 				if (messageText.length() > maxLength - summary.length()) {
-					summary.append(messageText.substring(0, Math.max(0, maxLength - summary.length() - 3))).append("...");
+					summary.append(messageText.substring(0, Math.max(0, maxLength - summary.length() - 3)))
+						.append("...");
 					break;
 				}
 				else {
@@ -1716,14 +1717,14 @@ public class DynamicAgent extends ReActAgent {
 			// Build structured error input with context
 			Map<String, Object> errorInput = new HashMap<>();
 			errorInput.put("errorMessage", errorMessage);
-			
+
 			// Add context fields
 			errorInput.put("functionName", "think()");
 			if (agentName != null && !agentName.isEmpty()) {
 				errorInput.put("agentName", agentName);
 			}
 			errorInput.put("stepNumber", getCurrentStep());
-			
+
 			String effectiveModelName = modelName;
 			if (effectiveModelName == null || effectiveModelName.isEmpty()) {
 				effectiveModelName = llmService != null ? llmService.getDefaultModelName() : null;
@@ -1731,7 +1732,7 @@ public class DynamicAgent extends ReActAgent {
 			if (effectiveModelName != null && !effectiveModelName.isEmpty()) {
 				errorInput.put("modelName", effectiveModelName);
 			}
-			
+
 			// Add input token count if available
 			int inputTokenCount = -1;
 			if (agentStreamingResult != null && agentStreamingResult.getInputTokenCount() > 0) {
@@ -1743,7 +1744,7 @@ public class DynamicAgent extends ReActAgent {
 			if (inputTokenCount > 0) {
 				errorInput.put("inputTokenCount", inputTokenCount);
 			}
-			
+
 			// Add prompt summary if available
 			if (userPrompt != null && userPrompt.getInstructions() != null && !userPrompt.getInstructions().isEmpty()) {
 				String promptSummary = buildPromptSummary(userPrompt.getInstructions());
@@ -1986,27 +1987,27 @@ public class DynamicAgent extends ReActAgent {
 		// this point
 		// Check if token count exceeds model context limit
 		if (totalTokens > modelContextLimit) {
-			String errorMessage = String.format(
-					"Token limit exceeded: current=%d, limit=%d, model=%s",
-					totalTokens, modelContextLimit, effectiveModelName);
+			String errorMessage = String.format("Token limit exceeded: current=%d, limit=%d, model=%s", totalTokens,
+					modelContextLimit, effectiveModelName);
 			log.error(errorMessage);
 
-			// Last resort: Try aggressive compression one more time before throwing exception
+			// Last resort: Try aggressive compression one more time before throwing
+			// exception
 			if (conversationMemoryLimitService != null && agentMessages != null && !agentMessages.isEmpty()) {
 				try {
-					log.warn(
-							"Attempting aggressive compression as last resort. Current token count: {}, limit: {}",
+					log.warn("Attempting aggressive compression as last resort. Current token count: {}, limit: {}",
 							totalTokens, modelContextLimit);
-					
+
 					// Force compress agentMessages again with more aggressive settings
-					List<Message> compressedMessages = conversationMemoryLimitService.forceCompressAgentMemory(agentMessages);
-					
+					List<Message> compressedMessages = conversationMemoryLimitService
+						.forceCompressAgentMemory(agentMessages);
+
 					// Rebuild temp prompt with aggressively compressed agentMessages
 					tempMessages.clear();
 					tempMessages.add(systemMessage);
 					tempMessages.addAll(compressedMessages);
 					tempMessages.add(currentStepEnvMessage);
-					
+
 					// Recalculate token count after aggressive compression
 					if (tokenCountService != null) {
 						totalTokens = tokenCountService.countTokens(tempMessages);
@@ -2014,19 +2015,19 @@ public class DynamicAgent extends ReActAgent {
 					else {
 						totalTokens = conversationMemoryLimitService.calculateTotalTokens(tempMessages);
 					}
-					
+
 					// Update agentMessages with compressed version
 					agentMessages = compressedMessages;
-					
+
 					log.info(
 							"Aggressive compression completed. Agent memory now contains {} messages. Final prompt token count: {}",
 							agentMessages.size(), totalTokens);
-					
-					// Check again if we're still over the limit after aggressive compression
+
+					// Check again if we're still over the limit after aggressive
+					// compression
 					if (totalTokens > modelContextLimit) {
-						String finalErrorMessage = String.format(
-								"%s. Please reduce the input size or clear conversation history.",
-								errorMessage);
+						String finalErrorMessage = String
+							.format("%s. Please reduce the input size or clear conversation history.", errorMessage);
 						log.error("Token limit still exceeded after aggressive compression: {}", finalErrorMessage);
 						throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
 					}
@@ -2047,9 +2048,8 @@ public class DynamicAgent extends ReActAgent {
 			}
 			else {
 				// No compression service available or no messages to compress
-				String finalErrorMessage = String.format(
-						"%s. Please reduce the input size or clear conversation history.",
-						errorMessage);
+				String finalErrorMessage = String
+					.format("%s. Please reduce the input size or clear conversation history.", errorMessage);
 				log.error(finalErrorMessage);
 				throw new TokenLimitExceededException(totalTokens, modelContextLimit, effectiveModelName);
 			}
