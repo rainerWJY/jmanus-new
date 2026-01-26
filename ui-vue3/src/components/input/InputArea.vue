@@ -450,8 +450,8 @@ const handleUploadError = (error: unknown) => {
   console.error('[InputArea] Upload error:', error)
 }
 
-// Computed property for disabled state - use messageDialog isLoading
-const isDisabled = computed(() => messageDialog.isLoading.value)
+// Computed property for disabled state - use messageDialog isRunning
+const isDisabled = computed(() => messageDialog.isRunning.value)
 
 const adjustInputHeight = () => {
   nextTick(() => {

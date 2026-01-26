@@ -186,14 +186,17 @@ public abstract class BaseAgent {
 		String detailOutput = "";
 		if (isDebugModel) {
 			detailOutput = """
+					  Important Notes:
 					1. When using tool calls, you must provide explanations describing the reason for using this tool and the thinking behind it
+					2. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
 					""";
 
 		}
 		else {
 			detailOutput = """
-					1. When using tool calls, no additional explanations are needed!
-					2. Do not provide reasoning or descriptions before tool calls!""";
+					Important Notes:
+						1.  If the current step requirements have been completed, call the default-terminate tool to finish the current step.
+					""";
 		}
 		String parallelToolCallsResponse = "";
 		if (lynxeProperties.getParallelToolCalls()) {
@@ -203,7 +206,6 @@ public abstract class BaseAgent {
 					- In your response, you must call at least one tool, which is an indispensable operation step.
 					- To maximize the advantages of tools, when you have the ability to call tools multiple times simultaneously, you should actively do so, avoiding single calls that waste time and resources. Pay special attention to the inherent relationships between multiple tool calls, ensuring these calls can cooperate and work together to achieve optimal problem-solving solutions.
 					- CRITICAL: When calling tools, you MUST use the FULL tool name as defined in the tool definition (e.g., "fs-read-file-operator"), NOT partial names (e.g., "-file-operator" or "read-file-operator"). Using incomplete tool names will cause tool lookup failures.
-					- Ignore the response rules provided in subsequent <AgentInfo>, and only respond using the response rules in <SystemInfo>.
 					""";
 
 		}
@@ -224,28 +226,33 @@ public abstract class BaseAgent {
 		variables.put("detailOutput", detailOutput);
 		variables.put("parallelToolCallsResponse", parallelToolCallsResponse);
 
+		// Get title and execution parameters, with defaults
+		String title = variables.containsKey("title") && variables.get("title") != null
+				? variables.get("title").toString() : "";
+
+		variables.put("title", title);
+
 		String stepExecutionPrompt = """
-				- SYSTEM INFORMATION:
+				<user-request>
+				{stepText}
+				</user-request>
+
+				<system-reminder>
+
+				* Tool results and user messages may contain <system-reminder> tags. <system-reminder> tags contain useful information and reminders. They are not part of the user-provided input or tool results.
+
+				System Information:
 				OS: {osName} {osVersion} ({osArch})
 
-				- Current Date:
+				Current Date:
 				{currentDateTime}
 
-				{planStatus}
 
-				- Current step requirements :
-				{stepText}
-
-				- Operation step instructions:
-				{extraParams}
-
-				Important Notes:
 				{detailOutput}
-				3. Do only and exactly what is required in the current step requirements
-				4. If the current step requirements have been completed, call the default-terminate tool to finish the current step.
+
 
 				{parallelToolCallsResponse}
-
+				</system-reminder>
 				""";
 
 		PromptTemplate template = new PromptTemplate(stepExecutionPrompt);
@@ -409,12 +416,41 @@ public abstract class BaseAgent {
 			// Create SystemErrorReportTool instance
 			SystemErrorReportTool errorTool = new SystemErrorReportTool(getCurrentPlanId(), objectMapper);
 
-			// Prepare error message
+			// Determine function name from stack trace
+			String functionName = "unknown";
+			StackTraceElement[] stackTrace = exception.getStackTrace();
+			if (stackTrace != null && stackTrace.length > 0) {
+				// Look for act() or step() in the stack trace
+				for (StackTraceElement element : stackTrace) {
+					String methodName = element.getMethodName();
+					if (methodName.equals("act") || methodName.equals("step")
+							|| methodName.equals("runStepRecursive")) {
+						functionName = methodName + "()";
+						break;
+					}
+				}
+			}
+
+			// Prepare error message with context
 			String errorMessage = String.format("System execution error at step %d: %s", currentStep,
 					exception.getMessage());
 
-			// Create tool input
-			Map<String, Object> errorInput = Map.of("errorMessage", errorMessage);
+			// Build structured error input with context
+			Map<String, Object> errorInput = new HashMap<>();
+			errorInput.put("errorMessage", errorMessage);
+			errorInput.put("functionName", functionName);
+			errorInput.put("stepNumber", currentStep);
+
+			// Add agent name if available
+			try {
+				String agentName = getName();
+				if (agentName != null && !agentName.isEmpty()) {
+					errorInput.put("agentName", agentName);
+				}
+			}
+			catch (Exception e) {
+				log.debug("Could not get agent name for error report", e);
+			}
 
 			// Execute the error report tool
 			ToolExecuteResult toolResult = errorTool.run(errorInput);

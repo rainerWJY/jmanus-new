@@ -16,6 +16,8 @@
 
 package com.alibaba.cloud.ai.lynxe.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Lazy;
@@ -26,6 +28,8 @@ import com.alibaba.cloud.ai.lynxe.config.entity.ConfigInputType;
 @Component
 @ConfigurationProperties(prefix = "lynxe")
 public class LynxeProperties {
+
+	private static final Logger log = LoggerFactory.getLogger(LynxeProperties.class);
 
 	@Lazy
 	@Autowired
@@ -264,26 +268,58 @@ public class LynxeProperties {
 		this.enableSmartContentSaving = enableSmartContentSaving;
 	}
 
-	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "conversationMemoryMaxChars",
-			path = "lynxe.agent.conversationMemoryMaxChars",
-			description = "lynxe.agent.conversationMemoryMaxChars.description", defaultValue = "300000",
+	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "chatCompressionThreshold",
+			path = "lynxe.agent.chatCompressionThreshold",
+			description = "lynxe.agent.chatCompressionThreshold.description", defaultValue = "0.7",
 			inputType = ConfigInputType.NUMBER)
-	private volatile Integer conversationMemoryMaxChars;
+	private volatile Double chatCompressionThreshold;
 
-	public Integer getConversationMemoryMaxChars() {
-		String configPath = "lynxe.agent.conversationMemoryMaxChars";
+	public Double getChatCompressionThreshold() {
+		String configPath = "lynxe.agent.chatCompressionThreshold";
 		String value = configService.getConfigValue(configPath);
 		if (value != null) {
-			conversationMemoryMaxChars = Integer.valueOf(value);
+			try {
+				chatCompressionThreshold = Double.valueOf(value);
+			}
+			catch (NumberFormatException e) {
+				log.warn("Invalid chatCompressionThreshold value: {}, using default 0.7", value);
+			}
 		}
-		if (conversationMemoryMaxChars == null) {
-			conversationMemoryMaxChars = 300000;
+		if (chatCompressionThreshold == null) {
+			chatCompressionThreshold = 0.7; // Default to 70%
 		}
-		return conversationMemoryMaxChars;
+		return chatCompressionThreshold;
 	}
 
-	public void setConversationMemoryMaxChars(Integer conversationMemoryMaxChars) {
-		this.conversationMemoryMaxChars = conversationMemoryMaxChars;
+	public void setChatCompressionThreshold(Double chatCompressionThreshold) {
+		this.chatCompressionThreshold = chatCompressionThreshold;
+	}
+
+	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "chatCompressionRetentionRatio",
+			path = "lynxe.agent.chatCompressionRetentionRatio",
+			description = "lynxe.agent.chatCompressionRetentionRatio.description", defaultValue = "0.3",
+			inputType = ConfigInputType.NUMBER)
+	private volatile Double chatCompressionRetentionRatio;
+
+	public Double getChatCompressionRetentionRatio() {
+		String configPath = "lynxe.agent.chatCompressionRetentionRatio";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			try {
+				chatCompressionRetentionRatio = Double.valueOf(value);
+			}
+			catch (NumberFormatException e) {
+				log.warn("Invalid chatCompressionRetentionRatio value: {}, using default 0.3", value);
+			}
+		}
+		if (chatCompressionRetentionRatio == null) {
+			chatCompressionRetentionRatio = 0.3; // Default to 30%
+		}
+		return chatCompressionRetentionRatio;
+	}
+
+	public void setChatCompressionRetentionRatio(Double chatCompressionRetentionRatio) {
+		this.chatCompressionRetentionRatio = chatCompressionRetentionRatio;
 	}
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "parallelToolCalls",
@@ -351,6 +387,28 @@ public class LynxeProperties {
 
 	public void setLlmReadTimeout(Integer llmReadTimeout) {
 		this.llmReadTimeout = llmReadTimeout;
+	}
+
+	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "maxLinesForFullRead",
+			path = "lynxe.agent.maxLinesForFullRead", description = "lynxe.agent.maxLinesForFullRead.description",
+			defaultValue = "700", inputType = ConfigInputType.NUMBER)
+	private volatile Integer maxLinesForFullRead;
+
+	public Integer getMaxLinesForFullRead() {
+		String configPath = "lynxe.agent.maxLinesForFullRead";
+		String value = configService.getConfigValue(configPath);
+		if (value != null) {
+			maxLinesForFullRead = Integer.valueOf(value);
+		}
+		// Ensure a default value if not configured and not set
+		if (maxLinesForFullRead == null) {
+			maxLinesForFullRead = 700;
+		}
+		return maxLinesForFullRead;
+	}
+
+	public void setMaxLinesForFullRead(Integer maxLinesForFullRead) {
+		this.maxLinesForFullRead = maxLinesForFullRead;
 	}
 
 	// Agent Settings

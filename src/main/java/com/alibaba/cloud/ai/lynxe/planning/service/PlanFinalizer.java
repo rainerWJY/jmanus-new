@@ -147,8 +147,16 @@ public class PlanFinalizer {
 
 		Prompt prompt = new Prompt(List.of(message));
 
-		// Calculate input character count from the message
-		int inputCharCount = message.getText() != null ? message.getText().length() : 0;
+		// Calculate input token count from the message
+		int inputTokenCount = 0;
+		if (llmService.getTokenCountService() != null) {
+			inputTokenCount = llmService.getTokenCountService().countTokens(List.of(message));
+		}
+		else {
+			// Fallback to approximate character-based estimation
+			String text = message.getText();
+			inputTokenCount = text != null ? (int) Math.ceil(text.length() / 4.0) : 0;
+		}
 
 		ChatClient.ChatClientRequestSpec requestSpec = llmService.getDiaChatClient().prompt(prompt);
 		configureMemoryAdvisors(requestSpec, context);
@@ -156,7 +164,7 @@ public class PlanFinalizer {
 		Flux<ChatResponse> responseFlux = requestSpec.stream().chatResponse();
 		boolean isDebugModel = lynxeProperties.getDebugDetail() != null && lynxeProperties.getDebugDetail();
 		return streamingResponseHandler.processStreamingTextResponse(responseFlux, operationName,
-				context.getCurrentPlanId(), isDebugModel, inputCharCount);
+				context.getCurrentPlanId(), isDebugModel, inputTokenCount);
 	}
 
 	/**

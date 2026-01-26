@@ -222,8 +222,18 @@ public class ParallelExecutionService {
 		}
 
 		// Create ToolContext for this execution
-		ToolContext executionContext = new ToolContext(propagatedPlanDepth == null ? Map.of("toolcallId", toolCallId)
-				: Map.of("toolcallId", toolCallId, "planDepth", propagatedPlanDepth));
+		// Copy all context from parent to preserve recursive call chain and other context
+		Map<String, Object> executionContextMap = new HashMap<>();
+		if (toolContext != null && toolContext.getContext() != null) {
+			executionContextMap.putAll(toolContext.getContext());
+		}
+		// Ensure toolcallId is set (use generated one if not in parent context)
+		executionContextMap.put("toolcallId", toolCallId);
+		// Ensure planDepth is set if we have it
+		if (propagatedPlanDepth != null) {
+			executionContextMap.put("planDepth", propagatedPlanDepth);
+		}
+		ToolContext executionContext = new ToolContext(executionContextMap);
 
 		// Execute the tool
 		if (executorPoolProvider != null) {

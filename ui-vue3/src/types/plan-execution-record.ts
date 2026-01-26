@@ -91,11 +91,14 @@ export interface ThinkActRecord {
   /** Error message if the cycle encountered problems */
   errorMessage?: string
 
-  /** Input character count (total characters in all messages sent to LLM) */
+  /** Input token count (total tokens in all messages sent to LLM) */
   inputCharCount?: number
 
-  /** Output character count (total characters in LLM response) */
+  /** Output token count (total tokens in LLM response) */
   outputCharCount?: number
+
+  /** Model context limit (in tokens) used for this think-act cycle */
+  modelContextLimit?: number
 
   /**
    * @deprecated This field is abandoned and kept only for database compatibility.

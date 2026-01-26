@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-// import org.springframework.context.annotation.Primary;
-// import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
 
 /**
  * Example custom executor pool provider implementation. This is a simple example - you
@@ -38,12 +38,9 @@ import org.slf4j.LoggerFactory;
  *
  * Note: If you have multiple ExecutorPoolProvider beans, you may need to use @Primary
  * or @Qualifier to specify which one to use.
- *
- * NOTE: This class is currently disabled (no @Component annotation) to use
- * LevelBasedExecutorPool as default.
  */
-// @Component
-// @Primary // This makes this the default provider instead of LevelBasedExecutorPool
+@Component
+@Primary // This makes this the default provider instead of LevelBasedExecutorPool
 public class CustomExecutorPoolProvider implements ExecutorPoolProvider {
 
 	private static final Logger log = LoggerFactory.getLogger(CustomExecutorPoolProvider.class);

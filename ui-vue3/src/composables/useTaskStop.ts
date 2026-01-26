@@ -15,6 +15,7 @@
  */
 
 import { DirectApiService } from '@/api/direct-api-service'
+import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useTaskStore } from '@/stores/task'
 import { computed, ref } from 'vue'
@@ -26,32 +27,73 @@ import { computed, ref } from 'vue'
 export function useTaskStop() {
   const taskStore = useTaskStore()
   const planExecution = usePlanExecutionSingleton()
+  const messageDialog = useMessageDialogSingleton()
   const isStopping = ref(false)
 
   /**
    * Check if there's a running task that can be stopped
+   * Supports both plan execution (with planId) and chat streaming (with activeStreamAbortController)
    */
   const canStop = computed(() => {
-    return taskStore.hasRunningTask() && !!taskStore.currentTask?.planId
+    const hasPlanId = taskStore.hasRunningTask() && !!taskStore.currentTask?.planId
+    const hasActiveStream =
+      messageDialog.isRunning.value && !!messageDialog.activeStreamAbortController.value
+    return hasPlanId || hasActiveStream
   })
 
   /**
-   * Stop a running task by plan ID
+   * Stop a running task by plan ID or stop active chat streaming
    * Checks execution status before and after stopping to handle backend restart scenarios
-   * @param planId Plan ID to stop. If not provided, uses planId from currentTask
+   * @param planId Plan ID to stop. If not provided, uses planId from currentTask or stops streaming
    * @returns Promise<boolean> - true if stop was successful or task was already stopped, false otherwise
    */
   const stopTask = async (planId?: string): Promise<boolean> => {
-    // Determine which planId to use
-    const targetPlanId = planId || taskStore.currentTask?.planId
-
-    if (!targetPlanId) {
-      console.warn('[useTaskStop] No planId available to stop')
+    if (isStopping.value) {
+      console.log('[useTaskStop] Stop already in progress, skipping')
       return false
     }
 
-    if (isStopping.value) {
-      console.log('[useTaskStop] Stop already in progress, skipping')
+    // Check if there's an active chat stream to stop
+    const hasActiveStream = !!messageDialog.activeStreamAbortController.value
+    const hasStreamId = !!messageDialog.currentStreamId.value
+    const targetPlanId = planId || taskStore.currentTask?.planId
+
+    // If no planId but there's an active stream with streamId, stop the stream
+    if (!targetPlanId && hasActiveStream && hasStreamId) {
+      console.log('[useTaskStop] Stopping active chat stream')
+      isStopping.value = true
+      try {
+        await messageDialog.stopChatStreaming()
+        console.log('[useTaskStop] Chat stream stopped successfully')
+        return true
+      } catch (error) {
+        // stopChatStreaming now handles errors gracefully (stream may have already completed)
+        // Log but don't throw - cleanup was already done in stopChatStreaming
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('missing required parameters')) {
+          // Only throw if we're missing required parameters (shouldn't happen)
+          console.error('[useTaskStop] Failed to stop chat stream:', error)
+          throw error
+        } else {
+          // Stream may have already completed, treat as success
+          console.log(
+            '[useTaskStop] Chat stream cleanup completed (stream may have already finished)'
+          )
+          return true
+        }
+      } finally {
+        isStopping.value = false
+      }
+    }
+
+    // If no planId and no active stream with streamId, nothing to stop
+    if (!targetPlanId) {
+      if (hasActiveStream && !hasStreamId) {
+        const errorMsg = 'Cannot stop chat stream: streamId is required but not available'
+        console.error('[useTaskStop]', errorMsg)
+        throw new Error(errorMsg)
+      }
+      console.warn('[useTaskStop] No planId or active stream available to stop')
       return false
     }
 
@@ -59,9 +101,37 @@ export function useTaskStop() {
     isStopping.value = true
 
     try {
+      // If there's also an active stream with streamId, stop it first
+      if (hasActiveStream && hasStreamId) {
+        console.log('[useTaskStop] Also stopping active chat stream')
+        try {
+          await messageDialog.stopChatStreaming()
+        } catch (error) {
+          // stopChatStreaming handles errors gracefully - stream may have already completed
+          // Log but continue with plan stop
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          if (!errorMessage.includes('missing required parameters')) {
+            console.log(
+              '[useTaskStop] Chat stream cleanup completed (may have already finished), continuing with plan stop'
+            )
+          } else {
+            console.warn(
+              '[useTaskStop] Failed to stop chat stream, continuing with plan stop:',
+              error
+            )
+          }
+        }
+      } else if (hasActiveStream && !hasStreamId) {
+        // Missing streamId but has active stream - log warning but continue with plan stop
+        console.warn(
+          '[useTaskStop] Cannot stop chat stream: streamId is required but not available, continuing with plan stop'
+        )
+      }
       // Optimistic update: immediately update state for instant UI feedback
+      // Reset isRunning and clear planId
+      messageDialog.setIsRunning(false)
       if (taskStore.currentTask) {
-        taskStore.currentTask.isRunning = false
+        taskStore.currentTask.planId = undefined
       }
 
       // Untrack plan immediately
@@ -116,11 +186,10 @@ export function useTaskStop() {
         console.log('[useTaskStop] Task status after stop:', taskStatus)
 
         // Update state based on actual backend status (if different from optimistic update)
-        if (taskStore.currentTask && taskStore.currentTask.planId === targetPlanId) {
-          taskStore.currentTask.isRunning = taskStatus.exists && taskStatus.isRunning
-          if (!taskStatus.isRunning) {
-            console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
-          }
+        if (!taskStatus.isRunning && taskStore.currentTask?.planId === targetPlanId) {
+          messageDialog.setIsRunning(false)
+          taskStore.currentTask.planId = undefined
+          console.log('[useTaskStop] Task confirmed stopped, updated frontend state')
         }
       } catch (statusError) {
         console.warn('[useTaskStop] Failed to verify task status after stop:', statusError)
@@ -131,8 +200,9 @@ export function useTaskStop() {
     } catch (error) {
       console.error('[useTaskStop] Failed to stop task:', error)
       // Keep state updated (user clicked stop, so state should reflect that)
+      messageDialog.setIsRunning(false)
       if (taskStore.currentTask) {
-        taskStore.currentTask.isRunning = false
+        taskStore.currentTask.planId = undefined
       }
       return false
     } finally {

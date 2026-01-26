@@ -65,6 +65,9 @@ public class StreamingResponseHandler {
 	@Autowired
 	private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
+	@Autowired(required = false)
+	private TokenCountService tokenCountService;
+
 	/**
 	 * Result container for streaming response processing
 	 */
@@ -74,30 +77,30 @@ public class StreamingResponseHandler {
 
 		private final boolean earlyTerminated;
 
-		private final int outputCharCount;
+		private final int outputTokenCount;
 
-		private final int inputCharCount;
+		private final int inputTokenCount;
 
 		public StreamingResult(ChatResponse lastResponse) {
 			this.lastResponse = lastResponse;
 			this.earlyTerminated = false;
-			this.outputCharCount = 0;
-			this.inputCharCount = 0;
+			this.outputTokenCount = 0;
+			this.inputTokenCount = 0;
 		}
 
 		public StreamingResult(ChatResponse lastResponse, boolean earlyTerminated) {
 			this.lastResponse = lastResponse;
 			this.earlyTerminated = earlyTerminated;
-			this.outputCharCount = 0;
-			this.inputCharCount = 0;
+			this.outputTokenCount = 0;
+			this.inputTokenCount = 0;
 		}
 
-		public StreamingResult(ChatResponse lastResponse, boolean earlyTerminated, int outputCharCount,
-				int inputCharCount) {
+		public StreamingResult(ChatResponse lastResponse, boolean earlyTerminated, int outputTokenCount,
+				int inputTokenCount) {
 			this.lastResponse = lastResponse;
 			this.earlyTerminated = earlyTerminated;
-			this.outputCharCount = outputCharCount;
-			this.inputCharCount = inputCharCount;
+			this.outputTokenCount = outputTokenCount;
+			this.inputTokenCount = inputTokenCount;
 		}
 
 		public ChatResponse getLastResponse() {
@@ -133,19 +136,19 @@ public class StreamingResponseHandler {
 		}
 
 		/**
-		 * Get output character count
-		 * @return The total number of characters in the LLM response
+		 * Get output token count
+		 * @return The total number of tokens in the LLM response
 		 */
-		public int getOutputCharCount() {
-			return outputCharCount;
+		public int getOutputTokenCount() {
+			return outputTokenCount;
 		}
 
 		/**
-		 * Get input character count
-		 * @return The total number of characters in the LLM request
+		 * Get input token count
+		 * @return The total number of tokens in the LLM request
 		 */
-		public int getInputCharCount() {
-			return inputCharCount;
+		public int getInputTokenCount() {
+			return inputTokenCount;
 		}
 
 	}
@@ -160,17 +163,17 @@ public class StreamingResponseHandler {
 	 * when only thinking text (no tool calls) is detected
 	 * @param enableEarlyTermination Whether to enable early termination for thinking-only
 	 * responses. Should be false for text-only generation tasks (e.g., summaries)
-	 * @param inputCharCount The input character count from the request (calculated from
+	 * @param inputTokenCount The input token count from the request (calculated from
 	 * messages)
 	 * @return StreamingResult containing merged content and the last response
 	 */
 	public StreamingResult processStreamingResponse(Flux<ChatResponse> responseFlux, String contextName, String planId,
-			boolean isDebugModel, boolean enableEarlyTermination, int inputCharCount) {
+			boolean isDebugModel, boolean enableEarlyTermination, int inputTokenCount) {
 		// Create a new LlmTraceRecorder instance for this request
-		LlmTraceRecorder llmTraceRecorder = new LlmTraceRecorder(objectMapper);
-		// Set input count (calculated from messages in DynamicAgent/PlanFinalizer)
-		llmTraceRecorder.setInputCharCount(inputCharCount);
-		AtomicReference<Integer> inputCharCountRef = new AtomicReference<>(inputCharCount);
+		LlmTraceRecorder llmTraceRecorder = new LlmTraceRecorder(objectMapper, tokenCountService);
+		// Set input token count (calculated from messages in DynamicAgent/PlanFinalizer)
+		llmTraceRecorder.setInputTokenCount(inputTokenCount);
+		AtomicReference<Integer> inputTokenCountRef = new AtomicReference<>(inputTokenCount);
 		try {
 			AtomicReference<Long> lastLogTime = new AtomicReference<>(System.currentTimeMillis());
 
@@ -199,8 +202,8 @@ public class StreamingResponseHandler {
 			AtomicInteger responseCounter = new AtomicInteger(0);
 			long startTime = System.currentTimeMillis();
 
-			// Store output character count for retrieval after stream completes
-			AtomicReference<Integer> outputCharCountRef = new AtomicReference<>(0);
+			// Store output token count for retrieval after stream completes
+			AtomicReference<Integer> outputTokenCountRef = new AtomicReference<>(0);
 
 			// Early termination is disabled - always process the full stream
 			Flux<ChatResponse> finalFlux = responseFlux.doOnSubscribe(subscription -> {
@@ -278,10 +281,18 @@ public class StreamingResponseHandler {
 					.promptMetadata(metadataPromptMetadataRef.get())
 					.build();
 
-				// Calculate output character count BEFORE clearing the StringBuilder
-				int outputCharCount = messageTextContentRef.get() != null ? messageTextContentRef.get().length() : 0;
+				// Calculate output token count BEFORE clearing the StringBuilder
+				int outputTokenCount = 0;
+				if (messageTextContentRef.get() != null && tokenCountService != null) {
+					outputTokenCount = tokenCountService.countTokens(messageTextContentRef.get().toString());
+				}
+				else if (messageTextContentRef.get() != null) {
+					// Fallback to approximate character-based estimation if
+					// TokenCountService not available
+					outputTokenCount = (int) Math.ceil(messageTextContentRef.get().length() / 4.0);
+				}
 				// Store it in AtomicReference for later retrieval
-				outputCharCountRef.set(outputCharCount);
+				outputTokenCountRef.set(outputTokenCount);
 
 				finalChatResponseRef.set(new ChatResponse(List.of(new Generation(AssistantMessage.builder()
 					.content(messageTextContentRef.get().toString())
@@ -354,13 +365,13 @@ public class StreamingResponseHandler {
 
 			if (llmTraceRecorder != null) {
 				llmTraceRecorder.recordResponse(finalChatResponseRef.get());
-				// Get counts from the recorder
-				outputCharCountRef.set(llmTraceRecorder.getOutputCharCount());
-				inputCharCountRef.set(llmTraceRecorder.getInputCharCount());
+				// Get token counts from the recorder (it now uses token counting)
+				outputTokenCountRef.set(llmTraceRecorder.getOutputTokenCount());
+				inputTokenCountRef.set(llmTraceRecorder.getInputTokenCount());
 			}
 			// Early termination is always disabled - always return false
-			return new StreamingResult(finalChatResponseRef.get(), false, outputCharCountRef.get(),
-					inputCharCountRef.get());
+			return new StreamingResult(finalChatResponseRef.get(), false, outputTokenCountRef.get(),
+					inputTokenCountRef.get());
 		}
 		catch (Exception e) {
 			// Final error handling - log and re-throw

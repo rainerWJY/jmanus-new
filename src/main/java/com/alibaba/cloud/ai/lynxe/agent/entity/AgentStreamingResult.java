@@ -31,23 +31,23 @@ public class AgentStreamingResult {
 
 	private String responseText;
 
-	private int inputCharCount;
+	private int inputTokenCount;
 
-	private int outputCharCount;
+	private int outputTokenCount;
 
 	public AgentStreamingResult() {
 		this.toolCalls = Collections.emptyList();
 		this.responseText = "";
-		this.inputCharCount = 0;
-		this.outputCharCount = 0;
+		this.inputTokenCount = 0;
+		this.outputTokenCount = 0;
 	}
 
-	public AgentStreamingResult(List<ToolCall> toolCalls, String responseText, int inputCharCount,
-			int outputCharCount) {
+	public AgentStreamingResult(List<ToolCall> toolCalls, String responseText, int inputTokenCount,
+			int outputTokenCount) {
 		this.toolCalls = toolCalls != null ? toolCalls : Collections.emptyList();
 		this.responseText = responseText != null ? responseText : "";
-		this.inputCharCount = inputCharCount;
-		this.outputCharCount = outputCharCount;
+		this.inputTokenCount = inputTokenCount;
+		this.outputTokenCount = outputTokenCount;
 	}
 
 	/**
@@ -91,35 +91,35 @@ public class AgentStreamingResult {
 	}
 
 	/**
-	 * Get input character count
-	 * @return Number of characters in the input
+	 * Get input token count
+	 * @return Number of tokens in the input
 	 */
-	public int getInputCharCount() {
-		return inputCharCount;
+	public int getInputTokenCount() {
+		return inputTokenCount;
 	}
 
 	/**
-	 * Set input character count
-	 * @param inputCharCount Number of characters in the input
+	 * Set input token count
+	 * @param inputTokenCount Number of tokens in the input
 	 */
-	public void setInputCharCount(int inputCharCount) {
-		this.inputCharCount = inputCharCount;
+	public void setInputTokenCount(int inputTokenCount) {
+		this.inputTokenCount = inputTokenCount;
 	}
 
 	/**
-	 * Get output character count
-	 * @return Number of characters in the output
+	 * Get output token count
+	 * @return Number of tokens in the output
 	 */
-	public int getOutputCharCount() {
-		return outputCharCount;
+	public int getOutputTokenCount() {
+		return outputTokenCount;
 	}
 
 	/**
-	 * Set output character count
-	 * @param outputCharCount Number of characters in the output
+	 * Set output token count
+	 * @param outputTokenCount Number of tokens in the output
 	 */
-	public void setOutputCharCount(int outputCharCount) {
-		this.outputCharCount = outputCharCount;
+	public void setOutputTokenCount(int outputTokenCount) {
+		this.outputTokenCount = outputTokenCount;
 	}
 
 	/**

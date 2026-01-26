@@ -37,6 +37,8 @@ import org.springframework.stereotype.Component;
 import com.alibaba.cloud.ai.lynxe.mcp.config.McpProperties;
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigEntity;
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigStatus;
+import com.alibaba.cloud.ai.lynxe.mcp.model.vo.ConnectionStatusInfo;
+import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpConnectionStatus;
 import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServiceEntity;
 import com.alibaba.cloud.ai.lynxe.mcp.repository.McpConfigRepository;
 
@@ -162,6 +164,49 @@ public class McpCacheManager {
 	private final Map<String, ScheduledFuture<?>> healthCheckTasks = new ConcurrentHashMap<>();
 
 	/**
+	 * Track connection status for each server (serverName -> ConnectionStatusInfo)
+	 */
+	private final Map<String, ConnectionStatusInfo> connectionStatusMap = new ConcurrentHashMap<>();
+
+	/**
+	 * Track last error log time for each server to throttle error logging (serverName ->
+	 * lastErrorLogTime)
+	 */
+	private final Map<String, Long> lastErrorLogTimeMap = new ConcurrentHashMap<>();
+
+	/**
+	 * Track last rebuild attempt time for each server to throttle rebuild attempts
+	 * (serverName -> lastRebuildAttemptTime)
+	 */
+	private final Map<String, Long> lastRebuildAttemptTimeMap = new ConcurrentHashMap<>();
+
+	/**
+	 * Track consecutive failure count for each server (serverName ->
+	 * consecutiveFailureCount)
+	 */
+	private final Map<String, AtomicInteger> consecutiveFailureCountMap = new ConcurrentHashMap<>();
+
+	/**
+	 * Minimum interval between error logs for the same server (5 minutes)
+	 */
+	private static final long ERROR_LOG_THROTTLE_INTERVAL_MS = 5 * 60 * 1000L;
+
+	/**
+	 * Minimum interval between rebuild attempts for the same server (30 seconds)
+	 */
+	private static final long REBUILD_THROTTLE_INTERVAL_MS = 30 * 1000L;
+
+	/**
+	 * Maximum consecutive failures before applying extended cooldown (3 failures)
+	 */
+	private static final int MAX_CONSECUTIVE_FAILURES = 3;
+
+	/**
+	 * Extended cooldown period after multiple consecutive failures (5 minutes)
+	 */
+	private static final long EXTENDED_REBUILD_COOLDOWN_MS = 5 * 60 * 1000L;
+
+	/**
 	 * Maximum pending requests threshold for health check
 	 */
 	private static final int MAX_PENDING_REQUESTS_THRESHOLD = 100;
@@ -260,6 +305,9 @@ public class McpCacheManager {
 					return;
 				}
 
+				// Record creation attempt time
+				lastRebuildAttemptTimeMap.put(serverName, System.currentTimeMillis());
+
 				McpServiceEntity serviceEntity = connectionFactory.createConnection(config);
 				if (serviceEntity != null) {
 					ConnectionWrapper wrapper = connections.get(serverName);
@@ -267,24 +315,40 @@ public class McpCacheManager {
 						wrapper.setServiceEntity(serviceEntity);
 						wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CONNECTED);
 						logger.info("Background connection created successfully for server: {}", serverName);
+						// Reset failure count on success
+						consecutiveFailureCountMap.remove(serverName);
+						// Update connection status to CONNECTED
+						updateConnectionStatus(serverName, McpConnectionStatus.CONNECTED, null);
 						// Start health check for this connection
 						scheduleHealthCheck(serverName);
 					}
 				}
 				else {
-					logger.error("Failed to create connection in background for server: {}", serverName);
+					// Increment failure count
+					consecutiveFailureCountMap.computeIfAbsent(serverName, k -> new AtomicInteger(0)).incrementAndGet();
+					// Throttle error logging
+					logConnectionError(serverName, "Failed to create connection in background", null);
 					ConnectionWrapper wrapper = connections.get(serverName);
 					if (wrapper != null) {
 						wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
 					}
+					// Update connection status to ERROR
+					updateConnectionStatus(serverName, McpConnectionStatus.ERROR,
+							"Failed to create connection: Connection factory returned null");
 				}
 			}
 			catch (Exception e) {
-				logger.error("Exception during background connection creation for server: {}", serverName, e);
+				// Increment failure count
+				consecutiveFailureCountMap.computeIfAbsent(serverName, k -> new AtomicInteger(0)).incrementAndGet();
+				// Throttle error logging
+				logConnectionError(serverName, "Exception during background connection creation", e);
 				ConnectionWrapper wrapper = connections.get(serverName);
 				if (wrapper != null) {
 					wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
 				}
+				// Update connection status to ERROR with error message
+				String errorMessage = extractErrorMessage(e);
+				updateConnectionStatus(serverName, McpConnectionStatus.ERROR, errorMessage);
 			}
 		});
 	}
@@ -305,9 +369,47 @@ public class McpCacheManager {
 			return; // Already rebuilding
 		}
 
+		// Check if rebuild should be throttled
+		if (shouldThrottleRebuild(serverName)) {
+			logger.debug("Rebuild throttled for server: {} (too many recent failures)", serverName);
+			return;
+		}
+
 		// Mark as reconnecting and trigger background rebuild
 		wrapper.setState(ConnectionState.CLOSED, ConnectionState.RECONNECTING);
 		rebuildExecutor.execute(() -> rebuildConnection(serverName));
+	}
+
+	/**
+	 * Check if rebuild should be throttled based on recent failures
+	 * @param serverName Server name
+	 * @return true if rebuild should be throttled, false otherwise
+	 */
+	private boolean shouldThrottleRebuild(String serverName) {
+		long currentTime = System.currentTimeMillis();
+		Long lastRebuildTime = lastRebuildAttemptTimeMap.get(serverName);
+
+		if (lastRebuildTime == null) {
+			return false; // No previous rebuild attempts
+		}
+
+		long timeSinceLastRebuild = currentTime - lastRebuildTime;
+		AtomicInteger failureCount = consecutiveFailureCountMap.computeIfAbsent(serverName, k -> new AtomicInteger(0));
+
+		// If we have many consecutive failures, use extended cooldown
+		if (failureCount.get() >= MAX_CONSECUTIVE_FAILURES) {
+			if (timeSinceLastRebuild < EXTENDED_REBUILD_COOLDOWN_MS) {
+				return true; // Still in extended cooldown period
+			}
+		}
+		else {
+			// Normal throttle interval
+			if (timeSinceLastRebuild < REBUILD_THROTTLE_INTERVAL_MS) {
+				return true; // Still in normal throttle period
+			}
+		}
+
+		return false; // Can proceed with rebuild
 	}
 
 	/**
@@ -393,6 +495,9 @@ public class McpCacheManager {
 				return;
 			}
 
+			// Record rebuild attempt time
+			lastRebuildAttemptTimeMap.put(serverName, System.currentTimeMillis());
+
 			try {
 				McpServiceEntity newEntity = connectionFactory.createConnection(config);
 
@@ -400,17 +505,33 @@ public class McpCacheManager {
 					wrapper.setServiceEntity(newEntity);
 					wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CONNECTED);
 					logger.info("Successfully rebuilt connection for server: {}", serverName);
+					// Reset failure count on success
+					consecutiveFailureCountMap.remove(serverName);
+					// Update connection status to CONNECTED
+					updateConnectionStatus(serverName, McpConnectionStatus.CONNECTED, null);
 					// Start health check for this connection
 					scheduleHealthCheck(serverName);
 				}
 				else {
-					logger.error("Failed to create new connection for server: {}", serverName);
+					// Increment failure count
+					consecutiveFailureCountMap.computeIfAbsent(serverName, k -> new AtomicInteger(0)).incrementAndGet();
+					// Throttle error logging to avoid log spam
+					logConnectionError(serverName, "Failed to create new connection", null);
 					wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
+					// Update connection status to ERROR
+					updateConnectionStatus(serverName, McpConnectionStatus.ERROR,
+							"Failed to rebuild connection: Connection factory returned null");
 				}
 			}
 			catch (Exception e) {
-				logger.error("Failed to rebuild connection for server: {}", serverName, e);
+				// Increment failure count
+				consecutiveFailureCountMap.computeIfAbsent(serverName, k -> new AtomicInteger(0)).incrementAndGet();
+				// Throttle error logging to avoid log spam
+				logConnectionError(serverName, "Failed to rebuild connection", e);
 				wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
+				// Update connection status to ERROR with error message
+				String errorMessage = extractErrorMessage(e);
+				updateConnectionStatus(serverName, McpConnectionStatus.ERROR, errorMessage);
 			}
 		}
 		finally {
@@ -517,6 +638,8 @@ public class McpCacheManager {
 						serverName);
 				// Fail-fast: mark as closed and trigger background rebuild, don't wait
 				wrapper.setState(ConnectionState.CONNECTED, ConnectionState.CLOSED);
+				// Mark as disconnected
+				markConnectionDisconnected(serverName);
 				triggerBackgroundRebuild(serverName);
 			}
 		}
@@ -916,6 +1039,107 @@ public class McpCacheManager {
 			stats.put(entry.getKey(), stat);
 		}
 		return stats;
+	}
+
+	/**
+	 * Update connection status for a server
+	 * @param serverName Server name
+	 * @param status Connection status
+	 * @param errorMessage Error message (null if no error)
+	 */
+	private void updateConnectionStatus(String serverName, McpConnectionStatus status, String errorMessage) {
+		ConnectionStatusInfo statusInfo = connectionStatusMap.computeIfAbsent(serverName,
+				k -> new ConnectionStatusInfo());
+		statusInfo.setStatus(status);
+		if (errorMessage != null) {
+			statusInfo.setErrorMessage(errorMessage);
+		}
+		else if (status == McpConnectionStatus.CONNECTED) {
+			// Clear error message when connected
+			statusInfo.setErrorMessage(null);
+		}
+	}
+
+	/**
+	 * Extract meaningful error message from exception
+	 * @param e Exception
+	 * @return Error message string
+	 */
+	private String extractErrorMessage(Exception e) {
+		if (e == null) {
+			return "Unknown error";
+		}
+
+		// Get root cause
+		Throwable rootCause = e;
+		while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+			rootCause = rootCause.getCause();
+		}
+
+		String message = rootCause.getMessage();
+		if (message != null && !message.trim().isEmpty()) {
+			// Check for MCP protocol errors (like "Url is expired")
+			if (rootCause.getClass().getName().contains("McpError")) {
+				return message;
+			}
+			// Check for common error patterns
+			if (message.contains("Failed to initialize") || message.contains("Client failed to initialize")) {
+				// Try to extract more specific error from the message
+				return message;
+			}
+			return message;
+		}
+
+		return rootCause.getClass().getSimpleName() + ": "
+				+ (e.getMessage() != null ? e.getMessage() : "Unknown error");
+	}
+
+	/**
+	 * Get connection status for a server
+	 * @param serverName Server name
+	 * @return Connection status info, or null if not tracked
+	 */
+	public ConnectionStatusInfo getConnectionStatus(String serverName) {
+		return connectionStatusMap.get(serverName);
+	}
+
+	/**
+	 * Mark connection as disconnected (when connection is lost)
+	 * @param serverName Server name
+	 */
+	public void markConnectionDisconnected(String serverName) {
+		updateConnectionStatus(serverName, McpConnectionStatus.DISCONNECTED, null);
+	}
+
+	/**
+	 * Log connection error with throttling to avoid log spam
+	 * @param serverName Server name
+	 * @param message Error message prefix
+	 * @param exception Exception to log (can be null)
+	 */
+	private void logConnectionError(String serverName, String message, Exception exception) {
+		long currentTime = System.currentTimeMillis();
+		Long lastLogTime = lastErrorLogTimeMap.get(serverName);
+
+		String errorMessage = exception != null
+				? (exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName())
+				: "Unknown error";
+
+		if (lastLogTime == null || (currentTime - lastLogTime) >= ERROR_LOG_THROTTLE_INTERVAL_MS) {
+			// First error or enough time has passed - log full error with stack trace
+			if (exception != null) {
+				logger.error("{} for server: {}. Error: {}", message, serverName, errorMessage, exception);
+			}
+			else {
+				logger.error("{} for server: {}. Error: {}", message, serverName, errorMessage);
+			}
+			lastErrorLogTimeMap.put(serverName, currentTime);
+		}
+		else {
+			// Recent error logged - use debug level with simple message
+			logger.debug("{} for server: {} (error throttled, last full log was {}ms ago). Error: {}", message,
+					serverName, currentTime - lastLogTime, errorMessage);
+		}
 	}
 
 	/**

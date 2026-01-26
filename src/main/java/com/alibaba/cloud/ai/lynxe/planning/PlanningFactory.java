@@ -108,6 +108,7 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.FunctionRegistryService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.ParallelExecutionService;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartAsyncExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountExternalLinkFileTool;
@@ -376,10 +377,15 @@ public class PlanningFactory {
 			StartParallelExecutionTool startParallelExecutionTool = new StartParallelExecutionTool(objectMapper,
 					toolCallbackMap, functionRegistryService, parallelExecutionService, toolI18nService);
 			toolDefinitions.add(startParallelExecutionTool);
+			StartAsyncExecutionTool startAsyncExecutionTool = new StartAsyncExecutionTool(objectMapper, toolCallbackMap,
+					functionRegistryService, parallelExecutionService, toolI18nService);
+			toolDefinitions.add(startAsyncExecutionTool);
 			toolDefinitions.add(new ClearPendingExecutionTool(objectMapper, functionRegistryService, toolI18nService));
-			// Note: StartParallelExecutionTool needs toolCallbackMap set after all tools
-			// are registered
-			// This will be handled in the toolCallbackMap creation loop below
+			// Note: StartParallelExecutionTool and StartAsyncExecutionTool receive
+			// toolCallbackMap
+			// by reference, so they will automatically have access to all registered
+			// tools after
+			// the toolCallbackMap creation loop below completes
 			toolDefinitions.add(new FileBasedParallelExecutionTool(objectMapper, toolCallbackMap,
 					unifiedDirectoryManager, parallelExecutionService, toolI18nService));
 			toolDefinitions.add(new MarkdownConverterTool(unifiedDirectoryManager,
