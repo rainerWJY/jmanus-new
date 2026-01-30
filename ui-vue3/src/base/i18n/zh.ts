@@ -461,12 +461,14 @@ const words: I18nType = {
       refresh: '刷新',
       clearAll: '清除所有表',
       clearConfirm: '确认清空历史记录？',
-      clearMessage: '这将永久删除以下表中的所有历史记录。此操作无法撤销，清空后系统可以保持干净的状态，但对话就都没了，请谨慎选择。',
+      clearMessage:
+        '这将永久删除以下表中的所有历史记录。此操作无法撤销，清空后系统可以保持干净的状态，但对话就都没了，请谨慎选择。',
       clearSuccess: '所有表已成功清除',
       clearFailed: '清除表失败',
       refreshSuccess: '计数已刷新',
       refreshFailed: '刷新计数失败',
       allEmpty: '所有表均为空',
+      rows: '行',
       tableDescriptions: {
         actToolInfo: '工具调用详情 - 存储工具名称、参数（JSON）和执行结果。每次工具调用都会增长。',
         thinkActRecord:

@@ -481,6 +481,7 @@ const words: I18nType = {
       refreshSuccess: 'Counts refreshed',
       refreshFailed: 'Failed to refresh counts',
       allEmpty: 'All tables are empty',
+      rows: 'rows',
       tableDescriptions: {
         actToolInfo: 'Tool call details - Stores tool name, parameters (JSON), and execution results. Grows with every tool call.',
         thinkActRecord:
