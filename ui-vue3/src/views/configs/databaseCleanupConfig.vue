@@ -50,7 +50,8 @@
             <div class="table-header">
               <h3 class="table-name">{{ table.name }}</h3>
               <div class="table-count-badge">
-                {{ formatCount(tableCounts?.[table.key] || 0) }} {{ t('config.databaseCleanup.rows') }}
+                {{ formatCount(tableCounts?.[table.key] || 0) }}
+                {{ t('config.databaseCleanup.rows') }}
               </div>
             </div>
             <p class="table-description">{{ table.description }}</p>
@@ -72,7 +73,10 @@
       <ul class="tables-to-clear">
         <li v-for="table in tableList" :key="table.key">
           <strong>{{ table.name }}</strong>
-          <span class="count-preview">({{ formatCount(tableCounts?.[table.key] || 0) }} {{ t('config.databaseCleanup.rows') }})</span>
+          <span class="count-preview"
+            >({{ formatCount(tableCounts?.[table.key] || 0) }}
+            {{ t('config.databaseCleanup.rows') }})</span
+          >
         </li>
       </ul>
     </div>

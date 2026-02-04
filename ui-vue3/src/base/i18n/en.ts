@@ -483,7 +483,8 @@ const words: I18nType = {
       allEmpty: 'All tables are empty',
       rows: 'rows',
       tableDescriptions: {
-        actToolInfo: 'Tool call details - Stores tool name, parameters (JSON), and execution results. Grows with every tool call.',
+        actToolInfo:
+          'Tool call details - Stores tool name, parameters (JSON), and execution results. Grows with every tool call.',
         thinkActRecord:
           'Think-act cycles - Records each think-act cycle during agent execution, including think input/output, action results, and token counts. Grows with every agent step.',
         planExecutionRecord:
