@@ -30,8 +30,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Service for reading and writing todo lists to/from plan directories.
- * Todos are stored per rootPlanId in: extensions/inner_storage/{rootPlanId}/todos.json
+ * Service for reading and writing todo lists to/from plan directories. Todos are stored
+ * per rootPlanId in: extensions/inner_storage/{rootPlanId}/todos.json
  */
 @Service
 public class TodoStorageService {

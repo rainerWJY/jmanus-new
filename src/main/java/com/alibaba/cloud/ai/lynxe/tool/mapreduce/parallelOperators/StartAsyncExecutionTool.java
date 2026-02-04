@@ -185,15 +185,19 @@ public class StartAsyncExecutionTool extends AbstractBaseTool<StartAsyncExecutio
 
 			if (delayMillis > 0) {
 				// Schedule execution for future time
-				logger.info("Scheduling async execution of {} functions with delay: {} ms ({} days, {} hours, {} minutes, {} seconds)",
+				logger.info(
+						"Scheduling async execution of {} functions with delay: {} ms ({} days, {} hours, {} minutes, {} seconds)",
 						executionCount, delayMillis, input.getDay() != null ? input.getDay() : 0,
-						input.getHour() != null ? input.getHour() : 0, input.getMinute() != null ? input.getMinute() : 0,
+						input.getHour() != null ? input.getHour() : 0,
+						input.getMinute() != null ? input.getMinute() : 0,
 						input.getSecond() != null ? input.getSecond() : 0);
 
 				// Create a copy of parentToolContext for scheduled execution
 				ToolContext scheduledToolContext = parentToolContext;
-				List<FunctionRegistryService.FunctionRegistry> scheduledPendingFunctions = new ArrayList<>(pendingFunctions);
-				List<ParallelExecutionService.ParallelExecutionRequest> scheduledExecutions = new ArrayList<>(executions);
+				List<FunctionRegistryService.FunctionRegistry> scheduledPendingFunctions = new ArrayList<>(
+						pendingFunctions);
+				List<ParallelExecutionService.ParallelExecutionRequest> scheduledExecutions = new ArrayList<>(
+						executions);
 
 				scheduler.schedule(() -> {
 					executeRegisteredFunctions(scheduledPendingFunctions, scheduledExecutions, scheduledToolContext);
@@ -280,8 +284,8 @@ public class StartAsyncExecutionTool extends AbstractBaseTool<StartAsyncExecutio
 			second = Math.max(0, second);
 		}
 
-		long totalMillis = (long) day * 24 * 60 * 60 * 1000 + (long) hour * 60 * 60 * 1000
-				+ (long) minute * 60 * 1000 + (long) second * 1000;
+		long totalMillis = (long) day * 24 * 60 * 60 * 1000 + (long) hour * 60 * 60 * 1000 + (long) minute * 60 * 1000
+				+ (long) second * 1000;
 
 		return totalMillis;
 	}

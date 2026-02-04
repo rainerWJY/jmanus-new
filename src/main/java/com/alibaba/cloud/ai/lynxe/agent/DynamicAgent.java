@@ -680,8 +680,9 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Build a summary of the prompt messages (shows all messages as JSON without truncation)
-	 * This includes tool calls, arguments, and all message fields for complete visibility
+	 * Build a summary of the prompt messages (shows all messages as JSON without
+	 * truncation) This includes tool calls, arguments, and all message fields for
+	 * complete visibility
 	 * @param messages List of messages in the prompt
 	 * @return Full summary string with all messages as JSON
 	 */
@@ -694,12 +695,13 @@ public class DynamicAgent extends ReActAgent {
 
 		for (int i = 0; i < messages.size(); i++) {
 			Message message = messages.get(i);
-			
+
 			if (summary.length() > 0) {
 				summary.append("\n");
 			}
-			
-			// Serialize each message to JSON to show complete structure including tool calls and arguments
+
+			// Serialize each message to JSON to show complete structure including tool
+			// calls and arguments
 			try {
 				if (objectMapper != null) {
 					String messageJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(message);

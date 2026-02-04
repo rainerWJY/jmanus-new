@@ -70,8 +70,8 @@ public class DatabaseCleanupService {
 			counts.put("plan_execution_record", planExecutionRecordRepository.count());
 
 			// Count rows from ai_chat_memory using JdbcTemplate
-			Long chatMemoryCount = jdbcTemplate.queryForObject(
-					"SELECT COUNT(*) FROM " + AI_CHAT_MEMORY_TABLE, Long.class);
+			Long chatMemoryCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + AI_CHAT_MEMORY_TABLE,
+					Long.class);
 			counts.put("ai_chat_memory", chatMemoryCount != null ? chatMemoryCount : 0L);
 
 			logger.debug("Retrieved table counts: {}", counts);
@@ -85,13 +85,11 @@ public class DatabaseCleanupService {
 	}
 
 	/**
-	 * Clear all rows from monitored tables
-	 * Deletes in order to respect foreign key constraints:
-	 * 1. act_tool_info (child of think_act_record)
-	 * 2. think_act_record (child of agent_execution_record)
-	 * 3. agent_execution_record (child of plan_execution_record)
-	 * 4. plan_execution_record (parent)
-	 * 5. ai_chat_memory (standalone)
+	 * Clear all rows from monitored tables Deletes in order to respect foreign key
+	 * constraints: 1. act_tool_info (child of think_act_record) 2. think_act_record
+	 * (child of agent_execution_record) 3. agent_execution_record (child of
+	 * plan_execution_record) 4. plan_execution_record (parent) 5. ai_chat_memory
+	 * (standalone)
 	 * @return Map with table names as keys and number of deleted rows as values
 	 */
 	@Transactional
@@ -127,8 +125,8 @@ public class DatabaseCleanupService {
 			logger.info("Deleted {} rows from plan_execution_record", planExecutionRecordCount);
 
 			// 5. Delete ai_chat_memory (standalone table)
-			Long chatMemoryCount = jdbcTemplate.queryForObject(
-					"SELECT COUNT(*) FROM " + AI_CHAT_MEMORY_TABLE, Long.class);
+			Long chatMemoryCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + AI_CHAT_MEMORY_TABLE,
+					Long.class);
 			if (chatMemoryCount != null && chatMemoryCount > 0) {
 				jdbcTemplate.update("DELETE FROM " + AI_CHAT_MEMORY_TABLE);
 				deletedCounts.put("ai_chat_memory", chatMemoryCount);

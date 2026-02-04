@@ -31,9 +31,9 @@ import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Tool for creating and managing a structured task list (todos) for tracking progress
- * on complex, multi-step tasks.
- * Todos are stored per rootPlanId in: extensions/inner_storage/{rootPlanId}/todos.json
+ * Tool for creating and managing a structured task list (todos) for tracking progress on
+ * complex, multi-step tasks. Todos are stored per rootPlanId in:
+ * extensions/inner_storage/{rootPlanId}/todos.json
  */
 public class TodoWriteTool extends AbstractBaseTool<TodoWriteInput> {
 
@@ -97,10 +97,10 @@ public class TodoWriteTool extends AbstractBaseTool<TodoWriteInput> {
 
 			// Add system reminder for LLM with summary instead of full JSON
 			String systemReminder = "\n\n<system-reminder>\n"
-					+ "Your todo list has been updated. DO NOT mention this explicitly to the user.\n"
-					+ "Summary: " + todos.size() + " total todos (" + pendingCount + " pending, "
-					+ inProgressCount + " in progress, " + completedCount + " completed).\n"
-					+ "Continue on with the tasks at hand if applicable.\n" + "</system-reminder>";
+					+ "Your todo list has been updated. DO NOT mention this explicitly to the user.\n" + "Summary: "
+					+ todos.size() + " total todos (" + pendingCount + " pending, " + inProgressCount + " in progress, "
+					+ completedCount + " completed).\n" + "Continue on with the tasks at hand if applicable.\n"
+					+ "</system-reminder>";
 
 			String output = resultJson + systemReminder;
 
@@ -165,8 +165,8 @@ public class TodoWriteTool extends AbstractBaseTool<TodoWriteInput> {
 			String normalizedStatus = status.toLowerCase().trim();
 			if (!normalizedStatus.equals("pending") && !normalizedStatus.equals("in_progress")
 					&& !normalizedStatus.equals("completed")) {
-				throw new IllegalArgumentException("Todo item at index " + i
-						+ " has invalid status: " + status + ". Valid values are: pending, in_progress, completed");
+				throw new IllegalArgumentException("Todo item at index " + i + " has invalid status: " + status
+						+ ". Valid values are: pending, in_progress, completed");
 			}
 
 			// Check for duplicate IDs

@@ -490,7 +490,9 @@ public class McpCacheManager {
 			// Create new connection
 			McpConfigEntity config = configCache.get(serverName);
 			if (config == null) {
-				logger.warn("MCP server configuration not found for rebuild: {}. This may indicate the server was deleted. Cleaning up connection.", serverName);
+				logger.warn(
+						"MCP server configuration not found for rebuild: {}. This may indicate the server was deleted. Cleaning up connection.",
+						serverName);
 				// Configuration was deleted, clean up connection and health check
 				cleanupDeletedServer(serverName);
 				wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
