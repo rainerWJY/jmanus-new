@@ -202,6 +202,7 @@ const words: I18nType = {
       model: 'Model配置',
       mcp: 'Tools/MCP配置',
       database: '数据库配置',
+      databaseCleanup: '数据库清理',
       namespace: '命名空间配置',
       planTemplate: '计划模板管理',
     },
@@ -449,6 +450,36 @@ const words: I18nType = {
       passwordNotSetHint: '密码还未设置，请设置密码',
       deleteConfirm: '删除确认',
       deleteMessage: '确定要删除配置 "{name}" 吗？此操作不可恢复。',
+    },
+    // 数据库清理页面
+    databaseCleanup: {
+      title: '历史记录统计与清理',
+      description:
+        '这里是所有的历史聊天记录的情况，你可以查看他们的数量，也可以选择清空，选择清空后系统可以保持干净的状态，但对话就都没了，谨慎选择。',
+      tableName: '表名',
+      rowCount: '行数',
+      refresh: '刷新',
+      clearAll: '清除所有表',
+      clearConfirm: '确认清空历史记录？',
+      clearMessage:
+        '这将永久删除以下表中的所有历史记录。此操作无法撤销，清空后系统可以保持干净的状态，但对话就都没了，请谨慎选择。',
+      clearSuccess: '所有表已成功清除',
+      clearFailed: '清除表失败',
+      refreshSuccess: '计数已刷新',
+      refreshFailed: '刷新计数失败',
+      allEmpty: '所有表均为空',
+      rows: '行',
+      tableDescriptions: {
+        actToolInfo: '工具调用详情 - 存储工具名称、参数（JSON）和执行结果。每次工具调用都会增长。',
+        thinkActRecord:
+          '思考-行动循环 - 记录代理执行过程中的每个思考-行动循环，包括思考输入/输出、行动结果和令牌计数。每个代理步骤都会增长。',
+        planExecutionRecord:
+          '计划执行 - 跟踪高级计划执行元数据、用户请求和执行摘要。每次计划执行都会增长。',
+        agentExecutionRecord:
+          '代理执行 - 记录计划步骤中的代理执行，包括代理信息、执行状态和结果。每次代理调用都会增长。',
+        aiChatMemory:
+          '聊天消息 - 存储对话消息。每条消息都会增长。这是与基于计划的系统并行的替代存储机制。',
+      },
     },
     // 基础配置
     basicConfig: {
@@ -723,6 +754,7 @@ const words: I18nType = {
     thinkingAnalyzing: '正在分析任务需求...',
     thinkingExecuting: '正在执行: {title}',
     thinkingResponse: '正在组织语言回复您...',
+    waitingForResponse: '等待回复中...',
     planningExecution: '正在规划和执行您的请求...',
     copyResponse: '复制回复',
     regenerateResponse: '重新生成回复',

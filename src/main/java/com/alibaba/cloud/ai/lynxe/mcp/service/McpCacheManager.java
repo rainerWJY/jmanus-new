@@ -490,7 +490,11 @@ public class McpCacheManager {
 			// Create new connection
 			McpConfigEntity config = configCache.get(serverName);
 			if (config == null) {
-				logger.error("MCP server configuration not found for rebuild: {}", serverName);
+				logger.warn(
+						"MCP server configuration not found for rebuild: {}. This may indicate the server was deleted. Cleaning up connection.",
+						serverName);
+				// Configuration was deleted, clean up connection and health check
+				cleanupDeletedServer(serverName);
 				wrapper.setState(ConnectionState.RECONNECTING, ConnectionState.CLOSED);
 				return;
 			}
@@ -733,6 +737,32 @@ public class McpCacheManager {
 	}
 
 	/**
+	 * Clean up connection and related resources for a deleted server
+	 * @param serverName Server name that was deleted
+	 */
+	private void cleanupDeletedServer(String serverName) {
+		logger.info("Cleaning up resources for deleted server: {}", serverName);
+
+		// Cancel health check
+		cancelHealthCheck(serverName);
+
+		// Close connection if exists
+		ConnectionWrapper wrapper = connections.get(serverName);
+		if (wrapper != null && wrapper.getServiceEntity() != null) {
+			closeClientSafely(wrapper.getServiceEntity(), serverName);
+		}
+
+		// Remove from connections map (will be done by caller)
+		// Remove from tracking maps
+		lastRebuildAttemptTimeMap.remove(serverName);
+		consecutiveFailureCountMap.remove(serverName);
+		lastErrorLogTimeMap.remove(serverName);
+		connectionStatusMap.remove(serverName);
+
+		logger.debug("Cleaned up all resources for deleted server: {}", serverName);
+	}
+
+	/**
 	 * Execute a function with automatic retry on connection errors This is a helper
 	 * method that can be used to wrap tool execution with retry logic
 	 * @param serverName Server name
@@ -886,7 +916,21 @@ public class McpCacheManager {
 			logger.error("Failed to reload configurations", e);
 		}
 
-		// Rebuild all connections
+		// Clean up connections for servers that no longer exist in config
+		List<String> serversToRemove = new ArrayList<>();
+		for (String serverName : connections.keySet()) {
+			if (!configCache.containsKey(serverName)) {
+				logger.info("Server '{}' no longer exists in configuration, cleaning up connection", serverName);
+				cleanupDeletedServer(serverName);
+				serversToRemove.add(serverName);
+			}
+		}
+		// Remove cleaned up servers from connections map
+		for (String serverName : serversToRemove) {
+			connections.remove(serverName);
+		}
+
+		// Rebuild connections for servers that still exist in config
 		for (String serverName : connections.keySet()) {
 			ConnectionWrapper wrapper = connections.get(serverName);
 			if (wrapper != null) {

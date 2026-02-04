@@ -111,6 +111,8 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatch
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartAsyncExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountExternalLinkFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteExternalLinkFileOperator;
@@ -226,6 +228,9 @@ public class PlanningFactory {
 
 	@Autowired(required = false)
 	private List<ImageGenerationProvider> imageGenerationProviders;
+
+	@Autowired
+	private TodoStorageService todoStorageService;
 
 	public PlanningFactory(ChromeDriverService chromeDriverService, PlanExecutionRecorder recorder,
 			LynxeProperties lynxeProperties, TextFileService textFileService, McpService mcpService,
@@ -397,6 +402,8 @@ public class PlanningFactory {
 			toolDefinitions.add(new MarkdownToDocxTool(textFileService, unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(new ImageGenerationTool(dynamicModelRepository, restClientBuilderProvider, objectMapper,
 					toolI18nService, lynxeProperties, imageGenerationProviders));
+			// Todo management tool
+			toolDefinitions.add(new TodoWriteTool(todoStorageService, objectMapper, toolI18nService));
 			// toolDefinitions.add(new ExcelProcessorTool(excelProcessingService));
 		}
 		else {

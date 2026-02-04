@@ -680,9 +680,11 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Build a summary of the prompt messages (truncated for display)
+	 * Build a summary of the prompt messages (shows all messages as JSON without
+	 * truncation) This includes tool calls, arguments, and all message fields for
+	 * complete visibility
 	 * @param messages List of messages in the prompt
-	 * @return Truncated summary string
+	 * @return Full summary string with all messages as JSON
 	 */
 	private String buildPromptSummary(List<Message> messages) {
 		if (messages == null || messages.isEmpty()) {
@@ -690,36 +692,47 @@ public class DynamicAgent extends ReActAgent {
 		}
 
 		StringBuilder summary = new StringBuilder();
-		int maxLength = 200; // Maximum length for prompt summary
-		int messageCount = 0;
-		int maxMessages = 3; // Show first 3 messages
 
-		for (Message message : messages) {
-			if (messageCount >= maxMessages) {
-				break;
+		for (int i = 0; i < messages.size(); i++) {
+			Message message = messages.get(i);
+
+			if (summary.length() > 0) {
+				summary.append("\n");
 			}
 
-			String messageType = message.getClass().getSimpleName();
-			String messageText = message.getText();
-			if (messageText != null && !messageText.isEmpty()) {
-				if (summary.length() > 0) {
-					summary.append(" | ");
-				}
-				summary.append(messageType).append(": ");
-				if (messageText.length() > maxLength - summary.length()) {
-					summary.append(messageText.substring(0, Math.max(0, maxLength - summary.length() - 3)))
-						.append("...");
-					break;
+			// Serialize each message to JSON to show complete structure including tool
+			// calls and arguments
+			try {
+				if (objectMapper != null) {
+					String messageJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(message);
+					summary.append("Message ").append(i + 1).append(":\n").append(messageJson);
 				}
 				else {
-					summary.append(messageText);
+					// Fallback if ObjectMapper is not available
+					String messageType = message.getClass().getSimpleName();
+					String messageText = message.getText();
+					summary.append(messageType);
+					if (messageText != null && !messageText.isEmpty()) {
+						summary.append(": ").append(messageText);
+					}
+					else {
+						summary.append(": <empty>");
+					}
 				}
 			}
-			messageCount++;
-		}
-
-		if (messages.size() > maxMessages) {
-			summary.append(" ... (").append(messages.size()).append(" total messages)");
+			catch (Exception e) {
+				// Fallback if JSON serialization fails
+				String messageType = message.getClass().getSimpleName();
+				String messageText = message.getText();
+				summary.append(messageType);
+				if (messageText != null && !messageText.isEmpty()) {
+					summary.append(": ").append(messageText);
+				}
+				else {
+					summary.append(": <empty>");
+				}
+				summary.append(" (Failed to serialize to JSON: ").append(e.getMessage()).append(")");
+			}
 		}
 
 		return summary.toString();

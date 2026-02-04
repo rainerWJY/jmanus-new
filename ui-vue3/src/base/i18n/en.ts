@@ -207,6 +207,7 @@ const words: I18nType = {
       model: 'Model Configuration',
       mcp: 'Tools/MCP Configuration',
       database: 'Database Configuration',
+      databaseCleanup: 'History Records Statistics and Cleanup',
       namespace: 'Namespace Configuration',
       planTemplate: 'Plan Template Management',
     },
@@ -462,6 +463,37 @@ const words: I18nType = {
       deleteConfirm: 'Delete Confirmation',
       deleteMessage:
         'Are you sure you want to delete the configuration "{name}"? This action cannot be undone.',
+    },
+    // Database cleanup page
+    databaseCleanup: {
+      title: 'History Records Statistics and Cleanup',
+      description:
+        'Here you can view all historical chat records. You can check their counts and choose to clear them. After clearing, the system can maintain a clean state, but all conversations will be lost. Please choose carefully.',
+      tableName: 'Table Name',
+      rowCount: 'Row Count',
+      refresh: 'Refresh',
+      clearAll: 'Clear All Tables',
+      clearConfirm: 'Confirm Clear History Records?',
+      clearMessage:
+        'This will permanently delete all historical records from the following tables. This action cannot be undone. After clearing, the system can maintain a clean state, but all conversations will be lost. Please choose carefully.',
+      clearSuccess: 'All tables cleared successfully',
+      clearFailed: 'Failed to clear tables',
+      refreshSuccess: 'Counts refreshed',
+      refreshFailed: 'Failed to refresh counts',
+      allEmpty: 'All tables are empty',
+      rows: 'rows',
+      tableDescriptions: {
+        actToolInfo:
+          'Tool call details - Stores tool name, parameters (JSON), and execution results. Grows with every tool call.',
+        thinkActRecord:
+          'Think-act cycles - Records each think-act cycle during agent execution, including think input/output, action results, and token counts. Grows with every agent step.',
+        planExecutionRecord:
+          'Plan executions - Tracks high-level plan execution metadata, user requests, and execution summaries. Grows with each plan execution.',
+        agentExecutionRecord:
+          'Agent executions - Records agent execution within plan steps, including agent info, execution state, and results. Grows with each agent invocation.',
+        aiChatMemory:
+          'Chat messages - Stores conversation messages. Grows with each message. This is an alternative storage mechanism alongside the plan-based system.',
+      },
     },
     // Basic configuration
     basicConfig: {
@@ -772,6 +804,7 @@ const words: I18nType = {
     thinkingAnalyzing: 'Analyzing task requirements...',
     thinkingExecuting: 'Executing: {title}',
     thinkingResponse: 'Organizing response for you...',
+    waitingForResponse: 'Waiting for response...',
     planningExecution: 'Planning and executing your request...',
     copyResponse: 'Copy Response',
     regenerateResponse: 'Regenerate Response',

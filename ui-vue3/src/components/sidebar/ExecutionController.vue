@@ -37,7 +37,6 @@
             <div class="parameter-label-row">
               <label class="parameter-label">
                 {{ param }}
-                <span class="required">*</span>
               </label>
               <!-- Unified parameter history navigation - only show on first parameter -->
               <div v-if="index === 0 && hasParameterHistory()" class="parameter-history-navigation">
@@ -73,7 +72,6 @@
               :placeholder="t('sidebar.enterValueFor', { param })"
               @input="updateParameterValue(param, ($event.target as HTMLInputElement).value)"
               @keydown="handleInputKeydown($event, param)"
-              required
             />
             <textarea
               v-else
@@ -91,7 +89,6 @@
               :placeholder="t('sidebar.enterValueFor', { param })"
               @input="updateParameterValue(param, ($event.target as HTMLTextAreaElement).value)"
               rows="3"
-              required
             />
             <div v-if="parameterErrors[param]" class="parameter-error">
               {{ parameterErrors[param] }}
@@ -99,19 +96,7 @@
           </div>
         </div>
 
-        <!-- Validation status message - only show after user attempts to execute -->
-        <div
-          v-if="
-            hasAttemptedExecute &&
-            parameterRequirements.hasParameters &&
-            !canExecute &&
-            !props.isExecuting
-          "
-          class="validation-message"
-        >
-          <Icon icon="carbon:warning" width="14" />
-          {{ t('sidebar.fillAllRequiredParameters') }}
-        </div>
+        <!-- Validation status message removed - parameters are now optional -->
       </div>
 
       <!-- File Upload Component -->
@@ -469,15 +454,7 @@ const canExecute = computed(() => {
     return false
   }
 
-  // Parameter validation
-  if (parameterRequirements.value.hasParameters) {
-    // Check if all required parameters are filled
-    return parameterRequirements.value.parameters.every(param => {
-      const value = parameterValues.value[param]
-      return typeof value === 'string' && value.trim() !== ''
-    })
-  }
-
+  // Parameters are now optional - no validation needed
   return true
 })
 
@@ -1109,27 +1086,12 @@ const handleInputKeydown = async (event: KeyboardEvent, paramName: string) => {
   }
 }
 
-// Validate all parameters
+// Validate all parameters - parameters are now optional, so validation always passes
 const validateParameters = (): boolean => {
   parameterErrors.value = {}
   isValidationError.value = false
-
-  if (!parameterRequirements.value.hasParameters) {
-    return true
-  }
-
-  let hasErrors = false
-
-  parameterRequirements.value.parameters.forEach(param => {
-    const value = parameterValues.value[param] ? parameterValues.value[param].trim() : ''
-    if (!value) {
-      parameterErrors.value[param] = `${param} is required`
-      hasErrors = true
-    }
-  })
-
-  isValidationError.value = hasErrors
-  return !hasErrors
+  // Parameters are optional, so validation always passes
+  return true
 }
 
 // Update execution params from parameter values

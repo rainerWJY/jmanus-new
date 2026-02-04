@@ -187,10 +187,18 @@
                               {{ tas.inputCharCount ?? 0 }} tokens
                               <span
                                 v-if="
-                                  calculateContextUsagePercentage(tas.inputCharCount, tas.modelContextLimit) !== null
+                                  calculateContextUsagePercentage(
+                                    tas.inputCharCount,
+                                    tas.modelContextLimit
+                                  ) !== null
                                 "
                               >
-                                {{ calculateContextUsagePercentage(tas.inputCharCount, tas.modelContextLimit) }}
+                                {{
+                                  calculateContextUsagePercentage(
+                                    tas.inputCharCount,
+                                    tas.modelContextLimit
+                                  )
+                                }}
                                 context used
                               </span>
                             </span>

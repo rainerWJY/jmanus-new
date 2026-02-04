@@ -72,6 +72,7 @@ import LanguageSwitcher from '@/components/language-switcher/LanguageSwitcher.vu
 import {
   BuildOutlined,
   DatabaseOutlined,
+  DeleteOutlined,
   FileTextOutlined,
   FolderOutlined,
   SettingOutlined,
@@ -83,6 +84,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import BasicConfig from './basicConfig.vue'
 import NamespaceSwitch from './components/namespaceSwitch.vue'
+import DatabaseCleanupConfig from './databaseCleanupConfig.vue'
 import DatabaseConfig from './databaseConfig.vue'
 import McpConfig from './mcpConfig.vue'
 import ModelConfig from './modelConfig.vue'
@@ -99,6 +101,7 @@ type ConfigComponent =
   | typeof ModelConfig
   | typeof McpConfig
   | typeof DatabaseConfig
+  | typeof DatabaseCleanupConfig
   | typeof NamespaceConfig
   | typeof PlanTemplateConfig
 
@@ -108,6 +111,7 @@ interface CategoryMap {
   model: typeof ModelConfig
   mcp: typeof McpConfig
   database: typeof DatabaseConfig
+  databaseCleanup: typeof DatabaseCleanupConfig
   namespace: typeof NamespaceConfig
   planTemplate: typeof PlanTemplateConfig
 }
@@ -124,6 +128,7 @@ const categoryMap: CategoryMap = {
   model: ModelConfig,
   mcp: McpConfig,
   database: DatabaseConfig,
+  databaseCleanup: DatabaseCleanupConfig,
   namespace: NamespaceConfig,
   planTemplate: PlanTemplateConfig,
 }
@@ -138,6 +143,12 @@ const categories = computed(() => [
   { key: 'model', label: t('config.categories.model'), icon: 'carbon:build-image' },
   { key: 'mcp', label: t('config.categories.mcp'), icon: 'carbon:tool-box' },
   { key: 'database', label: t('config.categories.database'), icon: 'carbon:database' },
+  {
+    key: 'databaseCleanup',
+    label: t('config.categories.databaseCleanup'),
+    disabled: false,
+    icon: 'carbon:trash-can',
+  },
   {
     key: 'namespace',
     label: t('config.categories.namespace'),
@@ -178,6 +189,7 @@ const getAntIcon = (key: string) => {
     model: BuildOutlined,
     mcp: ToolOutlined,
     database: DatabaseOutlined,
+    databaseCleanup: DeleteOutlined,
     namespace: FolderOutlined,
     planTemplate: FileTextOutlined,
   }

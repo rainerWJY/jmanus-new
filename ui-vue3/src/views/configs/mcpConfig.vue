@@ -39,8 +39,14 @@
       <!-- MCP Server List -->
       <div class="server-list">
         <div class="list-header">
-          <h3>{{ t('config.mcpConfig.serverList') }}</h3>
-          <span class="server-count">({{ servers.length }})</span>
+          <div>
+            <h3>{{ t('config.mcpConfig.serverList') }}</h3>
+            <span class="server-count">({{ servers.length }})</span>
+          </div>
+          <button class="add-btn" @click="startAddConfig">
+            <Icon icon="carbon:add" />
+            {{ t('config.mcpConfig.newMcpConfig') }}
+          </button>
         </div>
 
         <div class="search-box">
@@ -70,8 +76,13 @@
                   :class="getConnectionStatusClass(server.connectionStatus)"
                   :title="getConnectionStatusTooltip(server)"
                 >
-                  <Icon :icon="getConnectionStatusIcon(server.connectionStatus)" class="status-icon" />
-                  <span class="status-text">{{ getConnectionStatusText(server.connectionStatus) }}</span>
+                  <Icon
+                    :icon="getConnectionStatusIcon(server.connectionStatus)"
+                    class="status-icon"
+                  />
+                  <span class="status-text">{{
+                    getConnectionStatusText(server.connectionStatus)
+                  }}</span>
                 </div>
               </div>
               <div class="server-status-toggle" @click.stop="toggleServerStatus(server)">
@@ -130,14 +141,6 @@
         <div v-if="!loading && filteredMcpServers.length === 0" class="empty-state">
           <Icon icon="carbon:bot" class="empty-icon" />
           <p>{{ searchQuery ? t('config.notFound') : t('config.mcpConfig.noServers') }}</p>
-        </div>
-
-        <!-- Add configuration button -->
-        <div class="add-config-button-container">
-          <button class="add-btn" @click="startAddConfig">
-            <Icon icon="carbon:add" />
-            {{ t('config.mcpConfig.newMcpConfig') }}
-          </button>
         </div>
       </div>
 
@@ -1173,8 +1176,15 @@ const getConnectionTypeIcon = (type: string) => {
 .list-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.list-header > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .list-header h3 {
@@ -1509,16 +1519,16 @@ const getConnectionTypeIcon = (type: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 16px;
+  gap: 6px;
+  padding: 6px 12px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
   color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 14px;
+  font-size: 13px;
+  min-height: 32px;
 
   &:hover {
     background: rgba(255, 255, 255, 0.05);
