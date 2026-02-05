@@ -906,6 +906,9 @@ public class DynamicAgent extends ReActAgent {
 		Map<String, Object> parentContextMap = new HashMap<>();
 		parentContextMap.put("planDepth", getPlanDepth());
 		addRecursiveCallChainToContext(parentContextMap);
+		if (org.springframework.util.StringUtils.hasText(getConversationId())) {
+			parentContextMap.put("conversationId", getConversationId());
+		}
 		ToolContext parentToolContext = new ToolContext(parentContextMap);
 
 		// Start with an empty list CompletableFuture
@@ -987,6 +990,9 @@ public class DynamicAgent extends ReActAgent {
 		Map<String, Object> parentContextMap = new HashMap<>();
 		parentContextMap.put("planDepth", getPlanDepth());
 		addRecursiveCallChainToContext(parentContextMap);
+		if (org.springframework.util.StringUtils.hasText(getConversationId())) {
+			parentContextMap.put("conversationId", getConversationId());
+		}
 		ToolContext parentToolContext = new ToolContext(parentContextMap);
 
 		// Use ParallelExecutionService to execute in parallel

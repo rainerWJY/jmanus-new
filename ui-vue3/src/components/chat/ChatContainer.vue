@@ -71,11 +71,13 @@
           <!-- Response section -->
           <ResponseSection
             v-if="
+              (message.contentParts && message.contentParts.length > 0) ||
               message.content ||
               message.error ||
               isMessageStreaming(message.id) ||
               message.planExecution?.userInputWaitState?.waiting
             "
+            :content-parts="message.contentParts"
             :content="message.content || ''"
             :is-streaming="isMessageStreaming(message.id) || false"
             v-bind="{

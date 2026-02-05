@@ -1,0 +1,14 @@
+description: |
+  向用户发送一条助手消息并加入对话记忆。在计划执行过程中如需向用户展示消息（如进度、状态或直接回复）时使用此工具。该消息会显示在对话中并持久化到对话历史。
+
+parameters: |
+  {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "要发送给用户并加入对话记忆的助手消息文本。该内容将显示在对话中并保存到该对话的历史记录。"
+      }
+    },
+    "required": ["message"]
+  }

@@ -39,6 +39,8 @@ export interface ChatMessage {
   isStreaming?: boolean
   error?: string
   attachments?: File[]
+  /** When set, response is shown as multiple blocks (e.g. summary + send-assistant-message tool results) instead of one combined content string */
+  contentParts?: string[]
 }
 
 /**

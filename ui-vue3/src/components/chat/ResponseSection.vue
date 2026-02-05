@@ -37,8 +37,28 @@
         @user-input-submitted="handleUserInputSubmitted"
       />
 
-      <!-- Final response with content -->
-      <div v-if="content" class="final-response">
+      <!-- Multiple response blocks (e.g. summary + send-assistant-message tool pops) -->
+      <template v-if="contentParts && contentParts.length > 0">
+        <div
+          v-for="(part, index) in contentParts"
+          :key="index"
+          class="final-response response-pop-block"
+        >
+          <div class="response-text" v-html="formatResponseText(part)"></div>
+          <div class="response-actions">
+            <button
+              class="action-btn copy-btn"
+              @click="copyPartToClipboard(part)"
+              :title="$t('chat.copyResponse')"
+            >
+              <Icon icon="carbon:copy" />
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Single final response with content (no contentParts) -->
+      <div v-else-if="content" class="final-response">
         <div class="response-text" v-html="formatResponseText(content)"></div>
 
         <!-- Response actions -->
@@ -92,6 +112,8 @@ import 'highlight.js/styles/atom-one-dark.css'
 
 interface Props {
   content?: string
+  /** When set, response is shown as multiple blocks (e.g. summary + send-assistant-message pops) */
+  contentParts?: string[]
   isStreaming?: boolean
   error?: string
   timestamp?: Date
@@ -118,6 +140,17 @@ const copyToClipboard = async () => {
   try {
     // Strip HTML tags for clipboard
     const plainText = props.content.replace(/<[^>]*>/g, '')
+    await navigator.clipboard.writeText(plainText)
+    emit('copy')
+  } catch (error) {
+    console.error('Failed to copy to clipboard:', error)
+  }
+}
+
+const copyPartToClipboard = async (part: string) => {
+  if (!part) return
+  try {
+    const plainText = part.replace(/<[^>]*>/g, '')
     await navigator.clipboard.writeText(plainText)
     emit('copy')
   } catch (error) {
@@ -175,6 +208,10 @@ const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
   .response-content {
     .final-response {
       position: relative;
+
+      &.response-pop-block:not(:first-child) {
+        margin-top: 12px;
+      }
 
       .response-text {
         background: rgba(255, 255, 255, 0.05);

@@ -1004,6 +1004,39 @@ export function useMessageDialog() {
   }
 
   /**
+   * Collect assistant message content from send-assistant-message tool calls in the plan record.
+   * Walks agentExecutionSequence → thinkActSteps → actToolInfoList and returns result strings
+   * for tools named send-assistant-message or default-send-assistant-message, in order.
+   */
+  const collectSendAssistantMessageContent = (record: PlanExecutionRecord): string[] => {
+    const fragments: string[] = []
+    const sequence = record.agentExecutionSequence
+    if (!sequence || sequence.length === 0) return fragments
+    const toolNameMatch = (name: string | undefined) =>
+      name === 'send-assistant-message' ||
+      name === 'default-send-assistant-message' ||
+      (name ?? '').includes('send-assistant-message')
+    for (const agentRecord of sequence) {
+      const steps = agentRecord.thinkActSteps
+      if (!steps) continue
+      for (const step of steps) {
+        const list = step.actToolInfoList
+        if (!list) continue
+        for (const info of list) {
+          if (
+            toolNameMatch(info.name) &&
+            info.result != null &&
+            String(info.result).trim() !== ''
+          ) {
+            fragments.push(String(info.result).trim())
+          }
+        }
+      }
+    }
+    return fragments
+  }
+
+  /**
    * Helper: Update message with plan execution record
    */
   const updateMessageWithPlanRecord = (
@@ -1040,6 +1073,26 @@ export function useMessageDialog() {
         updates.content = `Error: ${record.message}`
         updates.thinking = ''
       }
+    }
+
+    // Surface send-assistant-message tool results as separate "pop" blocks (4 pops:
+    // summary + 3 tool messages, or just tool messages)
+    const sendAssistantFragments = collectSendAssistantMessageContent(record)
+    const summaryPart = updates.content ?? (record.completed ? (record.summary ?? record.result ?? record.message ?? '') : '') ?? message.content ?? ''
+    if (sendAssistantFragments.length > 0) {
+      if (record.completed) {
+        updates.thinking = ''
+      }
+      // Build contentParts: tool messages first (in order), then summary last
+      const contentParts: string[] = [...sendAssistantFragments]
+      if (summaryPart.trim() !== '') {
+        contentParts.push(summaryPart.trim())
+      }
+      updates.contentParts = contentParts
+      // Keep combined content for copy and fallback
+      updates.content = contentParts.join('\n\n')
+    } else if (summaryPart.trim() !== '' && record.completed) {
+      updates.content = summaryPart.trim()
     }
 
     updateMessageInDialog(dialog.id, message.id, updates)
