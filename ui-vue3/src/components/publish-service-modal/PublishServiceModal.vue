@@ -148,10 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  PlanTemplateApiService,
-  type ParameterRequirements,
-} from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService, type ParameterRequirements } from '@/api/plan-template-service'
 import Modal from '@/components/modal/index.vue'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'

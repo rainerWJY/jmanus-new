@@ -225,10 +225,7 @@
 
 <script setup lang="ts">
 import { FileInfo } from '@/api/file-upload-api-service'
-import {
-  PlanTemplateApiService,
-  type ParameterRequirements,
-} from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService, type ParameterRequirements } from '@/api/plan-template-service'
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
 import PublishServiceModal from '@/components/publish-service-modal/PublishServiceModal.vue'
 import SaveConfirmationDialog from '@/components/sidebar/SaveConfirmationDialog.vue'

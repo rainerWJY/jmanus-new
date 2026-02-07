@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import type {
   InputSchemaParam,
   PlanTemplateConfigVO,

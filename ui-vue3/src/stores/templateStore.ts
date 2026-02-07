@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import { i18n } from '@/base/i18n'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'

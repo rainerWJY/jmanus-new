@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import type { CronConfig } from '@/types/cron-task'
 import type { PlanTemplate } from '@/types/plan-template'
 import { CronTaskUtils } from '@/utils/cron-task-utils'

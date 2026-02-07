@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
 import { Icon } from '@iconify/vue'

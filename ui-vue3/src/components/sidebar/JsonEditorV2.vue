@@ -396,17 +396,17 @@
 
 <script setup lang="ts">
 import { ConfigApiService, type ModelOption } from '@/api/config-api-service'
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import { ToolApiService } from '@/api/tool-api-service'
 import AssignedTools from '@/components/shared/AssignedTools.vue'
 import ToolSelectionModal from '@/components/tool-selection-modal/ToolSelectionModal.vue'
-import { storeToRefs } from 'pinia'
+import { useToast } from '@/plugins/useToast'
 import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
-import { useToast } from '@/plugins/useToast'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanTemplateConfigVO, StepConfig } from '@/types/plan-template'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
