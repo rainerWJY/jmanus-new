@@ -19,9 +19,15 @@ import type {
   PlanTemplateConfigVO,
 } from '../types/plan-template'
 
+export interface ParameterRequirements {
+  parameters: string[]
+  hasParameters: boolean
+  requirements: string
+}
+
 /**
  * Plan template API service class
- * Provides plan template-related functionality
+ * Provides plan template-related functionality (config, versions, list, parameters)
  */
 export class PlanTemplateApiService {
   /**
@@ -181,6 +187,55 @@ export class PlanTemplateApiService {
       return data.planTemplateId
     } catch (error) {
       console.error('Failed to generate plan template ID:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all versions of a plan
+   */
+  static async getPlanVersions(planId: string): Promise<unknown> {
+    try {
+      const response = await fetch('/api/plan-template/versions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      })
+      const result = await this.handleResponse(response)
+      return await result.json()
+    } catch (error) {
+      console.error('Failed to get plan versions:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get all plan template list (legacy list endpoint)
+   */
+  static async getAllPlanTemplates(): Promise<unknown> {
+    try {
+      const response = await fetch('/api/plan-template/list')
+      const result = await this.handleResponse(response)
+      return await result.json()
+    } catch (error) {
+      console.error('Failed to get plan template list:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get parameter requirements for a plan template
+   */
+  static async getParameterRequirements(planTemplateId: string): Promise<ParameterRequirements> {
+    try {
+      const response = await fetch(`/api/plan-template/${planTemplateId}/parameters`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const result = await this.handleResponse(response)
+      return await result.json()
+    } catch (error) {
+      console.error('Error getting parameter requirements:', error)
       throw error
     }
   }

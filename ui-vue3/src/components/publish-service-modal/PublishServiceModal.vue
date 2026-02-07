@@ -149,14 +149,14 @@
 
 <script setup lang="ts">
 import {
-  PlanParameterApiService,
+  PlanTemplateApiService,
   type ParameterRequirements,
-} from '@/api/plan-parameter-api-service'
+} from '@/api/plan-template-with-tool-api-service'
 import Modal from '@/components/modal/index.vue'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
-import { storeToRefs } from 'pinia'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -292,7 +292,7 @@ const loadParameterRequirements = async () => {
 
   isLoadingParameters.value = true
   try {
-    const requirements = await PlanParameterApiService.getParameterRequirements(planTemplateId)
+    const requirements = await PlanTemplateApiService.getParameterRequirements(planTemplateId)
     parameterRequirements.value = requirements
 
     console.log('[PublishModal] Parameter requirements loaded:', requirements)

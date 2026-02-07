@@ -226,24 +226,24 @@
 <script setup lang="ts">
 import { FileInfo } from '@/api/file-upload-api-service'
 import {
-  PlanParameterApiService,
+  PlanTemplateApiService,
   type ParameterRequirements,
-} from '@/api/plan-parameter-api-service'
+} from '@/api/plan-template-with-tool-api-service'
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
 import PublishServiceModal from '@/components/publish-service-modal/PublishServiceModal.vue'
 import SaveConfirmationDialog from '@/components/sidebar/SaveConfirmationDialog.vue'
-import { storeToRefs } from 'pinia'
-import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
-import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionState'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { parameterHistoryStore } from '@/stores/parameterHistory'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanData, PlanExecutionRequestPayload } from '@/types/plan-execution'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -960,7 +960,7 @@ const loadParameterRequirements = async () => {
   isLoadingParameters.value = true
   try {
     console.log('[ExecutionController] 🌐 Fetching parameter requirements from API...')
-    const requirements = await PlanParameterApiService.getParameterRequirements(planTemplateId)
+    const requirements = await PlanTemplateApiService.getParameterRequirements(planTemplateId)
     console.log(
       '[ExecutionController] 📥 Received requirements from API:',
       JSON.stringify(requirements, null, 2)

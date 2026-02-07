@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { PlanActApiService } from '@/api/plan-act-api-service'
 import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
 import type {
   InputSchemaParam,
@@ -309,7 +308,7 @@ export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () =
       }
 
       try {
-        const versionsResponse = await PlanActApiService.getPlanVersions(planTemplateId)
+        const versionsResponse = await PlanTemplateApiService.getPlanVersions(planTemplateId)
         planVersions.value = (versionsResponse as { versions?: string[] }).versions || []
         if (planVersions.value.length > 0) {
           currentVersionIndex.value = planVersions.value.length - 1
