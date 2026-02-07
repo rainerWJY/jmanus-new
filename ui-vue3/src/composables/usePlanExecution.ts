@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { CommonApiService } from '@/api/common-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { useTaskStore } from '@/stores/task'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { reactive, readonly, ref } from 'vue'
@@ -129,7 +129,7 @@ export function usePlanExecution() {
 
     try {
       // console.log('[usePlanExecution] Polling plan status for:', planId)
-      const details = await CommonApiService.getDetails(planId)
+      const details = await DirectApiService.getDetails(planId)
       // console.log('[usePlanExecution] Received plan details:', details ? 'YES' : 'NO', details)
 
       // Reset retry attempts on successful fetch
@@ -233,7 +233,7 @@ export function usePlanExecution() {
 
           // Delete execution details from backend
           try {
-            await CommonApiService.deleteExecutionDetails(recordKey)
+            await DirectApiService.deleteExecutionDetails(recordKey)
             console.log(`[usePlanExecution] Deleted execution details for plan: ${recordKey}`)
           } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'

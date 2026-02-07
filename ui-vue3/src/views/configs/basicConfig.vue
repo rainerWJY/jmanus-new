@@ -350,7 +350,7 @@
 
 <script setup lang="ts">
 import { AdminApiService, type ConfigItem } from '@/api/admin-api-service'
-import { CommonApiService } from '@/api/common-api-service'
+import { ConfigApiService } from '@/api/config-api-service'
 import Switch from '@/components/switch/index.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -950,7 +950,7 @@ const restoreAllDefaults = async () => {
 // Load version information
 const loadVersionInfo = async () => {
   try {
-    const info = await CommonApiService.getVersion()
+    const info = await ConfigApiService.getVersion()
     versionInfo.value = info
   } catch (error) {
     console.error('Failed to load version information:', error)

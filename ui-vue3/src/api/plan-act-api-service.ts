@@ -16,7 +16,7 @@
 
 // Plan-related API wrapper (TypeScript version for Vue projects)
 
-import { DirectApiService } from '@/api/direct-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { LlmCheckService } from '@/utils/llm-check'
 
 export class PlanActApiService {

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { DirectApiService } from '@/api/direct-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useTaskStore } from '@/stores/task'

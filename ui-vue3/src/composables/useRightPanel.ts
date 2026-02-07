@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { fetchAgentExecutionDetail, refreshAgentExecutionDetail } from '@/api/agent-execution'
+import { DirectApiService } from '@/api/lynxe-service'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
@@ -207,7 +207,7 @@ export function useRightPanel() {
       }
 
       // Fetch agent execution detail from API
-      const agentExecutionDetail = await fetchAgentExecutionDetail(stepId)
+      const agentExecutionDetail = await DirectApiService.getAgentExecutionDetail(stepId)
 
       if (!agentExecutionDetail) {
         console.warn('[useRightPanel] Agent execution detail not found for stepId:', stepId)
@@ -251,7 +251,9 @@ export function useRightPanel() {
     console.log('[useRightPanel] Refreshing current step:', selectedStep.value.stepId)
 
     try {
-      const agentExecutionDetail = await refreshAgentExecutionDetail(selectedStep.value.stepId)
+      const agentExecutionDetail = await DirectApiService.refreshAgentExecutionDetail(
+        selectedStep.value.stepId
+      )
 
       if (agentExecutionDetail) {
         // Update the existing step data

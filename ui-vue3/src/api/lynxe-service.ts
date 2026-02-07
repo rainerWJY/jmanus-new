@@ -15,7 +15,9 @@
  */
 
 import { memoryStore } from '@/stores/memory'
+import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
 import type { InputMessage } from '@/types/message-dialog'
+import type { PlanExecutionRecordResponse } from '@/types/plan-execution-record'
 import { LlmCheckService } from '@/utils/llm-check'
 
 export class DirectApiService {
@@ -401,5 +403,114 @@ export class DirectApiService {
 
       return await response.json()
     })
+  }
+
+  // --- Merged from CommonApiService (LynxeController /api/executor) ---
+
+  /** Get detailed execution records (GET /details/{planId}) */
+  public static async getDetails(planId: string): Promise<PlanExecutionRecordResponse | null> {
+    try {
+      const response = await fetch(`${this.BASE_URL}/details/${planId}`)
+      if (response.status === 404) return null
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to get detailed information: ${response.status} - ${errorText}`)
+      }
+      const rawText = await response.text()
+      const data = JSON.parse(rawText)
+      if (data && typeof data === 'object' && !data.currentPlanId) {
+        data.currentPlanId = planId
+      }
+      return data
+    } catch (error: unknown) {
+      console.error('[DirectApiService] Failed to get plan details:', error)
+      return null
+    }
+  }
+
+  /** Delete execution details (DELETE /details/{planId}) */
+  public static async deleteExecutionDetails(planId: string): Promise<Record<string, string>> {
+    try {
+      const response = await fetch(`${this.BASE_URL}/details/${planId}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to delete execution details: ${response.status} - ${errorText}`)
+      }
+      return await response.json()
+    } catch (error: unknown) {
+      console.error('[DirectApiService] Failed to delete execution details:', error)
+      throw error
+    }
+  }
+
+  /** Submit user form input (POST /submit-input/{planId}) */
+  public static async submitFormInput(
+    planId: string,
+    formData: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    const response = await fetch(`${this.BASE_URL}/submit-input/${planId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    })
+    if (!response.ok) {
+      let errorData: { message?: string }
+      try {
+        errorData = await response.json()
+      } catch {
+        errorData = { message: `Failed to submit form input: ${response.status}` }
+      }
+      throw new Error(errorData.message || `Failed to submit form input: ${response.status}`)
+    }
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.indexOf('application/json') !== -1) {
+      return await response.json()
+    }
+    return { success: true }
+  }
+
+  /** Get all Prompt list (GET /api/executor) */
+  public static async getAllPrompts(): Promise<unknown[]> {
+    const response = await fetch(this.BASE_URL)
+    if (!response.ok) {
+      try {
+        const errorData = await response.json()
+        throw new Error(errorData.message || `API request failed: ${response.status}`)
+      } catch {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      }
+    }
+    return await response.json()
+  }
+
+  /** Get agent execution detail by stepId (GET /agent-execution/{stepId}) */
+  public static async getAgentExecutionDetail(
+    stepId: string
+  ): Promise<AgentExecutionRecordDetail | null> {
+    try {
+      const response = await fetch(`${this.BASE_URL}/agent-execution/${stepId}`)
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.warn(`[DirectApiService] Agent execution detail not found for stepId: ${stepId}`)
+          return null
+        }
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = await response.json()
+      return data as AgentExecutionRecordDetail
+    } catch (error) {
+      console.error(
+        `[DirectApiService] Error fetching agent execution detail for stepId: ${stepId}:`,
+        error
+      )
+      return null
+    }
+  }
+
+  /** Refresh agent execution detail (alias for getAgentExecutionDetail) */
+  public static async refreshAgentExecutionDetail(
+    stepId: string
+  ): Promise<AgentExecutionRecordDetail | null> {
+    return this.getAgentExecutionDetail(stepId)
   }
 }

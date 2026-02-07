@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { DirectApiService } from '@/api/direct-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { PlanActApiService } from '@/api/plan-act-api-service'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { memoryStore } from '@/stores/memory'

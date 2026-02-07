@@ -187,7 +187,7 @@
 </template>
 
 <script setup lang="ts">
-import { CommonApiService } from '@/api/common-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { useMessageFormatting } from '@/components/chat/composables/useMessageFormatting'
 import type { UserInputWaitState } from '@/types/plan-execution-record'
 import { Icon } from '@iconify/vue'
@@ -304,7 +304,7 @@ const handleUserInputSubmit = async () => {
 
     // Submit user input to backend API
     if (props.planId) {
-      await CommonApiService.submitFormInput(props.planId, inputData)
+      await DirectApiService.submitFormInput(props.planId, inputData)
       console.log('[UserInputForm] User input submitted successfully')
     } else {
       console.error('[UserInputForm] No planId available for user input submission')
