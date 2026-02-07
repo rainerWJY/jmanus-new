@@ -68,7 +68,7 @@
       </div>
 
       <!-- Empty state -->
-      <div v-else-if="templateConfig.planTemplateList.value.length === 0" class="empty-state">
+      <div v-else-if="planTemplateList.length === 0" class="empty-state">
         <Icon icon="carbon:document" width="32" />
         <span>{{ $t('sidebar.noTemplates') }}</span>
       </div>
@@ -135,7 +135,7 @@
               class="sidebar-content-list-item"
               :class="{
                 'sidebar-content-list-item-active':
-                  template.planTemplateId === templateConfig.currentPlanTemplateId.value,
+                  template.planTemplateId === currentPlanTemplateId,
                 'grouped-item':
                   templateStore.organizationMethod === 'by_group_time' ||
                   templateStore.organizationMethod === 'by_group_abc',
@@ -151,7 +151,9 @@
               <div class="task-time">
                 {{
                   getRelativeTimeString(
-                    templateConfig.parseDateTime(template.updateTime || template.createTime)
+                    planTemplateConfigStore.parseDateTime(
+                      template.updateTime || template.createTime
+                    )
                   )
                 }}
               </div>
@@ -207,7 +209,8 @@
 </template>
 
 <script setup lang="ts">
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { storeToRefs } from 'pinia'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
 import { templateStore, type TemplateStoreType } from '@/stores/templateStore'
@@ -219,7 +222,8 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 // Template config management
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { planTemplateList, currentPlanTemplateId } = storeToRefs(planTemplateConfigStore)
 
 // Right panel management
 const rightPanel = useRightPanelSingleton()
@@ -271,8 +275,7 @@ const getRelativeTimeString = (date: Date): string => {
 // Filter templates based on search keyword
 const filteredGroupedTemplates = computed(() => {
   // Access planTemplateList directly to ensure reactivity
-  // This ensures Vue tracks changes to the list
-  void templateConfig.planTemplateList.value
+  void planTemplateList
 
   const keyword = searchKeyword.value.trim().toLowerCase()
 
@@ -310,7 +313,7 @@ const filteredGroupedTemplates = computed(() => {
 // Auto-expand groups that contain matching items when searching
 watch(searchKeyword, newKeyword => {
   // Access planTemplateList to ensure reactivity
-  void templateConfig.planTemplateList.value
+  void planTemplateList
 
   const keyword = newKeyword.trim().toLowerCase()
   if (!keyword) {
@@ -363,14 +366,12 @@ const handleSelectTemplate = async (template: PlanTemplateConfigVO) => {
 
   await templateStore.selectTemplate(template)
 
-  // Load template config using singleton
+  // Load template config using store
   if (template.planTemplateId) {
-    await templateConfig.load(template.planTemplateId)
-    // Reset modification flag when loading new template
+    await planTemplateConfigStore.load(template.planTemplateId)
     templateStore.hasTaskRequirementModified = false
   } else {
-    // Reset config if no template ID
-    templateConfig.reset()
+    planTemplateConfigStore.reset()
     templateStore.hasTaskRequirementModified = false
   }
 

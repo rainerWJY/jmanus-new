@@ -16,7 +16,7 @@
 
 import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
 import { i18n } from '@/base/i18n'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
 import { computed, reactive } from 'vue'
 
@@ -114,9 +114,6 @@ export class TemplateStore {
     return new Date()
   }
 
-  // Reference to template config for accessing planTemplateList
-  private templateConfig = usePlanTemplateConfigSingleton()
-
   // Set organization method
   setOrganizationMethod(method: 'by_group_time' | 'by_group_abc') {
     this.organizationMethod = method
@@ -125,18 +122,19 @@ export class TemplateStore {
 
   // Actions
   async loadPlanTemplateList() {
+    const planTemplateConfigStore = usePlanTemplateConfigStore()
     this.isLoading = true
     this.errorMessage = ''
     try {
       console.log('[TemplateStore] Starting to load plan template list...')
       const configVOs = await PlanTemplateApiService.getAllPlanTemplateConfigVOs()
 
-      // Use PlanTemplateConfigVO directly
-      this.templateConfig.planTemplateList.value = configVOs
+      planTemplateConfigStore.setPlanTemplateList(configVOs)
 
       // Build service group mapping
       this.templateServiceGroups.clear()
-      for (const config of this.templateConfig.planTemplateList.value) {
+      const list = planTemplateConfigStore.planTemplateList
+      for (const config of list) {
         const planTemplateId = config.planTemplateId
         if (planTemplateId) {
           const serviceGroup = config.serviceGroup || ''
@@ -146,12 +144,10 @@ export class TemplateStore {
         }
       }
 
-      console.log(
-        `[TemplateStore] Successfully loaded ${this.templateConfig.planTemplateList.value.length} plan templates`
-      )
+      console.log(`[TemplateStore] Successfully loaded ${list.length} plan templates`)
     } catch (error: unknown) {
       console.error('[TemplateStore] Failed to load plan template list:', error)
-      this.templateConfig.planTemplateList.value = []
+      planTemplateConfigStore.setPlanTemplateList([])
       const message = error instanceof Error ? error.message : 'Unknown error'
       this.errorMessage = `Load failed: ${message}`
     } finally {
@@ -160,17 +156,17 @@ export class TemplateStore {
   }
 
   async selectTemplate(template: PlanTemplateConfigVO) {
-    this.templateConfig.currentPlanTemplateId.value = template.planTemplateId || null
-    this.templateConfig.selectedTemplate.value = template
-    // Reset modification flag when loading new template
+    const planTemplateConfigStore = usePlanTemplateConfigStore()
+    planTemplateConfigStore.setCurrentPlanTemplateId(template.planTemplateId || null)
+    planTemplateConfigStore.setSelectedTemplate(template)
     this.hasTaskRequirementModified = false
 
     console.log(`[TemplateStore] Selected plan template: ${template.planTemplateId}`)
   }
 
   async createNewTemplate(planType: string) {
+    const planTemplateConfigStore = usePlanTemplateConfigStore()
     try {
-      // Generate plan template ID from backend
       const planTemplateId = await PlanTemplateApiService.generatePlanTemplateId()
       console.log('[TemplateStore] Generated plan template ID from backend:', planTemplateId)
 
@@ -181,16 +177,13 @@ export class TemplateStore {
         createTime: new Date().toISOString(),
         updateTime: new Date().toISOString(),
       }
-      this.templateConfig.selectedTemplate.value = emptyTemplate
-      this.templateConfig.currentPlanTemplateId.value = null
-
-      // Reset modification flag for new template
+      planTemplateConfigStore.setSelectedTemplate(emptyTemplate)
+      planTemplateConfigStore.setCurrentPlanTemplateId(null)
       this.hasTaskRequirementModified = false
 
       console.log('[TemplateStore] Created new empty plan template')
     } catch (error) {
       console.error('[TemplateStore] Failed to generate plan template ID:', error)
-      // Fallback to timestamp-based ID if backend call fails
       const fallbackId = `planTemplate-${Date.now()}`
       console.warn('[TemplateStore] Using fallback plan template ID:', fallbackId)
       const emptyTemplate: PlanTemplateConfigVO = {
@@ -200,13 +193,14 @@ export class TemplateStore {
         createTime: new Date().toISOString(),
         updateTime: new Date().toISOString(),
       }
-      this.templateConfig.selectedTemplate.value = emptyTemplate
-      this.templateConfig.currentPlanTemplateId.value = null
+      planTemplateConfigStore.setSelectedTemplate(emptyTemplate)
+      planTemplateConfigStore.setCurrentPlanTemplateId(null)
       this.hasTaskRequirementModified = false
     }
   }
 
   async deleteTemplate(template: PlanTemplateConfigVO) {
+    const planTemplateConfigStore = usePlanTemplateConfigStore()
     const planTemplateId = template.planTemplateId
     if (!planTemplateId) {
       console.warn('[TemplateStore] deleteTemplate: Invalid template object or ID')
@@ -214,7 +208,7 @@ export class TemplateStore {
     }
     try {
       await PlanTemplateApiService.deletePlanTemplate(planTemplateId)
-      if (this.templateConfig.currentPlanTemplateId.value === planTemplateId) {
+      if (planTemplateConfigStore.currentPlanTemplateId === planTemplateId) {
         this.clearSelection()
       }
       await this.loadPlanTemplateList()
@@ -227,17 +221,14 @@ export class TemplateStore {
   }
 
   clearSelection() {
-    this.templateConfig.currentPlanTemplateId.value = null
-    this.templateConfig.selectedTemplate.value = null
+    const planTemplateConfigStore = usePlanTemplateConfigStore()
+    planTemplateConfigStore.clearSelection()
     this.hasTaskRequirementModified = false
   }
 }
 
 // Create store instance
 const storeInstance = new TemplateStore()
-
-// Get template config singleton for computed properties
-const templateConfigRef = usePlanTemplateConfigSingleton()
 
 // Create reactive store first
 export const templateStore = reactive({
@@ -282,8 +273,8 @@ export const templateStore = reactive({
 // Create computed properties for reactive template lists
 // These must be defined after templateStore to access reactive properties
 const sortedTemplatesComputed = computed(() => {
-  // Filter out readOnly templates (accessLevel === "readOnly")
-  const templates = [...templateConfigRef.planTemplateList.value].filter(template => {
+  const planTemplateConfigStore = usePlanTemplateConfigStore()
+  const templates = [...planTemplateConfigStore.planTemplateList].filter(template => {
     const accessLevel = template.accessLevel || (template.readOnly ? 'readOnly' : 'editable')
     return accessLevel !== 'readOnly'
   })

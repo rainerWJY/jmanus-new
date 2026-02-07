@@ -85,7 +85,7 @@ import { storeToRefs } from 'pinia'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionState'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
@@ -97,7 +97,8 @@ import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 const taskStore = useTaskStore()
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { planTemplateList } = storeToRefs(planTemplateConfigStore)
 const messageDialog = useMessageDialogSingleton()
 const { stopTask } = useTaskStop()
 const taskExecutionState = useTaskExecutionStateSingleton()
@@ -170,7 +171,7 @@ const loadInnerTools = async () => {
   isLoadingTools.value = true
   try {
     console.log('[InputArea] Loading inner tools from planTemplateList...')
-    const allTools = templateConfig.getAllCoordinatorToolsFromTemplates()
+    const allTools = planTemplateConfigStore.getAllCoordinatorToolsFromTemplates()
 
     // Filter tools: enableInternalToolcall=true and exactly one parameter
     const filteredTools: InnerToolOption[] = []
@@ -358,7 +359,7 @@ const navigateHistory = (direction: number) => {
 // Load inner tools on mount
 // Watch for planTemplateList changes to reload tools
 watch(
-  () => templateConfig.planTemplateList.value,
+  planTemplateList,
   () => {
     // Reload tools when planTemplateList changes
     console.log('[InputArea] planTemplateList changed, reloading inner tools')
@@ -519,9 +520,7 @@ const validateToolsExist = async (
   const availableToolKeys = new Set(availableTools.map((tool: { key: string }) => tool.key))
 
   // Find plan template by planTemplateId
-  const planTemplate = templateConfig.planTemplateList.value.find(
-    t => t.planTemplateId === planTemplateId
-  )
+  const planTemplate = planTemplateList.value.find(t => t.planTemplateId === planTemplateId)
 
   if (!planTemplate) {
     // Template not found - this shouldn't happen, but handle gracefully

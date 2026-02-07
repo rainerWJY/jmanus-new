@@ -39,7 +39,7 @@ defineOptions({
 })
 
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { sidebarStore } from '@/stores/sidebar'
 import { templateStore } from '@/stores/templateStore'
@@ -56,26 +56,24 @@ const props = defineProps<{
 const availableToolsStore = useAvailableToolsStore()
 
 // Template config management
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
 
 // Right panel management for tab switching
 const rightPanel = useRightPanelSingleton()
 
 // Handle create new template
 const handleCreateNewTemplate = async () => {
-  // Use default plan type or get from templateConfig
-  const planType = templateConfig.getPlanType() || 'dynamic_agent'
+  const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
   await templateStore.createNewTemplate(planType)
 
-  // Load template config for new template
-  const newTemplate = templateConfig.selectedTemplate.value
+  const newTemplate = planTemplateConfigStore.selectedTemplate
   if (newTemplate) {
-    templateConfig.reset()
-    templateConfig.setPlanType(newTemplate.planType || 'dynamic_agent')
+    planTemplateConfigStore.reset()
+    planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
     if (newTemplate.planTemplateId) {
-      templateConfig.setPlanTemplateId(newTemplate.planTemplateId)
+      planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
     }
-    templateConfig.setTitle(newTemplate.title || '')
+    planTemplateConfigStore.setTitle(newTemplate.title || '')
   }
 
   // Switch to 'config' tab to show Func-Agent configuration

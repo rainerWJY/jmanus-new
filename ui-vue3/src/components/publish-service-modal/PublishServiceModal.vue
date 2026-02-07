@@ -154,15 +154,16 @@ import {
 } from '@/api/plan-parameter-api-service'
 import Modal from '@/components/modal/index.vue'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { storeToRefs } from 'pinia'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
-// Get template config singleton
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { selectedTemplate, currentPlanTemplateId } = storeToRefs(planTemplateConfigStore)
 
 // Get available tools singleton to refresh tool list after publishing
 const availableToolsStore = useAvailableToolsStore()
@@ -221,25 +222,25 @@ const formData = reactive({
 
 // Calculate modal title - check if toolConfig exists to determine if updating or creating
 const modalTitle = computed(() => {
-  const hasToolConfig = !!templateConfig.selectedTemplate.value?.toolConfig
+  const hasToolConfig = !!selectedTemplate.value?.toolConfig
   return hasToolConfig ? t('mcpService.updateService') : t('mcpService.createService')
 })
 
 // Check if tool is saved (has toolConfig)
 const isSaved = computed(() => {
-  return !!templateConfig.selectedTemplate.value?.toolConfig
+  return !!selectedTemplate.value?.toolConfig
 })
 
-// Initialize form data from templateConfig
+// Initialize form data from store
 const initializeFormData = () => {
-  const toolConfig = templateConfig.selectedTemplate.value?.toolConfig
+  const toolConfig = selectedTemplate.value?.toolConfig
 
   if (toolConfig) {
     // Load from existing toolConfig
     // Auto-fill tool description with plan template title if empty
     let toolDescription = toolConfig.toolDescription || ''
     if (!toolDescription.trim()) {
-      toolDescription = templateConfig.getTitle() || ''
+      toolDescription = planTemplateConfigStore.getTitle() || ''
     }
     formData.userRequest = toolDescription
     publishAsHttpService.value = toolConfig.enableHttpService ?? false
@@ -264,7 +265,7 @@ const initializeFormData = () => {
   } else {
     // Initialize with defaults
     // Auto-fill tool description with plan template title
-    formData.userRequest = templateConfig.getTitle() || ''
+    formData.userRequest = planTemplateConfigStore.getTitle() || ''
     publishAsHttpService.value = false
     // Always set publishAsInternalToolcall to true
     publishAsInternalToolcall.value = true
@@ -278,7 +279,7 @@ const initializeFormData = () => {
 
 // Load parameter requirements from plan template
 const loadParameterRequirements = async () => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     parameterRequirements.value = {
       parameters: [],
@@ -300,7 +301,7 @@ const loadParameterRequirements = async () => {
     // Preserve existing descriptions from toolConfig.inputSchema if available
     if (requirements.hasParameters) {
       // Priority: Get descriptions from toolConfig.inputSchema (backend saved data)
-      const toolConfig = templateConfig.selectedTemplate.value?.toolConfig
+      const toolConfig = selectedTemplate.value?.toolConfig
       const backendInputSchema = toolConfig?.inputSchema || []
       const backendParamsMap = new Map<string, string>()
       backendInputSchema.forEach(param => {
@@ -358,7 +359,7 @@ const mergeParametersWithBackend = (): Array<{ name: string; description: string
   console.log('[PublishModal] Form parameters:', formData.parameters)
 
   // Get backend parameters from toolConfig.inputSchema
-  const backendInputSchema = templateConfig.selectedTemplate.value?.toolConfig?.inputSchema || []
+  const backendInputSchema = selectedTemplate.value?.toolConfig?.inputSchema || []
   console.log('[PublishModal] Backend inputSchema:', backendInputSchema)
 
   // Create a map of backend parameters by name
@@ -419,15 +420,15 @@ const validateForm = (): boolean => {
     return false
   }
 
-  // Validate service group (from templateConfig)
-  const serviceGroup = templateConfig.getServiceGroup() || ''
+  // Validate service group (from store)
+  const serviceGroup = planTemplateConfigStore.getServiceGroup() || ''
   if (!serviceGroup.trim()) {
     showMessage(t('mcpService.serviceGroupRequiredError'), 'error')
     return false
   }
 
-  // Validate tool name (from templateConfig title)
-  const toolName = templateConfig.getTitle() || ''
+  // Validate tool name (from store title)
+  const toolName = planTemplateConfigStore.getTitle() || ''
   if (!toolName.trim()) {
     showMessage(t('mcpService.toolNameRequiredError'), 'error')
     return false
@@ -492,21 +493,21 @@ const handlePublish = async () => {
         type: 'string',
       }))
 
-    // Update toolConfig in templateConfig with guard to prevent watcher syncing
-    templateConfig.setToolDescriptionWithGuard(formData.userRequest.trim())
-    templateConfig.setEnableInternalToolcallWithGuard(publishAsInternalToolcall.value)
-    templateConfig.setEnableHttpServiceWithGuard(publishAsHttpService.value)
-    templateConfig.setEnableInConversationWithGuard(publishInConversation.value)
-    templateConfig.setInputSchemaWithGuard(inputSchema)
+    // Update toolConfig in store with guard to prevent watcher syncing
+    planTemplateConfigStore.setToolDescriptionWithGuard(formData.userRequest.trim())
+    planTemplateConfigStore.setEnableInternalToolcallWithGuard(publishAsInternalToolcall.value)
+    planTemplateConfigStore.setEnableHttpServiceWithGuard(publishAsHttpService.value)
+    planTemplateConfigStore.setEnableInConversationWithGuard(publishInConversation.value)
+    planTemplateConfigStore.setInputSchemaWithGuard(inputSchema)
 
     // Save the plan template with updated toolConfig
-    const saveSuccess = await templateConfig.save()
+    const saveSuccess = await planTemplateConfigStore.save()
 
     if (!saveSuccess) {
       throw new Error('Failed to save plan template')
     }
 
-    // selectedTemplate is automatically refreshed by templateConfig.save()
+    // selectedTemplate is automatically refreshed by planTemplateConfigStore.save()
 
     // Perform corresponding publishing operations based on publish type
     const enabledServices = []
@@ -521,7 +522,7 @@ const handlePublish = async () => {
       showMessage(t('mcpService.publishSuccess'), 'success')
       // Refresh available tools list to include the newly published tool
       await availableToolsStore.loadAvailableTools()
-      emit('published', null) // Emit null since state is managed in templateConfig
+      emit('published', null)
     } else {
       console.log('[PublishModal] Only saving tool, not publishing as any service')
       showMessage(t('mcpService.saveSuccess'), 'success')
@@ -547,7 +548,7 @@ const handleDelete = async () => {
     return
   }
 
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     showMessage(
       t('mcpService.deleteFailed') + ': ' + t('mcpService.selectPlanTemplateFirst'),
@@ -560,17 +561,17 @@ const handleDelete = async () => {
   try {
     console.log('[PublishModal] Starting to delete tool config for planTemplateId:', planTemplateId)
 
-    // Remove toolConfig from templateConfig with guard to prevent watcher syncing
-    templateConfig.setToolConfigWithGuard(undefined)
+    // Remove toolConfig from store with guard to prevent watcher syncing
+    planTemplateConfigStore.setToolConfigWithGuard(undefined)
 
     // Save the plan template without toolConfig
-    const saveSuccess = await templateConfig.save()
+    const saveSuccess = await planTemplateConfigStore.save()
 
     if (!saveSuccess) {
       throw new Error('Failed to save plan template after deletion')
     }
 
-    // selectedTemplate is automatically refreshed by templateConfig.save()
+    // selectedTemplate is automatically refreshed by planTemplateConfigStore.save()
 
     console.log('[PublishModal] Deleted successfully')
     showMessage(t('mcpService.deleteSuccess'), 'success')
@@ -603,7 +604,7 @@ watch(() => props.modelValue, watchModal)
 
 // Watch for planTemplateId changes
 watch(
-  () => templateConfig.currentPlanTemplateId.value,
+  () => currentPlanTemplateId.value,
   (newId, oldId) => {
     if (newId && newId !== oldId) {
       // If this is a new template ID (not from initial load), retry loading parameters
@@ -640,7 +641,7 @@ watch(
         type: 'string',
       }))
     // Update toolConfig.inputSchema in real-time so JSON preview updates immediately
-    templateConfig.setInputSchemaWithGuard(inputSchema)
+    planTemplateConfigStore.setInputSchemaWithGuard(inputSchema)
   },
   { deep: true }
 )

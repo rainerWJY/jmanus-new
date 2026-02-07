@@ -50,16 +50,14 @@
     <div class="preview-content">
       <!-- Func-Agent Config -->
       <div v-if="activeTab === 'config'" class="config-tab-content">
-        <div v-if="templateConfig.selectedTemplate.value" class="config-container">
+        <div v-if="selectedTemplate" class="config-container">
           <!-- Template Info Header -->
           <div class="template-info-header">
             <div class="template-info">
               <h3>
-                {{ templateConfig.selectedTemplate.value.title || t('sidebar.unnamedPlan') }}
+                {{ selectedTemplate.title || t('sidebar.unnamedPlan') }}
               </h3>
-              <span class="template-id"
-                >ID: {{ templateConfig.selectedTemplate.value.planTemplateId }}</span
-              >
+              <span class="template-id">ID: {{ selectedTemplate.planTemplateId }}</span>
             </div>
             <button class="back-to-list-btn" @click="sidebarStore.switchToTab('list')">
               <Icon icon="carbon:arrow-left" width="16" />
@@ -413,7 +411,8 @@ import FileBrowser from '@/components/file-browser/index.vue'
 import ExecutionController from '@/components/sidebar/ExecutionController.vue'
 import JsonEditorV2 from '@/components/sidebar/JsonEditorV2.vue'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { storeToRefs } from 'pinia'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
@@ -466,7 +465,8 @@ const copyToClipboard = async (text: string | null | undefined) => {
 const rightPanel = useRightPanelSingleton()
 
 // Template config for Func-Agent Config tab
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { selectedTemplate } = storeToRefs(planTemplateConfigStore)
 
 // Available tools management
 const availableToolsStore = useAvailableToolsStore()
@@ -504,19 +504,17 @@ const stepStatusText = computed(() => {
  */
 const handleCreateNewPlan = async () => {
   try {
-    // Use default plan type or get from templateConfig
-    const planType = templateConfig.getPlanType() || 'dynamic_agent'
+    const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
     await templateStore.createNewTemplate(planType)
 
-    // Load template config for new template
-    const newTemplate = templateConfig.selectedTemplate.value
+    const newTemplate = selectedTemplate.value
     if (newTemplate) {
-      templateConfig.reset()
-      templateConfig.setPlanType(newTemplate.planType || 'dynamic_agent')
+      planTemplateConfigStore.reset()
+      planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
       if (newTemplate.planTemplateId) {
-        templateConfig.setPlanTemplateId(newTemplate.planTemplateId)
+        planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
       }
-      templateConfig.setTitle(newTemplate.title || '')
+      planTemplateConfigStore.setTitle(newTemplate.title || '')
     }
 
     // Reload available tools to ensure fresh tool list
@@ -555,8 +553,8 @@ const handleImportExistingPlan = async (event: Event) => {
     onSingleTemplateImported: async template => {
       // If only one template was imported, select it
       if (template.planTemplateId) {
-        templateConfig.setPlanTemplateId(template.planTemplateId)
-        await templateConfig.load(template.planTemplateId)
+        planTemplateConfigStore.setPlanTemplateId(template.planTemplateId)
+        await planTemplateConfigStore.load(template.planTemplateId)
       }
     },
   })

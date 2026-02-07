@@ -137,7 +137,7 @@
       <button
         class="btn publish-mcp-btn"
         @click="handlePublishMcpService"
-        :disabled="!templateConfig.currentPlanTemplateId.value"
+        :disabled="!currentPlanTemplateId"
         v-if="showPublishButton"
       >
         <Icon icon="carbon:application" width="16" />
@@ -145,10 +145,7 @@
       </button>
 
       <!-- Internal Call wrapper - only show when enableInternalToolcall is true -->
-      <div
-        v-if="templateConfig.selectedTemplate.value?.toolConfig?.enableInternalToolcall"
-        class="call-example-wrapper"
-      >
+      <div v-if="selectedTemplate?.toolConfig?.enableInternalToolcall" class="call-example-wrapper">
         <div class="call-example-header">
           <h4 class="call-example-title">{{ t('sidebar.internalCall') }}</h4>
           <p class="call-example-description">{{ t('sidebar.internalCallDescription') }}</p>
@@ -158,15 +155,11 @@
             <div class="call-method">{{ t('sidebar.internalMethodCall') }}</div>
             <div class="call-endpoint">
               {{ t('sidebar.toolName') }}:
-              {{
-                templateConfig.selectedTemplate.value?.title ||
-                templateConfig.currentPlanTemplateId.value ||
-                ''
-              }}
+              {{ selectedTemplate?.title || currentPlanTemplateId || '' }}
             </div>
-            <div v-if="templateConfig.selectedTemplate.value?.serviceGroup" class="call-endpoint">
+            <div v-if="selectedTemplate?.serviceGroup" class="call-endpoint">
               {{ t('sidebar.serviceGroup') }}:
-              {{ templateConfig.selectedTemplate.value.serviceGroup }}
+              {{ selectedTemplate.serviceGroup }}
             </div>
             <div class="call-description">{{ t('sidebar.internalCallUsage') }}</div>
             <div class="call-example">
@@ -178,10 +171,7 @@
       </div>
 
       <!-- HTTP API URLs wrapper with tabs - only show when enableHttpService is true -->
-      <div
-        v-if="templateConfig.selectedTemplate.value?.toolConfig?.enableHttpService"
-        class="call-example-wrapper"
-      >
+      <div v-if="selectedTemplate?.toolConfig?.enableHttpService" class="call-example-wrapper">
         <div class="call-example-header">
           <h4 class="call-example-title">{{ t('sidebar.httpCallExample') }}</h4>
           <p class="call-example-description">{{ t('sidebar.httpCallDescription') }}</p>
@@ -246,7 +236,7 @@ import { storeToRefs } from 'pinia'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionState'
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
@@ -260,8 +250,9 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const toast = useToast()
 
-// Template config singleton
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { selectedTemplate, currentPlanTemplateId, planVersions } =
+  storeToRefs(planTemplateConfigStore)
 
 // Get available tools store for validation
 const availableToolsStore = useAvailableToolsStore()
@@ -312,7 +303,7 @@ const textareaRefs = ref<Record<string, HTMLTextAreaElement>>({}) // Refs for te
 
 // Computed property: whether to show publish MCP service button
 const showPublishButton = computed(() => {
-  return templateConfig.getCoordinatorToolConfig()
+  return planTemplateConfigStore.getCoordinatorToolConfig()
 })
 
 // File upload state - use shared state
@@ -328,9 +319,9 @@ const pendingExecutionPayload = ref<PlanExecutionRequestPayload | null>(null)
 // API tabs configuration - dynamically generated from template and parameters
 const apiTabs = computed(() => {
   // Get actual values from selected template
-  const toolName = templateConfig.selectedTemplate.value?.title || 'my-tool'
-  const serviceGroup = templateConfig.selectedTemplate.value?.serviceGroup || 'research'
-  const planTemplateId = templateConfig.selectedTemplate.value?.planTemplateId || 'template-456'
+  const toolName = selectedTemplate.value?.title || 'my-tool'
+  const serviceGroup = selectedTemplate.value?.serviceGroup || 'research'
+  const planTemplateId = selectedTemplate.value?.planTemplateId || 'template-456'
 
   // Generate replacementParams from actual parameter requirements
   const replacementParams: Record<string, string> = {}
@@ -428,7 +419,7 @@ Response: {
 
 // Computed properties
 const isAnyServiceEnabled = computed(() => {
-  const toolConfig = templateConfig.selectedTemplate.value?.toolConfig
+  const toolConfig = selectedTemplate.value?.toolConfig
   return (
     toolConfig?.enableInternalToolcall ??
     toolConfig?.enableHttpService ??
@@ -601,20 +592,19 @@ const proceedWithExecution = async () => {
   saveParameterSetToHistory()
 
   try {
-    // Get plan data from templateConfig
-    if (!templateConfig.selectedTemplate.value) {
+    // Get plan data from store
+    if (!selectedTemplate.value) {
       console.log('[ExecutionController] ❌ No template selected, returning')
       toast.error(t('sidebar.selectPlanFirst'))
       return
     }
 
-    const config = templateConfig.getConfig()
+    const config = planTemplateConfigStore.getConfig()
 
     // Convert PlanTemplateConfigVO to PlanData format
-    const planTemplateId =
-      templateConfig.selectedTemplate.value.planTemplateId || config.planTemplateId
+    const planTemplateId = selectedTemplate.value.planTemplateId || config.planTemplateId
     const planData: PlanData = {
-      title: config.title || templateConfig.selectedTemplate.value.title || 'Execution Plan',
+      title: config.title || selectedTemplate.value.title || 'Execution Plan',
       steps: (config.steps || []).map(step => ({
         stepRequirement: step.stepRequirement || '',
         agentName: step.agentName || '',
@@ -627,12 +617,11 @@ const proceedWithExecution = async () => {
       ...(config.planType && { planType: config.planType }),
     }
 
-    const title = templateConfig.selectedTemplate.value.title ?? config.title ?? 'Execution Plan'
+    const title = selectedTemplate.value.title ?? config.title ?? 'Execution Plan'
 
     // Extract toolName and serviceGroup from template for API execution
-    const toolName = templateConfig.selectedTemplate.value?.title || config.title || ''
-    const serviceGroup =
-      templateConfig.selectedTemplate.value?.serviceGroup || config.serviceGroup || undefined
+    const toolName = selectedTemplate.value?.title || config.title || ''
+    const serviceGroup = selectedTemplate.value?.serviceGroup || config.serviceGroup || undefined
 
     // Validate toolName is present
     if (!toolName || toolName.trim() === '') {
@@ -706,8 +695,8 @@ const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTool
   const availableTools = availableToolsRef.value
   const availableToolKeys = new Set(availableTools.map((tool: { key: string }) => tool.key))
 
-  // Get steps from templateConfig
-  const config = templateConfig.getConfig()
+  // Get steps from store
+  const config = planTemplateConfigStore.getConfig()
   const steps = config.steps || []
 
   // Check all steps for non-existent tools
@@ -731,8 +720,8 @@ const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTool
 const handleSaveAndExecute = async () => {
   console.log('[ExecutionController] 💾 Save and execute requested')
   try {
-    // Save using templateConfig directly
-    if (!templateConfig.selectedTemplate.value) {
+    // Save using store directly
+    if (!selectedTemplate.value) {
       toast.error(t('sidebar.selectPlanFirst'))
       return
     }
@@ -759,7 +748,7 @@ const handleSaveAndExecute = async () => {
     }
 
     // Validate config
-    const validation = templateConfig.validate()
+    const validation = planTemplateConfigStore.validate()
     if (!validation.isValid) {
       toast.error(
         'Invalid format, please correct and save.\nErrors: ' + validation.errors.join(', ')
@@ -767,30 +756,30 @@ const handleSaveAndExecute = async () => {
       return
     }
 
-    const planTemplateId = templateConfig.selectedTemplate.value.planTemplateId
+    const planTemplateId = selectedTemplate.value.planTemplateId
     if (!planTemplateId) {
       toast.error('Plan template ID is required')
       return
     }
 
-    // Save using templateConfig (this already calls PlanTemplateApiService.createOrUpdatePlanTemplateWithTool)
-    const success = await templateConfig.save()
+    // Save using store (calls PlanTemplateApiService.createOrUpdatePlanTemplateWithTool)
+    const success = await planTemplateConfigStore.save()
     if (!success) {
       toast.error('Failed to save plan template')
       return
     }
 
     // Update versions after save
-    const content = templateConfig.generateJsonString().trim()
-    templateConfig.updateVersionsAfterSave(content)
+    const content = planTemplateConfigStore.generateJsonString().trim()
+    planTemplateConfigStore.updateVersionsAfterSave(content)
 
     // Get actual version count after update
-    const versionCount = templateConfig.planVersions.value.length
+    const versionCount = planVersions.value?.length ?? 0
 
     // Reset modification flag after successful save
     templateStore.hasTaskRequirementModified = false
 
-    // Wait for templateConfig.save() to complete and selectedTemplate to be updated
+    // Wait for planTemplateConfigStore.save() to complete and selectedTemplate to be updated
     // The save() method already calls load() internally, so we need to wait a bit more
     await new Promise(resolve => setTimeout(resolve, 500))
 
@@ -801,7 +790,7 @@ const handleSaveAndExecute = async () => {
     // Refresh sidebar template list to reflect the saved changes
     await templateStore.loadPlanTemplateList()
 
-    // Note: templateConfig.save() already handles the save, so we just show success
+    // Note: planTemplateConfigStore.save() already handles the save, so we just show success
     toast.success(t('sidebar.saveSuccess', { message: 'Plan saved successfully', versionCount }))
 
     // Wait a bit for save to complete
@@ -831,12 +820,9 @@ const handleContinueExecution = async () => {
 
 const handlePublishMcpService = () => {
   console.log('[ExecutionController] Publish MCP service button clicked')
-  console.log(
-    '[ExecutionController] currentPlanTemplateId:',
-    templateConfig.currentPlanTemplateId.value
-  )
+  console.log('[ExecutionController] currentPlanTemplateId:', currentPlanTemplateId.value)
 
-  if (!templateConfig.currentPlanTemplateId.value) {
+  if (!currentPlanTemplateId.value) {
     console.log('[ExecutionController] No plan template selected, showing warning')
     toast.error(t('mcpService.selectPlanTemplateFirst'))
     return
@@ -896,16 +882,16 @@ const refreshParameterRequirements = async () => {
   const currentParams = [...parameterRequirements.value.parameters]
 
   // Add a delay to ensure the backend has processed the new template and committed the transaction
-  // Also ensure selectedTemplate has been updated by templateConfig.save()
+  // Also ensure selectedTemplate has been updated by planTemplateConfigStore.save()
   await new Promise(resolve => setTimeout(resolve, 1500))
 
   console.log(
     '[ExecutionController] 🔄 Refreshing parameter requirements for templateId:',
-    templateConfig.currentPlanTemplateId.value
+    currentPlanTemplateId.value
   )
   console.log(
     '[ExecutionController] 📋 Current selectedTemplate steps:',
-    templateConfig.selectedTemplate.value?.steps?.map(s => s.stepRequirement).join(' ||| ')
+    selectedTemplate.value?.steps?.map(s => s.stepRequirement).join(' ||| ')
   )
 
   // Use nextTick to ensure all reactive updates are complete
@@ -934,7 +920,7 @@ const refreshParameterRequirements = async () => {
 
 // Load parameter requirements when plan template changes
 const loadParameterRequirements = async () => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   console.log(
     '[ExecutionController] 🔄 loadParameterRequirements called for templateId:',
     planTemplateId
@@ -1053,7 +1039,7 @@ const updateParameterValue = (paramName: string, value: string) => {
     hasAttemptedExecute.value = false
   }
   // Reset tool-level navigation index when user manually types (viewing current, not history)
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (planTemplateId) {
     parameterHistoryStore.setToolHistoryIndex(planTemplateId, -1)
   }
@@ -1107,7 +1093,7 @@ const updateExecutionParamsFromParameters = () => {
 
 // Save current parameter set to history
 const saveParameterSetToHistory = () => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     console.log('[ExecutionController] ⚠️ No planTemplateId, skipping history save')
     return
@@ -1139,7 +1125,7 @@ const saveParameterSetToHistory = () => {
 
 // Reset tool navigation index
 const resetParamHistoryNavigation = () => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (planTemplateId) {
     parameterHistoryStore.resetParamHistoryNavigation(planTemplateId)
   }
@@ -1147,7 +1133,7 @@ const resetParamHistoryNavigation = () => {
 
 // Navigate through parameter history for all parameters together
 const navigateParameterSetHistory = (direction: 'up' | 'down') => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     console.log('[ExecutionController] ⚠️ No planTemplateId, cannot navigate history')
     return
@@ -1222,7 +1208,7 @@ const navigateParameterSetHistory = (direction: 'up' | 'down') => {
 
 // Check if tool has history available
 const hasParameterHistory = (): boolean => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     return false
   }
@@ -1232,7 +1218,7 @@ const hasParameterHistory = (): boolean => {
 
 // Get current history index for the tool
 const getToolHistoryIndex = (): number => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     return -1
   }
@@ -1241,7 +1227,7 @@ const getToolHistoryIndex = (): number => {
 
 // Get history count for current tool
 const getHistoryCount = (): number => {
-  const planTemplateId = templateConfig.currentPlanTemplateId.value
+  const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
     return 0
   }
@@ -1251,7 +1237,7 @@ const getHistoryCount = (): number => {
 
 // Watch for changes in plan template ID
 watch(
-  () => templateConfig.currentPlanTemplateId.value,
+  () => currentPlanTemplateId.value,
   (newId, oldId) => {
     if (newId && newId !== oldId) {
       // Skip parameter reload if we're currently executing a plan
@@ -1286,7 +1272,7 @@ watch(
   () => templateStore.hasTaskRequirementModified,
   async (newValue, oldValue) => {
     // When modification flag changes from true to false, it means save was completed
-    if (oldValue === true && newValue === false && templateConfig.currentPlanTemplateId.value) {
+    if (oldValue === true && newValue === false && currentPlanTemplateId.value) {
       // Skip if currently executing
       if (taskExecutionState.isExecutionInProgress.value) {
         console.log('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
@@ -1306,7 +1292,7 @@ watch(
         '[ExecutionController] 💾 Save completed (hasTaskRequirementModified: true -> false), refreshing parameters'
       )
       // Add a delay to ensure backend has processed the save and parameters are updated
-      // Also ensure selectedTemplate has been updated by templateConfig.save()
+      // Also ensure selectedTemplate has been updated by planTemplateConfigStore.save()
       await new Promise(resolve => setTimeout(resolve, 2000))
       console.log('[ExecutionController] ⏰ Refreshing parameters after save')
       await refreshParameterRequirements()

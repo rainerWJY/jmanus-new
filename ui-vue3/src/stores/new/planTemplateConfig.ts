@@ -22,13 +22,10 @@ import type {
   StepConfig,
   ToolConfigVO,
 } from '@/types/plan-template'
+import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 
-/**
- * Composable for managing PlanTemplateConfigVO
- * Provides getter and setter methods for all properties
- */
-export function usePlanTemplateConfig() {
+export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () => {
   // Reactive state for PlanTemplateConfigVO
   const config = reactive<PlanTemplateConfigVO>({
     title: '',
@@ -42,11 +39,7 @@ export function usePlanTemplateConfig() {
   // Loading state
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-
-  // Flag to prevent watchers from syncing when user is updating individual properties
   const isUserUpdating = ref(false)
-
-  // Flag to indicate that a full refresh is needed (for load, setConfig, fromJsonString, reset, version control)
   const needsFullRefresh = ref(false)
 
   // Version control state
@@ -58,33 +51,63 @@ export function usePlanTemplateConfig() {
   const selectedTemplate = ref<PlanTemplateConfigVO | null>(null)
   const currentPlanTemplateId = ref<string | null>(null)
 
+  // Actions for templateStore integration
+  function setPlanTemplateList(list: PlanTemplateConfigVO[]) {
+    planTemplateList.value = list
+  }
+
+  function setSelectedTemplate(template: PlanTemplateConfigVO | null) {
+    selectedTemplate.value = template
+  }
+
+  function setCurrentPlanTemplateId(id: string | null) {
+    currentPlanTemplateId.value = id
+  }
+
+  function clearSelection() {
+    currentPlanTemplateId.value = null
+    selectedTemplate.value = null
+  }
+
   // Getters
-  const getTitle = () => config.title
-  const getPlanType = () => config.planType || 'dynamic_agent'
-  const getServiceGroup = () => config.serviceGroup || ''
+  function getTitle() {
+    return config.title
+  }
+
+  function getPlanType() {
+    return config.planType || 'dynamic_agent'
+  }
+
+  function getServiceGroup() {
+    return config.serviceGroup || ''
+  }
+
+  function getConfig(): PlanTemplateConfigVO {
+    return { ...config }
+  }
 
   // Setters
-  const setTitle = (title: string) => {
+  function setTitle(title: string) {
     config.title = title
   }
 
-  const setSteps = (steps: StepConfig[]) => {
+  function setSteps(steps: StepConfig[]) {
     config.steps = steps || []
   }
 
-  const setPlanType = (planType: string) => {
+  function setPlanType(planType: string) {
     config.planType = planType
   }
 
-  const setPlanTemplateId = (planTemplateId: string) => {
+  function setPlanTemplateId(planTemplateId: string) {
     config.planTemplateId = planTemplateId
   }
 
-  const setServiceGroup = (serviceGroup: string) => {
+  function setServiceGroup(serviceGroup: string) {
     config.serviceGroup = serviceGroup
   }
 
-  const setMaxSteps = (maxSteps: number | undefined) => {
+  function setMaxSteps(maxSteps: number | undefined) {
     if (maxSteps === undefined || maxSteps === null) {
       delete config.maxSteps
     } else {
@@ -92,7 +115,7 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  const setToolConfig = (toolConfig: ToolConfigVO | undefined) => {
+  function setToolConfig(toolConfig: ToolConfigVO | undefined) {
     if (toolConfig === undefined) {
       delete config.toolConfig
     } else {
@@ -100,58 +123,46 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // ToolConfig getters (no getters are used, only setters)
-
-  // ToolConfig setters
-  const setToolDescription = (toolDescription: string) => {
+  function setToolDescription(toolDescription: string) {
     if (!config.toolConfig) {
       config.toolConfig = {}
     }
     config.toolConfig.toolDescription = toolDescription
   }
 
-  const setEnableInternalToolcall = (enable: boolean) => {
+  function setEnableInternalToolcall(enable: boolean) {
     if (!config.toolConfig) {
       config.toolConfig = {}
     }
     config.toolConfig.enableInternalToolcall = enable
   }
 
-  const setEnableHttpService = (enable: boolean) => {
+  function setEnableHttpService(enable: boolean) {
     if (!config.toolConfig) {
       config.toolConfig = {}
     }
     config.toolConfig.enableHttpService = enable
   }
 
-  const setEnableInConversation = (enable: boolean) => {
+  function setEnableInConversation(enable: boolean) {
     if (!config.toolConfig) {
       config.toolConfig = {}
     }
     config.toolConfig.enableInConversation = enable
   }
 
-  const setInputSchema = (inputSchema: InputSchemaParam[]) => {
+  function setInputSchema(inputSchema: InputSchemaParam[]) {
     if (!config.toolConfig) {
       config.toolConfig = {}
     }
     config.toolConfig.inputSchema = inputSchema || []
   }
 
-  // Get full config
-  const getConfig = (): PlanTemplateConfigVO => {
-    return { ...config }
-  }
-
-  // Set full config
-  const setConfig = (newConfig: PlanTemplateConfigVO) => {
+  function setConfig(newConfig: PlanTemplateConfigVO) {
     needsFullRefresh.value = true
-    // Get accessLevel with backward compatibility for readOnly
     const accessLevel = newConfig.accessLevel || (newConfig.readOnly ? 'readOnly' : 'editable')
     const updatedConfig: PlanTemplateConfigVO = {
       title: newConfig.title || '',
-      // Deep copy steps to preserve all properties including selectedToolKeys
-      // Convert null selectedToolKeys to empty array for consistency
       steps: (newConfig.steps || []).map(step => ({
         ...step,
         selectedToolKeys: step.selectedToolKeys ?? [],
@@ -171,15 +182,12 @@ export function usePlanTemplateConfig() {
       updatedConfig.toolConfig = { ...newConfig.toolConfig }
     }
     Object.assign(config, updatedConfig)
-    // Reset flag after reactivity update
-    // Use a longer delay to ensure watchers have time to process the change
     setTimeout(() => {
       needsFullRefresh.value = false
     }, 50)
   }
 
-  // Reset to default
-  const reset = () => {
+  function reset() {
     needsFullRefresh.value = true
     Object.assign(config, {
       title: '',
@@ -189,7 +197,6 @@ export function usePlanTemplateConfig() {
       accessLevel: 'editable',
       serviceGroup: '',
     })
-    // Remove version and toolConfig if they exist
     if ('version' in config) {
       delete config.version
     }
@@ -199,22 +206,17 @@ export function usePlanTemplateConfig() {
     planVersions.value = []
     currentVersionIndex.value = -1
     error.value = null
-    // Reset flag after reactivity update
     setTimeout(() => {
       needsFullRefresh.value = false
     }, 0)
   }
 
-  // Dynamically generate JSON from current config state (not cached, regenerated each time)
-  const generateJsonString = (): string => {
-    // Generate fresh JSON from current config state
-    // Ensure selectedToolKeys is always an array (not null) in the output
+  function generateJsonString(): string {
     const accessLevel = config.accessLevel || (config.readOnly ? 'readOnly' : 'editable')
     const jsonConfig: PlanTemplateConfigVO = {
       title: config.title || '',
       steps: (config.steps || []).map(step => ({
         ...step,
-        // Ensure selectedToolKeys is always an array, not null
         selectedToolKeys: step.selectedToolKeys ?? [],
       })),
       planType: config.planType || 'dynamic_agent',
@@ -222,22 +224,19 @@ export function usePlanTemplateConfig() {
       accessLevel: accessLevel,
       serviceGroup: config.serviceGroup || '',
     }
-    // Conditionally include optional properties to satisfy exactOptionalPropertyTypes
     if (config.maxSteps !== undefined) {
       jsonConfig.maxSteps = config.maxSteps
     }
     if (config.version !== undefined) {
       jsonConfig.version = config.version
     }
-    // Include toolConfig if it exists
     if (config.toolConfig) {
       jsonConfig.toolConfig = { ...config.toolConfig }
     }
     return JSON.stringify(jsonConfig, null, 2)
   }
 
-  // Load config from JSON string
-  const fromJsonString = (jsonString: string) => {
+  function fromJsonString(jsonString: string): boolean {
     try {
       const parsed = JSON.parse(jsonString)
       setConfig(parsed)
@@ -248,18 +247,13 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // Version control methods
-  const canRollback = computed(() => {
-    return planVersions.value.length > 1 && currentVersionIndex.value > 0
-  })
+  const canRollback = computed(() => planVersions.value.length > 1 && currentVersionIndex.value > 0)
 
-  const canRestore = computed(() => {
-    return (
-      planVersions.value.length > 1 && currentVersionIndex.value < planVersions.value.length - 1
-    )
-  })
+  const canRestore = computed(
+    () => planVersions.value.length > 1 && currentVersionIndex.value < planVersions.value.length - 1
+  )
 
-  const rollbackVersion = () => {
+  function rollbackVersion() {
     if (canRollback.value && currentVersionIndex.value > 0) {
       currentVersionIndex.value--
       const versionContent = planVersions.value[currentVersionIndex.value] || ''
@@ -267,7 +261,7 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  const restoreVersion = () => {
+  function restoreVersion() {
     if (canRestore.value && currentVersionIndex.value < planVersions.value.length - 1) {
       currentVersionIndex.value++
       const versionContent = planVersions.value[currentVersionIndex.value] || ''
@@ -275,8 +269,7 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // Update versions after save
-  const updateVersionsAfterSave = (content: string) => {
+  function updateVersionsAfterSave(content: string) {
     if (currentVersionIndex.value < planVersions.value.length - 1) {
       planVersions.value = planVersions.value.slice(0, currentVersionIndex.value + 1)
     }
@@ -284,8 +277,7 @@ export function usePlanTemplateConfig() {
     currentVersionIndex.value = planVersions.value.length - 1
   }
 
-  // Load from API
-  const load = async (planTemplateId: string) => {
+  async function load(planTemplateId: string): Promise<boolean> {
     if (!planTemplateId) {
       error.value = 'Plan template ID is required'
       return false
@@ -295,35 +287,20 @@ export function usePlanTemplateConfig() {
       isLoading.value = true
       error.value = null
 
-      // Load config from API
       const loadedConfig = await PlanTemplateApiService.getPlanTemplateConfigVO(planTemplateId)
-
-      // Check if this is the same template being reloaded
       const isSameTemplate = currentPlanTemplateId.value === planTemplateId
 
-      // Update currentPlanTemplateId BEFORE setConfig to ensure watchers can detect the change
-      // If it's the same template, temporarily set to null first to trigger watch
       if (isSameTemplate) {
         currentPlanTemplateId.value = null
-        // Wait for the null assignment to be processed by watchers
         await new Promise(resolve => setTimeout(resolve, 0))
       }
 
-      // Ensure isUserUpdating is false before loading to allow sync
       isUserUpdating.value = false
-
       setConfig(loadedConfig)
-
-      // Update currentPlanTemplateId to ensure watchers can detect the change
       currentPlanTemplateId.value = planTemplateId
 
-      // Force a small delay to ensure watchers have processed the changes
-      // This is especially important when reloading the same template
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      // Update selectedTemplate.value to keep it in sync with the loaded config
-      // This ensures RightPanel.vue uses the latest data from API, not stale data from template list
-      // Always update if it matches the current planTemplateId, or if selectedTemplate is null/undefined
       if (!selectedTemplate.value || selectedTemplate.value?.planTemplateId === planTemplateId) {
         selectedTemplate.value = {
           ...(selectedTemplate.value || {}),
@@ -331,7 +308,6 @@ export function usePlanTemplateConfig() {
         }
       }
 
-      // Load versions for version control
       try {
         const versionsResponse = await PlanActApiService.getPlanVersions(planTemplateId)
         planVersions.value = (versionsResponse as { versions?: string[] }).versions || []
@@ -356,8 +332,7 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // Save to API
-  const save = async (): Promise<boolean> => {
+  async function save(): Promise<boolean> {
     if (!config.planTemplateId) {
       error.value = 'Plan template ID is required'
       return false
@@ -370,13 +345,11 @@ export function usePlanTemplateConfig() {
       const result = await PlanTemplateApiService.createOrUpdatePlanTemplateWithTool(getConfig())
 
       if (result.success) {
-        // Use the planTemplateId from backend response (may be different if frontend sent "new-xxx")
         const actualPlanTemplateId = result.planTemplateId || config.planTemplateId
 
-        // Update local config with the actual planTemplateId from backend
         if (actualPlanTemplateId && actualPlanTemplateId !== config.planTemplateId) {
           console.log(
-            '[usePlanTemplateConfig] PlanTemplateId replaced by backend:',
+            '[planTemplateConfigStore] PlanTemplateId replaced by backend:',
             config.planTemplateId,
             '->',
             actualPlanTemplateId
@@ -384,12 +357,9 @@ export function usePlanTemplateConfig() {
           config.planTemplateId = actualPlanTemplateId
         }
 
-        // Reload the template to get updated data from backend
         if (actualPlanTemplateId) {
           await load(actualPlanTemplateId)
 
-          // Update selectedTemplate if it matches the saved template
-          // Check both old and new planTemplateId to handle ID replacement
           const oldPlanTemplateId = selectedTemplate.value?.planTemplateId
           if (
             oldPlanTemplateId === actualPlanTemplateId ||
@@ -399,12 +369,10 @@ export function usePlanTemplateConfig() {
             selectedTemplate.value = {
               ...selectedTemplate.value,
               ...loadedConfig,
-              planTemplateId: actualPlanTemplateId, // Ensure using the actual ID
+              planTemplateId: actualPlanTemplateId,
             }
           }
 
-          // Update planTemplateList if the template exists in the list
-          // Check both old and new planTemplateId
           const templateIndex = planTemplateList.value.findIndex(
             t => t.planTemplateId === actualPlanTemplateId || t.planTemplateId === oldPlanTemplateId
           )
@@ -413,10 +381,9 @@ export function usePlanTemplateConfig() {
             planTemplateList.value[templateIndex] = {
               ...planTemplateList.value[templateIndex],
               ...loadedConfig,
-              planTemplateId: actualPlanTemplateId, // Ensure using the actual ID
+              planTemplateId: actualPlanTemplateId,
             }
           } else if (oldPlanTemplateId) {
-            // If template was not found in list but we have old ID, try to find and update it
             const oldTemplateIndex = planTemplateList.value.findIndex(
               t => t.planTemplateId === oldPlanTemplateId
             )
@@ -425,7 +392,7 @@ export function usePlanTemplateConfig() {
               planTemplateList.value[oldTemplateIndex] = {
                 ...planTemplateList.value[oldTemplateIndex],
                 ...loadedConfig,
-                planTemplateId: actualPlanTemplateId, // Update to new ID
+                planTemplateId: actualPlanTemplateId,
               }
             }
           }
@@ -442,18 +409,15 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // Validation
-  const validate = (): { isValid: boolean; errors: string[] } => {
+  function validate(): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
     if (!config.planTemplateId?.trim()) {
       errors.push('Plan template ID is required')
     }
-
     if (!config.title?.trim()) {
       errors.push('Title is required')
     }
-
     if (!config.steps || config.steps.length === 0) {
       errors.push('At least one step is required')
     }
@@ -464,17 +428,11 @@ export function usePlanTemplateConfig() {
     }
   }
 
-  // Computed properties (isValid and hasToolConfig are not used)
-
-  // Utility function to parse date from different formats
-  const parseDateTime = (dateValue: unknown): Date => {
+  function parseDateTime(dateValue: unknown): Date {
     if (!dateValue) {
       return new Date()
     }
-
-    // If array format [year, month, day, hour, minute, second, nanosecond]
     if (Array.isArray(dateValue) && dateValue.length >= 6) {
-      // JavaScript Date constructor months start from 0, so subtract 1
       return new Date(
         dateValue[0],
         dateValue[1] - 1,
@@ -485,24 +443,13 @@ export function usePlanTemplateConfig() {
         Math.floor(dateValue[6] / 1000000)
       )
     }
-
-    // If string format, parse directly
     if (typeof dateValue === 'string') {
       return new Date(dateValue)
     }
-
-    // Return current time for other cases
     return new Date()
   }
 
-  // Action handlers (handleRollback, handleRestore, handleSave are not used)
-
-  /**
-   * Get all coordinator tools from planTemplateList
-   * Filters templates that have toolConfig with enableInternalToolcall enabled
-   * @returns Array of coordinator tools with tool configuration data
-   */
-  const getAllCoordinatorToolsFromTemplates = () => {
+  function getAllCoordinatorToolsFromTemplates() {
     const tools: Array<{
       toolName: string
       toolDescription: string
@@ -515,34 +462,15 @@ export function usePlanTemplateConfig() {
     }> = []
 
     for (const template of planTemplateList.value) {
-      // Only include templates with toolConfig
-      if (!template.toolConfig) {
+      if (!template.toolConfig || !template.toolConfig.enableInternalToolcall) {
         continue
       }
-
       const toolConfig = template.toolConfig
-
-      // Only include tools with enableInternalToolcall enabled
-      if (!toolConfig.enableInternalToolcall) {
-        continue
-      }
-
-      // Convert inputSchema array to JSON string
       let inputSchemaJson = '[]'
       if (toolConfig.inputSchema && Array.isArray(toolConfig.inputSchema)) {
         inputSchemaJson = JSON.stringify(toolConfig.inputSchema)
       }
-
-      const tool: {
-        toolName: string
-        toolDescription: string
-        planTemplateId: string
-        inputSchema: string
-        enableInternalToolcall: boolean
-        enableHttpService: boolean
-        enableInConversation: boolean
-        serviceGroup?: string
-      } = {
+      const tool = {
         toolName: template.title || '',
         toolDescription: toolConfig.toolDescription || '',
         planTemplateId: template.planTemplateId || '',
@@ -550,86 +478,71 @@ export function usePlanTemplateConfig() {
         enableInternalToolcall: toolConfig.enableInternalToolcall ?? true,
         enableHttpService: toolConfig.enableHttpService ?? false,
         enableInConversation: toolConfig.enableInConversation ?? false,
+        serviceGroup: template.serviceGroup || '',
       }
-
-      if (template.serviceGroup) {
-        tool.serviceGroup = template.serviceGroup
-      }
-
       tools.push(tool)
     }
-
     return tools
   }
 
-  /**
-   * Get coordinator tool configuration status
-   * Determines if coordinator tools are enabled based on planTemplateList
-   * @returns boolean indicating if coordinator tools are enabled
-   */
-  const getCoordinatorToolConfig = (): boolean => {
-    // Check if there are any templates with toolConfig
+  function getCoordinatorToolConfig(): boolean {
     return planTemplateList.value.some(template => template.toolConfig !== undefined)
   }
 
-  // Helper method to wrap updates with guard flag
-  const withUpdateGuard = <T>(callback: () => T): T => {
+  function withUpdateGuard<T>(callback: () => T): T {
     isUserUpdating.value = true
     try {
       return callback()
     } finally {
-      // Use setTimeout to ensure the flag is reset after reactivity updates
       setTimeout(() => {
         isUserUpdating.value = false
       }, 0)
     }
   }
 
-  // Wrapped setters that prevent watcher syncing
-  const setStepsWithGuard = (steps: StepConfig[]) => {
+  function setStepsWithGuard(steps: StepConfig[]) {
     return withUpdateGuard(() => {
       setSteps(steps)
     })
   }
 
-  const setToolConfigWithGuard = (toolConfig: ToolConfigVO | undefined) => {
+  function setToolConfigWithGuard(toolConfig: ToolConfigVO | undefined) {
     return withUpdateGuard(() => {
       setToolConfig(toolConfig)
     })
   }
 
-  const setToolDescriptionWithGuard = (toolDescription: string) => {
+  function setToolDescriptionWithGuard(toolDescription: string) {
     return withUpdateGuard(() => {
       setToolDescription(toolDescription)
     })
   }
 
-  const setEnableInternalToolcallWithGuard = (enable: boolean) => {
+  function setEnableInternalToolcallWithGuard(enable: boolean) {
     return withUpdateGuard(() => {
       setEnableInternalToolcall(enable)
     })
   }
 
-  const setEnableHttpServiceWithGuard = (enable: boolean) => {
+  function setEnableHttpServiceWithGuard(enable: boolean) {
     return withUpdateGuard(() => {
       setEnableHttpService(enable)
     })
   }
 
-  const setEnableInConversationWithGuard = (enable: boolean) => {
+  function setEnableInConversationWithGuard(enable: boolean) {
     return withUpdateGuard(() => {
       setEnableInConversation(enable)
     })
   }
 
-  const setInputSchemaWithGuard = (inputSchema: InputSchemaParam[]) => {
+  function setInputSchemaWithGuard(inputSchema: InputSchemaParam[]) {
     return withUpdateGuard(() => {
       setInputSchema(inputSchema)
     })
   }
 
   return {
-    // State
     config,
     isLoading,
     error,
@@ -641,13 +554,16 @@ export function usePlanTemplateConfig() {
     selectedTemplate,
     currentPlanTemplateId,
 
-    // Getters
+    setPlanTemplateList,
+    setSelectedTemplate,
+    setCurrentPlanTemplateId,
+    clearSelection,
+
     getTitle,
     getPlanType,
     getServiceGroup,
     getConfig,
 
-    // Setters
     setTitle,
     setSteps,
     setPlanType,
@@ -662,7 +578,6 @@ export function usePlanTemplateConfig() {
     setInputSchema,
     setConfig,
 
-    // Guarded setters (prevent watcher syncing)
     setStepsWithGuard,
     setToolConfigWithGuard,
     setToolDescriptionWithGuard,
@@ -672,7 +587,6 @@ export function usePlanTemplateConfig() {
     setInputSchemaWithGuard,
     withUpdateGuard,
 
-    // Actions
     reset,
     load,
     save,
@@ -683,28 +597,11 @@ export function usePlanTemplateConfig() {
     restoreVersion,
     updateVersionsAfterSave,
 
-    // Computed
     canRollback,
     canRestore,
 
-    // Utility functions
     parseDateTime,
-
-    // Coordinator tools methods
     getAllCoordinatorToolsFromTemplates,
     getCoordinatorToolConfig,
   }
-}
-
-// Singleton instance for global use
-let singletonInstance: ReturnType<typeof usePlanTemplateConfig> | null = null
-
-/**
- * Get or create singleton instance of usePlanTemplateConfig
- */
-export function usePlanTemplateConfigSingleton() {
-  if (!singletonInstance) {
-    singletonInstance = usePlanTemplateConfig()
-  }
-  return singletonInstance
-}
+})

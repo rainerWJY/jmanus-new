@@ -319,7 +319,7 @@
           <button
             class="btn btn-sm"
             @click="handleRollback"
-            :disabled="!templateConfig.canRollback.value"
+            :disabled="!planTemplateConfigStore.canRollback"
             :title="$t('sidebar.rollback')"
           >
             <Icon icon="carbon:undo" width="14" />
@@ -327,7 +327,7 @@
           <button
             class="btn btn-sm"
             @click="handleRestore"
-            :disabled="!templateConfig.canRestore.value"
+            :disabled="!planTemplateConfigStore.canRestore"
             :title="$t('sidebar.restore')"
           >
             <Icon icon="carbon:redo" width="14" />
@@ -402,7 +402,7 @@ import AssignedTools from '@/components/shared/AssignedTools.vue'
 import ToolSelectionModal from '@/components/tool-selection-modal/ToolSelectionModal.vue'
 import { storeToRefs } from 'pinia'
 import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useToast } from '@/plugins/useToast'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanTemplateConfigVO, StepConfig } from '@/types/plan-template'
@@ -427,15 +427,16 @@ interface JsonEditorV2Props {
 // Props
 const { isGenerating = false, isExecuting = false } = defineProps<JsonEditorV2Props>()
 
-// Get template config singleton
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { selectedTemplate, currentPlanTemplateId, isUserUpdating, needsFullRefresh, planVersions } =
+  storeToRefs(planTemplateConfigStore)
 
 // Get available tools store for validation
 const availableToolsStore = useAvailableToolsStore()
 const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
   storeToRefs(availableToolsStore)
 
-// Display data - sync with templateConfig
+// Display data - sync with store
 const displayData = reactive<{
   title: string
   maxSteps?: number | undefined
@@ -454,9 +455,9 @@ const availableServiceGroups = ref<string[]>([])
 const isLoadingGroups = ref(false)
 const serviceGroup = ref('')
 
-// Dynamically generate JSON output from templateConfig (not cached, regenerated each time)
+// Dynamically generate JSON output from store (not cached, regenerated each time)
 const generatedJsonOutput = computed(() => {
-  return templateConfig.generateJsonString()
+  return planTemplateConfigStore.generateJsonString()
 })
 
 // Flag to track if we're syncing from config (to avoid setting modification flag during load)
@@ -465,22 +466,22 @@ const isSyncingFromConfig = ref(false)
 // Timeout for resetting editing flag (debounce)
 let editingTimeout: ReturnType<typeof setTimeout> | null = null
 
-// Helper to set editing flag with debounce (uses templateConfig.isUserUpdating)
+// Helper to set editing flag with debounce (uses store isUserUpdating)
 const setEditingFlag = () => {
-  templateConfig.isUserUpdating.value = true
+  isUserUpdating.value = true
   if (editingTimeout) {
     clearTimeout(editingTimeout)
   }
   editingTimeout = setTimeout(() => {
-    templateConfig.isUserUpdating.value = false
+    isUserUpdating.value = false
     editingTimeout = null
   }, 500)
 }
 
-// Sync displayData with templateConfig
+// Sync displayData with store
 const syncDisplayDataFromConfig = () => {
   // Don't sync if user is actively editing to prevent losing unsaved changes
-  if (templateConfig.isUserUpdating.value) {
+  if (isUserUpdating.value) {
     console.log('[JsonEditorV2] syncDisplayDataFromConfig skipped: isUserUpdating is true')
     return
   }
@@ -488,7 +489,7 @@ const syncDisplayDataFromConfig = () => {
   console.log('[JsonEditorV2] syncDisplayDataFromConfig called')
   isSyncingFromConfig.value = true
   try {
-    const config = templateConfig.getConfig()
+    const config = planTemplateConfigStore.getConfig()
     console.log('[JsonEditorV2] Syncing displayData with config:', {
       title: config.title,
       stepsCount: config.steps?.length || 0,
@@ -524,7 +525,7 @@ const syncDisplayDataFromConfig = () => {
   }
 }
 
-// Sync displayData changes back to templateConfig
+// Sync displayData changes back to store
 // DISABLED: Only sync on save to prevent flickering during input
 // watch(
 //   () => displayData,
@@ -534,13 +535,13 @@ const syncDisplayDataFromConfig = () => {
 //       return
 //     }
 
-//     // Update templateConfig when displayData changes
-//     templateConfig.setTitle(displayData.title)
-//     templateConfig.setSteps(displayData.steps)
+//     // Update store when displayData changes
+//     planTemplateConfigStore.setTitle(displayData.title)
+//     planTemplateConfigStore.setSteps(displayData.steps)
 
 //     // Mark task requirements as modified if there's a selected template
 //     // Note: This is a fallback - the @input handlers should handle most cases
-//     if (templateConfig.currentPlanTemplateId.value) {
+//     if (currentPlanTemplateId.value) {
 //       templateStore.hasTaskRequirementModified = true
 //       console.log(
 //         '[JsonEditorV2] Task requirements modified (via watch), hasTaskRequirementModified set to true'
@@ -555,10 +556,10 @@ const syncDisplayDataToTemplateConfig = () => {
   // Set flag to prevent watcher from syncing back during this update
   isSyncingFromConfig.value = true
   try {
-    templateConfig.setTitle(displayData.title)
-    templateConfig.setMaxSteps(displayData.maxSteps)
-    templateConfig.setSteps(displayData.steps)
-    if (templateConfig.currentPlanTemplateId.value) {
+    planTemplateConfigStore.setTitle(displayData.title)
+    planTemplateConfigStore.setMaxSteps(displayData.maxSteps)
+    planTemplateConfigStore.setSteps(displayData.steps)
+    if (currentPlanTemplateId.value) {
       templateStore.hasTaskRequirementModified = true
     }
   } finally {
@@ -577,7 +578,7 @@ const closeJsonPreview = () => {
   showJsonPreview.value = false
 }
 
-// Action handlers (moved from json-editor-logic.ts to usePlanTemplateConfig)
+// Action handlers (use planTemplateConfig store)
 const handleRollback = () => {
   try {
     // Clear editing flag and timeout to allow sync
@@ -585,8 +586,8 @@ const handleRollback = () => {
       clearTimeout(editingTimeout)
       editingTimeout = null
     }
-    templateConfig.isUserUpdating.value = false
-    templateConfig.rollbackVersion()
+    isUserUpdating.value = false
+    planTemplateConfigStore.rollbackVersion()
   } catch (error) {
     console.error('Error during rollback operation:', error)
     toast.error(t('sidebar.rollbackFailed') || 'Rollback failed')
@@ -600,8 +601,8 @@ const handleRestore = () => {
       clearTimeout(editingTimeout)
       editingTimeout = null
     }
-    templateConfig.isUserUpdating.value = false
-    templateConfig.restoreVersion()
+    isUserUpdating.value = false
+    planTemplateConfigStore.restoreVersion()
   } catch (error) {
     console.error('Error during restore operation:', error)
     toast.error(t('sidebar.restoreFailed') || 'Restore failed')
@@ -640,7 +641,7 @@ const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTool
 
 const handleSave = async () => {
   try {
-    if (!templateConfig.selectedTemplate.value) {
+    if (!selectedTemplate.value) {
       toast.error(t('sidebar.selectPlanFirst'))
       return
     }
@@ -650,9 +651,9 @@ const handleSave = async () => {
       clearTimeout(editingTimeout)
       editingTimeout = null
     }
-    templateConfig.isUserUpdating.value = false
+    isUserUpdating.value = false
 
-    // Sync displayData to templateConfig before validation and save
+    // Sync displayData to store before validation and save
     // This ensures all user input is synchronized before saving
     syncDisplayDataToTemplateConfig()
 
@@ -678,7 +679,7 @@ const handleSave = async () => {
     }
 
     // Validate config
-    const validation = templateConfig.validate()
+    const validation = planTemplateConfigStore.validate()
     if (!validation.isValid) {
       toast.error(
         'Invalid format, please correct and save.\nErrors: ' + validation.errors.join(', ')
@@ -686,26 +687,25 @@ const handleSave = async () => {
       return
     }
 
-    const planTemplateId = templateConfig.selectedTemplate.value.planTemplateId
+    const planTemplateId = selectedTemplate.value.planTemplateId
     if (!planTemplateId) {
       toast.error('Plan template ID is required')
       return
     }
 
-    // Save using templateConfig (this already calls PlanTemplateApiService.createOrUpdatePlanTemplateWithTool)
+    // Save using store (calls PlanTemplateApiService.createOrUpdatePlanTemplateWithTool)
     // The save() method already calls load() which reloads versions from backend
-    const success = await templateConfig.save()
+    const success = await planTemplateConfigStore.save()
     if (!success) {
       toast.error('Failed to save plan template')
       return
     }
 
     // Update versions after save (adds current content to local version history)
-    const content = templateConfig.generateJsonString().trim()
-    templateConfig.updateVersionsAfterSave(content)
+    const content = planTemplateConfigStore.generateJsonString().trim()
+    planTemplateConfigStore.updateVersionsAfterSave(content)
 
-    // Get actual version count after update (save() already reloaded versions from backend, then updateVersionsAfterSave adds one more)
-    const versionCount = templateConfig.planVersions.value.length
+    const versionCount = planVersions.value.length
 
     // Reset modification flag after successful save
     templateStore.hasTaskRequirementModified = false
@@ -733,7 +733,7 @@ const handleStepRequirementInput = (e: Event, stepIndex: number) => {
     step.stepRequirement = (e.target as HTMLTextAreaElement).value
   }
   autoResizeTextarea(e)
-  // Only update displayData, don't sync to templateConfig or trigger any watchers
+  // Only update displayData, don't sync to store or trigger any watchers
   // Sync will happen on save via syncDisplayDataToTemplateConfig()
 }
 
@@ -744,7 +744,7 @@ const handleTerminateColumnsInput = (e: Event, stepIndex: number) => {
   if (step) {
     step.terminateColumns = (e.target as HTMLInputElement).value
   }
-  // Only update displayData, don't sync to templateConfig or trigger any watchers
+  // Only update displayData, don't sync to store or trigger any watchers
   // Sync will happen on save via syncDisplayDataToTemplateConfig()
 }
 
@@ -763,8 +763,8 @@ const handleAddStep = () => {
     selectedToolKeys: [],
   }
   displayData.steps.push(newStep)
-  // Sync to templateConfig - no guard needed since setSteps() doesn't trigger watcher (needsFullRefresh is false)
-  templateConfig.setSteps(displayData.steps)
+  // Sync to store - no guard needed since setSteps() doesn't trigger watcher (needsFullRefresh is false)
+  planTemplateConfigStore.setSteps(displayData.steps)
   console.log('[JsonEditorV2] Added new step, total steps:', displayData.steps.length)
 }
 
@@ -1067,14 +1067,13 @@ const isCopyingPlan = ref(false)
 const handleCopyPlan = () => {
   console.log('[JsonEditorV2] Copy plan clicked')
 
-  if (!templateConfig.selectedTemplate.value) {
+  if (!selectedTemplate.value) {
     console.log('[JsonEditorV2] No template selected, cannot copy')
     toast.error(t('sidebar.selectPlanFirst'))
     return
   }
 
-  newPlanTitle.value =
-    (templateConfig.selectedTemplate.value.title ?? t('sidebar.unnamedPlan')) + ' (copy)'
+  newPlanTitle.value = (selectedTemplate.value?.title ?? t('sidebar.unnamedPlan')) + ' (copy)'
   console.log('[JsonEditorV2] Opening copy plan modal')
   showCopyPlanModal.value = true
 }
@@ -1099,7 +1098,7 @@ const confirmCopyPlan = async () => {
     return
   }
 
-  if (!templateConfig.selectedTemplate.value) {
+  if (!selectedTemplate.value) {
     toast.error(t('sidebar.noPlanToCopy'))
     return
   }
@@ -1108,7 +1107,7 @@ const confirmCopyPlan = async () => {
 
   try {
     // Get the current plan config
-    const currentConfig = templateConfig.getConfig()
+    const currentConfig = planTemplateConfigStore.getConfig()
 
     // Generate a new planTemplateId from backend
     const newPlanTemplateId = await PlanTemplateApiService.generatePlanTemplateId()
@@ -1168,32 +1167,24 @@ watch(
 
 // Load service group from template config
 const loadServiceGroup = () => {
-  const group = templateConfig.getServiceGroup() || ''
+  const group = planTemplateConfigStore.getServiceGroup() || ''
   serviceGroup.value = group
 }
 
-// Watch for templateConfig changes and sync to displayData
+// Watch for store config changes and sync to displayData
 watch(
-  () => templateConfig.config,
+  () => planTemplateConfigStore.config,
   () => {
-    // Only sync when a full refresh is needed (load, setConfig, fromJsonString, reset, version control)
-    // Skip sync for partial updates (setTitle, setSteps, etc.) to avoid unnecessary refreshes
-    // Don't sync if we're already syncing (prevents circular updates)
-    // Don't sync if user is actively editing or programmatic updates are in progress
-    if (
-      templateConfig.needsFullRefresh.value &&
-      !isSyncingFromConfig.value &&
-      !templateConfig.isUserUpdating.value
-    ) {
+    if (needsFullRefresh.value && !isSyncingFromConfig.value && !isUserUpdating.value) {
       syncDisplayDataFromConfig()
     }
   },
   { deep: true, immediate: true }
 )
 
-// Watch for templateConfig changes (when template is loaded)
+// Watch for store currentPlanTemplateId (when template is loaded)
 watch(
-  () => templateConfig.currentPlanTemplateId.value,
+  currentPlanTemplateId,
   (newId, oldId) => {
     console.log('[JsonEditorV2] currentPlanTemplateId changed:', { oldId, newId })
     // Only reset if template actually changed (not initial load)
@@ -1226,9 +1217,9 @@ watch(
     // Set a flag to prevent syncDisplayDataFromConfig from running
     isSyncingFromConfig.value = true
     try {
-      templateConfig.setServiceGroup(newGroup)
+      planTemplateConfigStore.setServiceGroup(newGroup)
     } finally {
-      // Reset the flag after a microtask to prevent the templateConfig watcher from syncing back
+      // Reset the flag after a microtask to prevent the store watcher from syncing back
       setTimeout(() => {
         isSyncingFromConfig.value = false
       }, 0)
@@ -1321,7 +1312,7 @@ const selectServiceGroup = (group: string) => {
 
 // Initialize on mount
 onMounted(() => {
-  // Sync displayData from templateConfig
+  // Sync displayData from store
   syncDisplayDataFromConfig()
 
   // Load service group
