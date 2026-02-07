@@ -15,7 +15,6 @@
  */
 
 import { DirectApiService } from '@/api/lynxe-service'
-import { PlanActApiService } from '@/api/plan-act-api-service'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { memoryStore } from '@/stores/memory'
 import type {
@@ -26,6 +25,7 @@ import type {
 } from '@/types/message-dialog'
 import type { PlanExecutionRequestPayload } from '@/types/plan-execution'
 import type { AgentExecutionRecord, PlanExecutionRecord } from '@/types/plan-execution-record'
+import { LlmCheckService } from '@/utils/llm-check'
 import { computed, readonly, ref, watchEffect } from 'vue'
 
 /**
@@ -618,16 +618,21 @@ export function useMessageDialog() {
         throw new Error('Tool name is required for plan execution')
       }
 
-      // Call PlanActApiService.executePlan
-      // Note: DirectApiService.executeByToolName will automatically include conversationId from memoryStore
-      const response = (await PlanActApiService.executePlan(
-        toolName,
-        serviceGroup,
-        payload.params,
-        payload.uploadedFiles,
-        payload.replacementParams,
-        payload.uploadKey ?? undefined,
-        'VUE_SIDEBAR'
+      // Execute plan via DirectApiService (LynxeController.executeByToolNameAsync)
+      // rawParam is merged into replacementParams as userRequirement for the backend
+      let replacementParams = payload.replacementParams
+      if (payload.params) {
+        replacementParams = { ...(replacementParams ?? {}), userRequirement: payload.params }
+      }
+      const response = (await LlmCheckService.withLlmCheck(() =>
+        DirectApiService.executeByToolName(
+          toolName,
+          replacementParams,
+          payload.uploadedFiles,
+          payload.uploadKey ?? undefined,
+          'VUE_SIDEBAR',
+          serviceGroup
+        )
       )) as { planId?: string; conversationId?: string }
 
       // Update conversationId if present (persisted)

@@ -253,7 +253,7 @@ export class DirectApiService {
     })
   }
 
-  // Unified method to execute by tool name (replaces both sendMessageWithDefaultPlan and PlanActApiService.executePlan)
+  // Unified method to execute by tool name (used by useMessageDialog for plan execution)
   public static async executeByToolName(
     toolName: string,
     replacementParams?: Record<string, string>,

@@ -15,54 +15,10 @@
  */
 
 // Plan-related API wrapper (TypeScript version for Vue projects)
-
-import { DirectApiService } from '@/api/lynxe-service'
-import { LlmCheckService } from '@/utils/llm-check'
+// Plan execution is triggered via useMessageDialog → DirectApiService.executeByToolName
 
 export class PlanActApiService {
   private static readonly PLAN_TEMPLATE_URL = '/api/plan-template'
-
-  // Execute generated plan using LynxeController.executeByToolNameAsync
-  public static async executePlan(
-    toolName: string,
-    serviceGroup: string | undefined,
-    rawParam?: string,
-    uploadedFiles?: string[],
-    replacementParams?: Record<string, string>,
-    uploadKey?: string,
-    requestSource: 'VUE_DIALOG' | 'VUE_SIDEBAR' = 'VUE_SIDEBAR'
-  ): Promise<unknown> {
-    return LlmCheckService.withLlmCheck(async () => {
-      console.log('[PlanActApiService] executePlan called with:', {
-        toolName,
-        serviceGroup,
-        rawParam,
-        uploadedFiles,
-        replacementParams,
-        uploadKey,
-        requestSource,
-      })
-
-      // Add rawParam to replacementParams if provided (backend expects it in replacementParams)
-      if (rawParam) {
-        if (!replacementParams) {
-          replacementParams = {}
-        }
-        replacementParams['userRequirement'] = rawParam
-        console.log('[PlanActApiService] Added rawParam to replacementParams:', rawParam)
-      }
-
-      // Use the unified DirectApiService method (default to VUE_SIDEBAR for plan execution)
-      return await DirectApiService.executeByToolName(
-        toolName,
-        replacementParams,
-        uploadedFiles,
-        uploadKey,
-        requestSource,
-        serviceGroup
-      )
-    })
-  }
 
   // Get all versions of plan
   public static async getPlanVersions(planId: string): Promise<unknown> {
