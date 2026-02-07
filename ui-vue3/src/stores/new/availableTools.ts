@@ -16,6 +16,7 @@
 
 import { ToolApiService } from '@/api/tool-api-service'
 import type { Tool } from '@/types/tool'
+import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export interface AvailableTool {
@@ -27,35 +28,27 @@ export interface AvailableTool {
   selectable: boolean
 }
 
-/**
- * Composable for managing available tools
- * Provides state and methods for loading and managing available tools
- */
-export function useAvailableTools() {
-  // Available tools state
+export const useAvailableToolsStore = defineStore('availableTools', () => {
   const availableTools = ref<AvailableTool[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // Load available tools from backend
-  const loadAvailableTools = async () => {
+  async function loadAvailableTools() {
     if (isLoading.value) {
-      return // Avoid duplicate requests
+      return
     }
 
     isLoading.value = true
     error.value = null
 
     try {
-      console.log('[useAvailableTools] Loading available tools...')
+      console.log('[AvailableToolsStore] Loading available tools...')
       const tools = await ToolApiService.getAvailableTools()
-      console.log('[useAvailableTools] Loaded available tools:', tools)
-      // Transform tools to ensure they have all required fields
-      // Filter out tools that are not selectable (enableInternalToolcall = false)
+      console.log('[AvailableToolsStore] Loaded available tools:', tools)
       availableTools.value = tools
         .filter((tool: Tool) => tool.selectable !== false)
         .map((tool: Tool) => ({
-          key: tool.key || '', // Use the qualified key from backend (serviceGroup.toolName)
+          key: tool.key || '',
           name: tool.name || '',
           description: tool.description || '',
           enabled: tool.enabled || false,
@@ -63,7 +56,7 @@ export function useAvailableTools() {
           selectable: tool.selectable,
         }))
     } catch (err) {
-      console.error('[useAvailableTools] Error loading tools:', err)
+      console.error('[AvailableToolsStore] Error loading tools:', err)
       error.value = err instanceof Error ? err.message : 'Unknown error'
       availableTools.value = []
     } finally {
@@ -71,34 +64,17 @@ export function useAvailableTools() {
     }
   }
 
-  // Reset tools state
-  const reset = () => {
+  function reset() {
     availableTools.value = []
     isLoading.value = false
     error.value = null
   }
 
   return {
-    // State
     availableTools,
     isLoading,
     error,
-
-    // Actions
     loadAvailableTools,
     reset,
   }
-}
-
-// Singleton instance for global use
-let singletonInstance: ReturnType<typeof useAvailableTools> | null = null
-
-/**
- * Get or create singleton instance of useAvailableTools
- */
-export function useAvailableToolsSingleton() {
-  if (!singletonInstance) {
-    singletonInstance = useAvailableTools()
-  }
-  return singletonInstance
-}
+})

@@ -242,7 +242,8 @@ import {
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
 import PublishServiceModal from '@/components/publish-service-modal/PublishServiceModal.vue'
 import SaveConfirmationDialog from '@/components/sidebar/SaveConfirmationDialog.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { storeToRefs } from 'pinia'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
@@ -262,8 +263,10 @@ const toast = useToast()
 // Template config singleton
 const templateConfig = usePlanTemplateConfigSingleton()
 
-// Get available tools singleton for validation
-const availableToolsStore = useAvailableToolsSingleton()
+// Get available tools store for validation
+const availableToolsStore = useAvailableToolsStore()
+const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
+  storeToRefs(availableToolsStore)
 
 // Message dialog singleton for executing plans
 const messageDialog = useMessageDialogSingleton()
@@ -695,16 +698,13 @@ const proceedWithExecution = async () => {
 // Validate that all selected tools exist in available tools
 const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
   // Ensure available tools are loaded
-  if (
-    availableToolsStore.availableTools.value.length === 0 &&
-    !availableToolsStore.isLoading.value
-  ) {
+  if (availableToolsRef.value.length === 0 && !availableToolsLoading.value) {
     await availableToolsStore.loadAvailableTools()
   }
 
   const nonExistentTools: string[] = []
-  const availableTools = availableToolsStore.availableTools.value
-  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+  const availableTools = availableToolsRef.value
+  const availableToolKeys = new Set(availableTools.map((tool: { key: string }) => tool.key))
 
   // Get steps from templateConfig
   const config = templateConfig.getConfig()

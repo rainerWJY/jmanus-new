@@ -153,7 +153,7 @@ import {
   type ParameterRequirements,
 } from '@/api/plan-parameter-api-service'
 import Modal from '@/components/modal/index.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -165,7 +165,7 @@ const { t } = useI18n()
 const templateConfig = usePlanTemplateConfigSingleton()
 
 // Get available tools singleton to refresh tool list after publishing
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
 
 // Props
 interface Props {

@@ -81,7 +81,8 @@
 <script setup lang="ts">
 import { FileInfo } from '@/api/file-upload-api-service'
 import FileUploadComponent from '@/components/file-upload/FileUploadComponent.vue'
-import { useAvailableToolsSingleton, type useAvailableTools } from '@/composables/useAvailableTools'
+import { storeToRefs } from 'pinia'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
@@ -101,7 +102,9 @@ const messageDialog = useMessageDialogSingleton()
 const { stopTask } = useTaskStop()
 const taskExecutionState = useTaskExecutionStateSingleton()
 const fileUpload = useFileUploadSingleton()
-const availableToolsStore: ReturnType<typeof useAvailableTools> = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
+const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
+  storeToRefs(availableToolsStore)
 const toast = useToast()
 
 // Track if task is running - use unified state
@@ -507,16 +510,13 @@ const validateToolsExist = async (
   planTemplateId: string
 ): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
   // Ensure available tools are loaded
-  if (
-    availableToolsStore.availableTools.value.length === 0 &&
-    !availableToolsStore.isLoading.value
-  ) {
+  if (availableToolsRef.value.length === 0 && !availableToolsLoading.value) {
     await availableToolsStore.loadAvailableTools()
   }
 
   const nonExistentTools: string[] = []
-  const availableTools = availableToolsStore.availableTools.value
-  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+  const availableTools = availableToolsRef.value
+  const availableToolKeys = new Set(availableTools.map((tool: { key: string }) => tool.key))
 
   // Find plan template by planTemplateId
   const planTemplate = templateConfig.planTemplateList.value.find(

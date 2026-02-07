@@ -400,7 +400,8 @@ import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-servic
 import { ToolApiService } from '@/api/tool-api-service'
 import AssignedTools from '@/components/shared/AssignedTools.vue'
 import ToolSelectionModal from '@/components/tool-selection-modal/ToolSelectionModal.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { storeToRefs } from 'pinia'
+import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useToast } from '@/plugins/useToast'
 import { templateStore } from '@/stores/templateStore'
@@ -429,8 +430,10 @@ const { isGenerating = false, isExecuting = false } = defineProps<JsonEditorV2Pr
 // Get template config singleton
 const templateConfig = usePlanTemplateConfigSingleton()
 
-// Get available tools singleton for validation
-const availableToolsStore = useAvailableToolsSingleton()
+// Get available tools store for validation
+const availableToolsStore = useAvailableToolsStore()
+const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
+  storeToRefs(availableToolsStore)
 
 // Display data - sync with templateConfig
 const displayData = reactive<{
@@ -608,16 +611,13 @@ const handleRestore = () => {
 // Validate that all selected tools exist in available tools
 const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTools: string[] }> => {
   // Ensure available tools are loaded
-  if (
-    availableToolsStore.availableTools.value.length === 0 &&
-    !availableToolsStore.isLoading.value
-  ) {
+  if (availableToolsRef.value.length === 0 && !availableToolsLoading.value) {
     await availableToolsStore.loadAvailableTools()
   }
 
   const nonExistentTools: string[] = []
-  const availableTools = availableToolsStore.availableTools.value
-  const availableToolKeys = new Set(availableTools.map(tool => tool.key))
+  const availableTools = availableToolsRef.value
+  const availableToolKeys = new Set(availableTools.map((tool: AvailableTool) => tool.key))
 
   // Check all steps for non-existent tools
   for (let i = 0; i < displayData.steps.length; i++) {
@@ -1035,15 +1035,12 @@ const handleToolSelectionConfirm = async (selectedToolIds: string[]) => {
   setEditingFlag()
 
   // Ensure available tools are loaded
-  if (
-    availableToolsStore.availableTools.value.length === 0 &&
-    !availableToolsStore.isLoading.value
-  ) {
+  if (availableToolsRef.value.length === 0 && !availableToolsLoading.value) {
     await availableToolsStore.loadAvailableTools()
   }
 
   // Filter out non-existent tools
-  const availableToolKeys = new Set(availableToolsStore.availableTools.value.map(tool => tool.key))
+  const availableToolKeys = new Set(availableToolsRef.value.map((tool: AvailableTool) => tool.key))
   const validToolIds = selectedToolIds.filter(toolId => availableToolKeys.has(toolId))
 
   if (currentStepIndex.value >= 0 && currentStepIndex.value < displayData.steps.length) {

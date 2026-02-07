@@ -38,7 +38,7 @@ defineOptions({
   name: 'SidebarPanel',
 })
 
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { sidebarStore } from '@/stores/sidebar'
@@ -53,7 +53,7 @@ const props = defineProps<{
 }>()
 
 // Available tools management
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
 
 // Template config management
 const templateConfig = usePlanTemplateConfigSingleton()

@@ -1078,7 +1078,11 @@ export function useMessageDialog() {
     // Surface send-assistant-message tool results as separate "pop" blocks (4 pops:
     // summary + 3 tool messages, or just tool messages)
     const sendAssistantFragments = collectSendAssistantMessageContent(record)
-    const summaryPart = updates.content ?? (record.completed ? (record.summary ?? record.result ?? record.message ?? '') : '') ?? message.content ?? ''
+    const summaryPart =
+      updates.content ??
+      (record.completed ? (record.summary ?? record.result ?? record.message ?? '') : '') ??
+      message.content ??
+      ''
     if (sendAssistantFragments.length > 0) {
       if (record.completed) {
         updates.thinking = ''

@@ -412,7 +412,7 @@
 import FileBrowser from '@/components/file-browser/index.vue'
 import ExecutionController from '@/components/sidebar/ExecutionController.vue'
 import JsonEditorV2 from '@/components/sidebar/JsonEditorV2.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
@@ -469,7 +469,7 @@ const rightPanel = useRightPanelSingleton()
 const templateConfig = usePlanTemplateConfigSingleton()
 
 // Available tools management
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
 
 // Plan template import composable
 const { handleImport: handleImportPlanTemplate } = usePlanTemplateImport()
