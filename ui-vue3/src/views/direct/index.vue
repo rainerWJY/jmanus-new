@@ -113,6 +113,7 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/composables/useToast'
+import { useConversationStore } from '@/stores/new/conversation'
 import { memoryStore } from '@/stores/memory'
 import { useTaskStore } from '@/stores/task'
 import { templateStore } from '@/stores/templateStore'
@@ -133,6 +134,7 @@ const { toast } = useToast()
 const messageDialog = useMessageDialogSingleton()
 const planExecution = usePlanExecutionSingleton()
 const conversationHistory = useConversationHistorySingleton()
+const conversationStore = useConversationStore()
 
 const prompt = ref<string>('')
 const rightPanelRef = ref()
@@ -227,7 +229,7 @@ onMounted(() => {
   )
 
   // Restore conversation history if conversationId exists in localStorage
-  const savedConversationId = memoryStore.getConversationId()
+  const savedConversationId = conversationStore.selectedConversationId
   if (savedConversationId) {
     console.log('[Direct] Found saved conversationId, restoring conversation:', savedConversationId)
     nextTick(async () => {
@@ -608,12 +610,16 @@ const handleConfig = () => {
 }
 
 const memorySelected = async () => {
-  // Memory sidebar is already closed by selectConversation() calling toggleSidebar()
+  // Memory sidebar is already closed by selectMemory() calling toggleSidebar()
   // Load conversation history if a conversation is selected
-  if (memoryStore.conversationId) {
-    console.log('[DirectView] Conversation selected:', memoryStore.conversationId)
+  if (conversationStore.selectedConversationId) {
+    console.log('[DirectView] Conversation selected:', conversationStore.selectedConversationId)
     try {
-      await conversationHistory.loadConversationHistory(memoryStore.conversationId, true, true)
+      await conversationHistory.loadConversationHistory(
+        conversationStore.selectedConversationId,
+        true,
+        true
+      )
     } catch (error) {
       console.error('[DirectView] Failed to load conversation history:', error)
       // Error toast is already shown by loadConversationHistory
@@ -622,7 +628,7 @@ const memorySelected = async () => {
 }
 
 const newChat = () => {
-  memoryStore.clearSelectedConversation()
+  conversationStore.clearSelectedConversation()
   // Reset all dialog state including conversationId to start a fresh conversation
   messageDialog.reset()
 }

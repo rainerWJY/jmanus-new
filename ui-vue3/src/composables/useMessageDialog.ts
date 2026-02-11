@@ -16,7 +16,7 @@
 
 import { DirectApiService } from '@/api/lynxe-service'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
-import { memoryStore } from '@/stores/memory'
+import { useConversationStore } from '@/stores/new/conversation'
 import type {
   ChatMessage,
   CompatiblePlanExecutionRecord,
@@ -26,6 +26,7 @@ import type {
 import type { PlanExecutionRequestPayload } from '@/types/plan-execution'
 import type { AgentExecutionRecord, PlanExecutionRecord } from '@/types/plan-execution-record'
 import { LlmCheckService } from '@/utils/llm-check'
+import { storeToRefs } from 'pinia'
 import { computed, readonly, ref, watchEffect } from 'vue'
 
 /**
@@ -40,12 +41,9 @@ export function useMessageDialog() {
   const dialogList = ref<MessageDialog[]>([])
   const activeDialogId = ref<string | null>(null)
 
-  // Maintain conversationId independently (persisted)
-  // Relationship: conversationId 1:n rootPlanId 1:n dialogId
-  // - conversationId: Persistent conversation identifier
-  // - rootPlanId: Plan execution identifier (one conversation can have multiple plans)
-  // - dialogId: Round identifier (one plan can have multiple dialog rounds)
-  const conversationId = ref<string | null>(null)
+  // Conversation selection (single source of truth from conversation store)
+  const conversationStore = useConversationStore()
+  const { selectedConversationId } = storeToRefs(conversationStore)
 
   // Maintain rootPlanId independently (not persisted)
   // Relationship: rootPlanId 1:n dialogId (one plan can have multiple dialog rounds)
@@ -86,14 +84,14 @@ export function useMessageDialog() {
   // Since each round has its own dialogId, we need to merge messages from all dialogs
   // that share the same conversationId
   const messages = computed(() => {
-    if (!conversationId.value) {
+    if (!selectedConversationId.value) {
       // If no conversationId, return messages from active dialog only
       return activeDialog.value?.messages || []
     }
     // Merge messages from all dialogs with the same conversationId
     const allMessages: ChatMessage[] = []
     for (const dialog of dialogList.value) {
-      if (dialog.conversationId === conversationId.value) {
+      if (dialog.conversationId === selectedConversationId.value) {
         allMessages.push(...dialog.messages)
       }
     }
@@ -111,7 +109,7 @@ export function useMessageDialog() {
       id: `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       title: title || 'New Conversation',
       messages: [],
-      ...(conversationId.value && { conversationId: conversationId.value }), // Link to conversation if exists
+      ...(selectedConversationId.value && { conversationId: selectedConversationId.value }), // Link to conversation if exists
       ...(rootPlanId.value && { planId: rootPlanId.value }), // Link to plan if exists
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -121,7 +119,7 @@ export function useMessageDialog() {
     dialogList.value.push(dialog)
     activeDialogId.value = dialog.id
     console.log('[useMessageDialog] Created new dialog round:', dialog.id, {
-      conversationId: conversationId.value,
+      conversationId: selectedConversationId.value,
       rootPlanId: rootPlanId.value,
     })
     return dialog
@@ -239,8 +237,8 @@ export function useMessageDialog() {
       convId
     )
     // Clear conversationId if it was the active one
-    if (conversationId.value === convId) {
-      conversationId.value = null
+    if (selectedConversationId.value === convId) {
+      conversationStore.clearSelectedConversation()
     }
   }
 
@@ -331,11 +329,9 @@ export function useMessageDialog() {
 
         // Update conversationId if present (persisted)
         if (response?.conversationId) {
-          // Maintain conversationId independently (persisted)
-          conversationId.value = response.conversationId
+          conversationStore.setSelectedConversationId(response.conversationId)
           // Also set on dialog for reference
           targetDialog.conversationId = response.conversationId
-          memoryStore.setConversationId(response.conversationId)
           console.log('[useMessageDialog] Conversation ID set:', response.conversationId)
         }
 
@@ -397,9 +393,8 @@ export function useMessageDialog() {
 
               if (chunk.type === 'start' && chunk.conversationId) {
                 // Update conversationId if present (persisted)
-                conversationId.value = chunk.conversationId
+                conversationStore.setSelectedConversationId(chunk.conversationId)
                 targetDialog.conversationId = chunk.conversationId
-                memoryStore.setConversationId(chunk.conversationId)
                 console.log(
                   '[useMessageDialog] Conversation ID set from stream:',
                   chunk.conversationId
@@ -491,9 +486,8 @@ export function useMessageDialog() {
         if (!streamWasAborted) {
           stopStreaming(assistantMessage.id)
           if (response?.conversationId) {
-            conversationId.value = response.conversationId
+            conversationStore.setSelectedConversationId(response.conversationId)
             targetDialog.conversationId = response.conversationId
-            memoryStore.setConversationId(response.conversationId)
           }
           // Final update with complete message
           updateMessageInDialog(targetDialog.id, assistantMessage.id, {
@@ -562,16 +556,11 @@ export function useMessageDialog() {
       isRunning.value = true
       error.value = null
 
-      // Check if there's an existing conversationId from memoryStore (persisted)
+      // Check if there's an existing conversationId from conversation store (persisted)
       // This allows appending new dialog rounds to existing conversations
-      const existingConversationId = memoryStore.getConversationId()
-      if (existingConversationId && !conversationId.value) {
-        // Restore conversationId from memoryStore if we don't have one yet
-        conversationId.value = existingConversationId
-        console.log(
-          '[useMessageDialog] Restored conversationId from memoryStore:',
-          existingConversationId
-        )
+      const existingConversationId = selectedConversationId.value
+      if (existingConversationId) {
+        // Already linked via store; createDialog will use selectedConversationId
       }
 
       // Always create a new dialog for each conversation round
@@ -639,7 +628,7 @@ export function useMessageDialog() {
       // Only update if it's different from what we already have
       if (response.conversationId) {
         const newConversationId = response.conversationId
-        const currentConversationId = conversationId.value || memoryStore.getConversationId()
+        const currentConversationId = selectedConversationId.value
 
         // Only update if the backend returned a different conversationId
         // This can happen if:
@@ -652,11 +641,9 @@ export function useMessageDialog() {
             '->',
             newConversationId
           )
-          // Maintain conversationId independently (persisted)
-          conversationId.value = newConversationId
+          conversationStore.setSelectedConversationId(newConversationId)
           // Also set on dialog for reference
           targetDialog.conversationId = newConversationId
-          memoryStore.setConversationId(newConversationId)
         } else {
           // Ensure dialog has the conversationId even if it didn't change
           targetDialog.conversationId = newConversationId
@@ -664,8 +651,8 @@ export function useMessageDialog() {
         }
       } else {
         // If backend didn't return conversationId, ensure dialog uses the one we have
-        if (conversationId.value) {
-          targetDialog.conversationId = conversationId.value
+        if (selectedConversationId.value) {
+          targetDialog.conversationId = selectedConversationId.value
         }
       }
 
@@ -881,7 +868,7 @@ export function useMessageDialog() {
   const stopChatStreaming = async () => {
     const currentStreamingMessageId = streamingMessageId.value
     const streamId = currentStreamId.value
-    const convId = conversationId.value
+    const convId = selectedConversationId.value
 
     // Validate required parameters
     if (!streamId || !convId) {
@@ -984,7 +971,7 @@ export function useMessageDialog() {
    * This is needed when loading conversation history to ensure new dialogs are linked correctly
    */
   const setConversationId = (id: string | null) => {
-    conversationId.value = id
+    conversationStore.setSelectedConversationId(id)
     console.log('[useMessageDialog] Set conversationId:', id)
   }
 
@@ -1000,7 +987,7 @@ export function useMessageDialog() {
     dialogList.value = []
     activeDialogId.value = null
     rootPlanId.value = null
-    conversationId.value = null
+    conversationStore.clearSelectedConversation()
     isRunning.value = false
     error.value = null
     inputPlaceholder.value = null
@@ -1313,7 +1300,7 @@ export function useMessageDialog() {
     dialogList: readonly(dialogList),
     activeDialogId: readonly(activeDialogId),
     rootPlanId: readonly(rootPlanId),
-    conversationId: readonly(conversationId),
+    conversationId: readonly(selectedConversationId),
     isRunning: readonly(isRunning),
     error,
     streamingMessageId: readonly(streamingMessageId),

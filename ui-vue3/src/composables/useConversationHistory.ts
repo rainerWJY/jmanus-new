@@ -18,7 +18,7 @@ import { MemoryApiService } from '@/api/memory-api-service'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useToast } from '@/composables/useToast'
-import { memoryStore } from '@/stores/memory'
+import { useConversationStore } from '@/stores/new/conversation'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { useI18n } from 'vue-i18n'
 
@@ -29,6 +29,7 @@ import { useI18n } from 'vue-i18n'
 export function useConversationHistory() {
   const messageDialog = useMessageDialogSingleton()
   const planExecution = usePlanExecutionSingleton()
+  const conversationStore = useConversationStore()
   const { showToast } = useToast()
   const { t } = useI18n()
 
@@ -186,7 +187,7 @@ export function useConversationHistory() {
 
     // Set conversationId and planId on the dialog if available
     // This ensures the dialog is properly linked to the conversation
-    const conversationId = memoryStore.getConversationId()
+    const conversationId = conversationStore.selectedConversationId
     if (conversationId) {
       const dialog = messageDialog.getDialog(historyDialog.id)
       if (dialog) {
@@ -280,10 +281,10 @@ export function useConversationHistory() {
         messageDialog.clearMessages()
       }
 
-      // Set the conversation ID in memory store
-      memoryStore.setConversationId(conversationId)
+      // Set the conversation ID in conversation store
+      conversationStore.setSelectedConversationId(conversationId)
 
-      // Also ensure conversationId.value is set in useMessageDialog
+      // Also ensure conversationId is set in useMessageDialog (same store, so already set)
       // This is needed so that createDialog can automatically link new dialogs to the conversation
       // and so that the messages computed property can merge messages from all dialogs
       messageDialog.setConversationId(conversationId)

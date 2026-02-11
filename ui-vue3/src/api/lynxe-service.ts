@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { memoryStore } from '@/stores/memory'
+import { useConversationStore } from '@/stores/new/conversation'
 import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
 import type { InputMessage } from '@/types/message-dialog'
 import type { PlanExecutionRecordResponse } from '@/types/plan-execution-record'
@@ -67,12 +67,13 @@ export class DirectApiService {
         requestSource: requestSource,
       }
 
-      // Include conversationId from memoryStore if available
-      if (memoryStore.conversationId) {
-        requestBody.conversationId = memoryStore.conversationId
+      // Include conversationId from conversation store if available
+      const conversationStore = useConversationStore()
+      if (conversationStore.selectedConversationId) {
+        requestBody.conversationId = conversationStore.selectedConversationId
         console.log(
-          '[DirectApiService] Including conversationId from memoryStore:',
-          memoryStore.conversationId
+          '[DirectApiService] Including conversationId from conversation store:',
+          conversationStore.selectedConversationId
         )
       }
 
@@ -277,12 +278,13 @@ export class DirectApiService {
         requestSource: requestSource,
       }
 
-      // Include conversationId from memoryStore if available
-      if (memoryStore.conversationId) {
-        requestBody.conversationId = memoryStore.conversationId
+      // Include conversationId from conversation store if available
+      const conversationStore = useConversationStore()
+      if (conversationStore.selectedConversationId) {
+        requestBody.conversationId = conversationStore.selectedConversationId
         console.log(
-          '[DirectApiService] Including conversationId from memoryStore:',
-          memoryStore.conversationId
+          '[DirectApiService] Including conversationId from conversation store:',
+          conversationStore.selectedConversationId
         )
       }
 

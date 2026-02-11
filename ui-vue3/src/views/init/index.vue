@@ -291,7 +291,7 @@
 
 <script setup lang="ts">
 import { LOCAL_STORAGE_LOCALE, changeLanguageWithAgentReset } from '@/base/i18n'
-import { LlmCheckService } from '@/utils/llm-check'
+import { useAppStore } from '@/stores/new/app'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -304,6 +304,7 @@ defineOptions({
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const appStore = useAppStore()
 
 // Step management
 const currentStep = ref(1)
@@ -438,8 +439,8 @@ const handleSubmit = async () => {
       localStorage.setItem('hasInitialized', 'true')
       localStorage.setItem('hasVisitedHome', 'true')
 
-      // Clear LLM check cache to make configuration take effect immediately
-      LlmCheckService.clearCache()
+      // Clear init status cache so next guard or LLM check refetches
+      appStore.clearInitStatusCache()
 
       if (result.requiresRestart) {
         // If restart is required, show restart prompt
@@ -469,19 +470,12 @@ const handleSubmit = async () => {
   }
 }
 
-// Check if already initialized
+// Check if already initialized (uses app store)
 const checkInitStatus = async () => {
-  try {
-    const response = await fetch('/api/init/status')
-    const result = await response.json()
-
-    if (result.success && result.initialized) {
-      // If already initialized, navigate to direct page
-      localStorage.setItem('hasInitialized', 'true')
-      router.push('/direct')
-    }
-  } catch (err) {
-    console.error('Check init status failed:', err)
+  await appStore.ensureInitStatusChecked()
+  if (appStore.initStatus?.success && appStore.initStatus?.initialized) {
+    localStorage.setItem('hasInitialized', 'true')
+    router.push('/direct')
   }
 }
 

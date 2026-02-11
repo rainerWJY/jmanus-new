@@ -323,17 +323,17 @@
           <h3 class="version-title">{{ $t('config.versionInfo.title') }}</h3>
         </div>
         <div class="version-content">
-          <div class="version-item" v-if="versionInfo.version">
+          <div class="version-item" v-if="appStore.version?.version">
             <span class="version-label">{{ $t('config.versionInfo.version') }}:</span>
-            <span class="version-value">{{ versionInfo.version }}</span>
+            <span class="version-value">{{ appStore.version.version }}</span>
           </div>
-          <div class="version-item" v-if="versionInfo.buildTime">
+          <div class="version-item" v-if="appStore.version?.buildTime">
             <span class="version-label">{{ $t('config.versionInfo.buildTime') }}:</span>
-            <span class="version-value">{{ versionInfo.buildTime }}</span>
+            <span class="version-value">{{ appStore.version.buildTime }}</span>
           </div>
-          <div class="version-item" v-if="versionInfo.timestamp">
+          <div class="version-item" v-if="appStore.version?.timestamp">
             <span class="version-label">{{ $t('config.versionInfo.currentTime') }}:</span>
-            <span class="version-value">{{ formatTimestamp(versionInfo.timestamp) }}</span>
+            <span class="version-value">{{ formatTimestamp(appStore.version.timestamp) }}</span>
           </div>
         </div>
       </div>
@@ -350,7 +350,7 @@
 
 <script setup lang="ts">
 import { AdminApiService, type ConfigItem } from '@/api/admin-api-service'
-import { ConfigApiService } from '@/api/config-api-service'
+import { useAppStore } from '@/stores/new/app'
 import Switch from '@/components/switch/index.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -398,12 +398,8 @@ const message = reactive({
 // Search filter state
 const searchQuery = ref('')
 
-// Version information
-const versionInfo = ref<{ version: string; buildTime: string; timestamp: string }>({
-  version: '',
-  buildTime: '',
-  timestamp: '',
-})
+// App store for version
+const appStore = useAppStore()
 
 // Configuration item display name mapping
 const CONFIG_DISPLAY_NAMES: Record<string, string> = {
@@ -947,16 +943,6 @@ const restoreAllDefaults = async () => {
   }
 }
 
-// Load version information
-const loadVersionInfo = async () => {
-  try {
-    const info = await ConfigApiService.getVersion()
-    versionInfo.value = info
-  } catch (error) {
-    console.error('Failed to load version information:', error)
-  }
-}
-
 // Format timestamp to readable format
 const formatTimestamp = (timestamp: string): string => {
   try {
@@ -977,7 +963,7 @@ const formatTimestamp = (timestamp: string): string => {
 // Load configurations when the component is mounted
 onMounted(() => {
   loadAllConfigs()
-  loadVersionInfo()
+  appStore.loadVersion()
 })
 </script>
 

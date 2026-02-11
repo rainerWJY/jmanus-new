@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { createRouter, createWebHashHistory } from 'vue-router'
+import { useAppStore } from '@/stores/new/app'
 import { routes } from '@/router/defaultRoutes'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const options = {
   history: createWebHashHistory('/ui'),
@@ -32,22 +33,20 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   try {
-    // Check initialization status from server
-    const response = await fetch('/api/init/status')
-    const result = await response.json()
+    const appStore = useAppStore()
+    await appStore.ensureInitStatusChecked()
+    const status = appStore.initStatus
 
-    if (result.success && !result.initialized) {
-      // System not initialized, redirect to init page
+    if (status?.success && !status.initialized) {
       localStorage.removeItem('hasInitialized')
       next('/init')
       return
-    } else if (result.success && result.initialized) {
-      // System is initialized, save to localStorage
+    }
+    if (status?.success && status.initialized) {
       localStorage.setItem('hasInitialized', 'true')
     }
   } catch (error) {
     console.warn('Failed to check initialization status:', error)
-    // If check fails, rely on localStorage
     const hasInitialized = localStorage.getItem('hasInitialized') === 'true'
     if (!hasInitialized) {
       next('/init')
