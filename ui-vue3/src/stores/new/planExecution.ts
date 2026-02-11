@@ -15,7 +15,7 @@
  */
 
 import { DirectApiService } from '@/api/lynxe-service'
-import { useTaskStore } from '@/stores/task'
+import { useTaskStore } from '@/stores/new/task'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'

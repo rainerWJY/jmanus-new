@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import { computed } from 'vue'
-import { useTaskStore } from '@/stores/task'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
+import { useTaskStore } from '@/stores/new/task'
+import { computed } from 'vue'
 
 /**
  * Unified composable for task execution state management

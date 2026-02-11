@@ -230,7 +230,7 @@
 <script setup lang="ts">
 import { CronApiService } from '@/api/cron-api-service'
 import { useToast } from '@/plugins/useToast'
-import { useTaskStore } from '@/stores/task'
+import { useTaskStore } from '@/stores/new/task'
 import type { CronConfig } from '@/types/cron-task'
 import { CronTaskUtils } from '@/utils/cron-task-utils'
 import { Icon } from '@iconify/vue'

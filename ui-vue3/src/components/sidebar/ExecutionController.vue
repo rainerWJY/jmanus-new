@@ -235,8 +235,8 @@ import { useTaskExecutionStateSingleton } from '@/composables/useTaskExecutionSt
 import { useTaskStop } from '@/composables/useTaskStop'
 import { useToast } from '@/plugins/useToast'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
+import { useParameterHistoryStore } from '@/stores/new/parameterHistory'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
-import { parameterHistoryStore } from '@/stores/parameterHistory'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanData, PlanExecutionRequestPayload } from '@/types/plan-execution'
 import { Icon } from '@iconify/vue'
@@ -255,6 +255,8 @@ const { selectedTemplate, currentPlanTemplateId, planVersions } =
 const availableToolsStore = useAvailableToolsStore()
 const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
   storeToRefs(availableToolsStore)
+
+const parameterHistoryStore = useParameterHistoryStore()
 
 // Message dialog singleton for executing plans
 const messageDialog = useMessageDialogSingleton()

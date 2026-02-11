@@ -17,7 +17,7 @@
 import { DirectApiService } from '@/api/lynxe-service'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
-import { useTaskStore } from '@/stores/task'
+import { useTaskStore } from '@/stores/new/task'
 import { computed, ref } from 'vue'
 
 /**
