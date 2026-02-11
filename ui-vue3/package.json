@@ -13,6 +13,7 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build --force",
     "type-check:watch": "vue-tsc --build --force --watch",
+    "clean:ts": "node -e \"['tsconfig.app.tsbuildinfo','tsconfig.vitest.tsbuildinfo','tsconfig.node.tsbuildinfo'].forEach(f=>require('fs').rmSync(f,{force:true}))\"",
     "lint": "eslint . --fix",
     "lint:check": "eslint .",
     "format": "prettier --write src/",
