@@ -403,7 +403,7 @@ import ToolSelectionModal from '@/components/tool-selection-modal/ToolSelectionM
 import { useToast } from '@/plugins/useToast'
 import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
-import { templateStore } from '@/stores/templateStore'
+import { templateStore } from '@/stores/new/templateStore'
 import type { PlanTemplateConfigVO, StepConfig } from '@/types/plan-template'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'

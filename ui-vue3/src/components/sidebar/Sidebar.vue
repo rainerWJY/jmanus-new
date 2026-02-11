@@ -38,11 +38,11 @@ defineOptions({
   name: 'SidebarPanel',
 })
 
-import { useAvailableToolsStore } from '@/stores/new/availableTools'
-import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useAppStore } from '@/stores/new/app'
-import { templateStore } from '@/stores/templateStore'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
+import { templateStore } from '@/stores/new/templateStore'
 import { Icon } from '@iconify/vue'
 import { onMounted } from 'vue'
 import TemplateList from './TemplateList.vue'

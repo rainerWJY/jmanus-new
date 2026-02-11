@@ -209,13 +209,13 @@
 </template>
 
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
-import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
-import { templateStore, type TemplateStoreType } from '@/stores/templateStore'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
+import { templateStore, type TemplateStoreType } from '@/stores/new/templateStore'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
