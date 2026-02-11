@@ -80,6 +80,34 @@ export const useAppStore = defineStore('app', () => {
     initStatusLastCheck.value = 0
   }
 
+  // Memory sidebar (UI state: collapse, refresh callback, interval)
+  const memorySidebarCollapsed = ref(false)
+  const memorySidebarLoadMessages = ref<() => void>(() => {})
+  const memorySidebarIntervalId = ref<number | undefined>(undefined)
+
+  function toggleMemorySidebar(): void {
+    memorySidebarCollapsed.value = !memorySidebarCollapsed.value
+    if (memorySidebarCollapsed.value) {
+      memorySidebarLoadMessages.value()
+      memorySidebarIntervalId.value = window.setInterval(() => {
+        memorySidebarLoadMessages.value()
+      }, 3000)
+    } else {
+      if (memorySidebarIntervalId.value !== undefined) {
+        clearInterval(memorySidebarIntervalId.value)
+        memorySidebarIntervalId.value = undefined
+      }
+    }
+  }
+
+  function setMemorySidebarLoadMessages(fn: () => void): void {
+    memorySidebarLoadMessages.value = fn
+  }
+
+  function generateRandomId(): string {
+    return Math.random().toString(36).substring(2, 10)
+  }
+
   return {
     version,
     initStatus,
@@ -88,5 +116,9 @@ export const useAppStore = defineStore('app', () => {
     loadVersion,
     ensureInitStatusChecked,
     clearInitStatusCache,
+    memorySidebarCollapsed,
+    toggleMemorySidebar,
+    setMemorySidebarLoadMessages,
+    generateRandomId,
   }
 })

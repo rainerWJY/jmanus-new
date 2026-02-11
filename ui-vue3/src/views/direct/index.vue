@@ -71,7 +71,7 @@
             </button>
             <button
               class="cron-task-btn"
-              @click="memoryStore.toggleSidebar()"
+              @click="appStore.toggleMemorySidebar()"
               :title="$t('memory.selectMemory')"
             >
               <Icon icon="carbon:calendar" width="20" />
@@ -113,8 +113,8 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/composables/useToast'
+import { useAppStore } from '@/stores/new/app'
 import { useConversationStore } from '@/stores/new/conversation'
-import { memoryStore } from '@/stores/memory'
 import { useTaskStore } from '@/stores/task'
 import { templateStore } from '@/stores/templateStore'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
@@ -134,6 +134,7 @@ const { toast } = useToast()
 const messageDialog = useMessageDialogSingleton()
 const planExecution = usePlanExecutionSingleton()
 const conversationHistory = useConversationHistorySingleton()
+const appStore = useAppStore()
 const conversationStore = useConversationStore()
 
 const prompt = ref<string>('')

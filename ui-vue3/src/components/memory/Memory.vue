@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div class="app-container" v-if="memoryStore.isCollapsed">
+      <div class="app-container" v-if="appStore.memorySidebarCollapsed">
         <div class="app-content">
           <div class="header">
             <div class="relative">
@@ -17,7 +17,7 @@
                 v-if="showTitleEdit"
               ></div>
             </div>
-            <button class="close-btn" @click="memoryStore.toggleSidebar()">
+            <button class="close-btn" @click="appStore.toggleMemorySidebar()">
               <Icon icon="carbon:close" />
             </button>
           </div>
@@ -201,11 +201,11 @@ interface MemoryWithExpanded extends Memory {
   expanded: boolean
 }
 import { Icon } from '@iconify/vue'
-import { memoryStore } from '@/stores/memory'
-import type { MemoryEmits } from '@/stores/memory'
+import { useAppStore } from '@/stores/new/app'
 import { useConversationStore } from '@/stores/new/conversation'
 import { computed } from 'vue'
 
+const appStore = useAppStore()
 const conversationStore = useConversationStore()
 const showTitleEdit = ref(false)
 const searchQuery = ref('')
@@ -236,7 +236,7 @@ const nameInput = ref('')
 
 const showDeleteModal = ref(false)
 const currentDeleteId = ref<string | null>(null)
-const emit = defineEmits<MemoryEmits>()
+const emit = defineEmits<{ 'memory-selected': [] }>()
 
 // Handle ESC key to close modals
 const handleEscKey = (e: KeyboardEvent) => {
@@ -250,7 +250,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  memoryStore.setLoadMessages(loadMessages)
+  appStore.setMemorySidebarLoadMessages(loadMessages)
   document.addEventListener('keydown', handleEscKey)
 })
 
@@ -269,7 +269,7 @@ const loadMessages = async () => {
 
 const selectMemory = (conversationId: string) => {
   conversationStore.setSelectedConversationId(conversationId)
-  memoryStore.toggleSidebar()
+  appStore.toggleMemorySidebar()
   emit('memory-selected')
 }
 

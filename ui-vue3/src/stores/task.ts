@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import { useTaskStop } from '@/composables/useTaskStop'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
+import { useTaskStop } from '@/composables/useTaskStop'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
