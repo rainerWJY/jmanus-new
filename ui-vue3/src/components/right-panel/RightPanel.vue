@@ -59,7 +59,7 @@
               </h3>
               <span class="template-id">ID: {{ selectedTemplate.planTemplateId }}</span>
             </div>
-            <button class="back-to-list-btn" @click="sidebarStore.switchToTab('list')">
+            <button class="back-to-list-btn" @click="appStore.switchSidebarTab('list')">
               <Icon icon="carbon:arrow-left" width="16" />
             </button>
           </div>
@@ -416,7 +416,7 @@ import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
-import { sidebarStore } from '@/stores/sidebar'
+import { useAppStore } from '@/stores/new/app'
 import { templateStore } from '@/stores/templateStore'
 import { Icon } from '@iconify/vue'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -470,6 +470,8 @@ const { selectedTemplate } = storeToRefs(planTemplateConfigStore)
 
 // Available tools management
 const availableToolsStore = useAvailableToolsStore()
+
+const appStore = useAppStore()
 
 // Plan template import composable
 const { handleImport: handleImportPlanTemplate } = usePlanTemplateImport()

@@ -108,6 +108,18 @@ export const useAppStore = defineStore('app', () => {
     return Math.random().toString(36).substring(2, 10)
   }
 
+  // Main left sidebar (template list) UI state
+  const sidebarCollapsed = ref(false)
+  const sidebarCurrentTab = ref<'list'>('list')
+
+  function toggleSidebar(): void {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+  }
+
+  function switchSidebarTab(tab: 'list'): void {
+    sidebarCurrentTab.value = tab
+  }
+
   return {
     version,
     initStatus,
@@ -120,5 +132,9 @@ export const useAppStore = defineStore('app', () => {
     toggleMemorySidebar,
     setMemorySidebarLoadMessages,
     generateRandomId,
+    sidebarCollapsed,
+    sidebarCurrentTab,
+    toggleSidebar,
+    switchSidebarTab,
   }
 })

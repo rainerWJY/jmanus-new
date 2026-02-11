@@ -41,7 +41,7 @@ defineOptions({
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
-import { sidebarStore } from '@/stores/sidebar'
+import { useAppStore } from '@/stores/new/app'
 import { templateStore } from '@/stores/templateStore'
 import { Icon } from '@iconify/vue'
 import { onMounted } from 'vue'
@@ -60,6 +60,7 @@ const planTemplateConfigStore = usePlanTemplateConfigStore()
 
 // Right panel management for tab switching
 const rightPanel = useRightPanelSingleton()
+const appStore = useAppStore()
 
 // Handle create new template
 const handleCreateNewTemplate = async () => {
@@ -93,7 +94,7 @@ onMounted(async () => {
 // Expose methods for parent component to call
 defineExpose({
   loadPlanTemplateList: templateStore.loadPlanTemplateList,
-  toggleSidebar: sidebarStore.toggleSidebar,
+  toggleSidebar: appStore.toggleSidebar,
 })
 </script>
 
