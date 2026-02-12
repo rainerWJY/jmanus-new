@@ -1,0 +1,19 @@
+description: |
+  Trigger the file chooser by clicking an element (e.g. "Select File" or drop zone), then set the selected file(s). Use for drag-and-drop or custom upload UI that opens a file chooser. The filePath is relative to the root plan directory. After this tool runs, you can call click-browser on the upload button (e.g. "Upload Dragged/Dropped File") if the page requires it.
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "triggerIndex": {
+              "type": "integer",
+              "description": "Element index of the button or zone that opens the file chooser when clicked (e.g. \"Select File\" or the drop zone). This corresponds to the idx value shown in the ARIA snapshot."
+          },
+          "filePath": {
+              "type": "string",
+              "description": "File path relative to the root plan directory (e.g. \"myfile.pdf\", \"uploads/doc.pdf\")."
+          }
+      },
+      "required": ["triggerIndex", "filePath"],
+      "additionalProperties": false
+  }

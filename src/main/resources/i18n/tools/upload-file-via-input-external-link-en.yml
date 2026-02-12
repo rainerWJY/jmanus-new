@@ -1,0 +1,19 @@
+description: |
+  Upload file via standard file input using an external link file path (linked_external directory). Use when the file lives in the configured external folder (lynxe.general.externalLinkedFolder). After setting the file, call click-browser to submit. The filePath is relative to the external linked folder (with or without "linked_external/" prefix).
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "index": {
+              "type": "integer",
+              "description": "Element index of the file input. This corresponds to the idx value (e.g., idx=0) shown in the ARIA snapshot for the input type=\"file\" element."
+          },
+          "filePath": {
+              "type": "string",
+              "description": "File path relative to the external linked folder. Can include or omit the \"linked_external/\" prefix."
+          }
+      },
+      "required": ["index", "filePath"],
+      "additionalProperties": false
+  }

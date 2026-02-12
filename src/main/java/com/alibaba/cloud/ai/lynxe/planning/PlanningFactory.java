@@ -76,6 +76,10 @@ import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NavigateBrowserT
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NewTabBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ScreenshotBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.SwitchTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileInputBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileInputExternalLinkBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileViaChooserBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileViaChooserExternalLinkBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
@@ -306,6 +310,14 @@ public class PlanningFactory {
 				.add(new GetWebContentBrowserTool(browserUseCommonService, textFileService, toolI18nService));
 			toolDefinitions
 				.add(new DownloadBrowserTool(browserUseCommonService, unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileInputBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileInputExternalLinkBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileViaChooserBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileViaChooserExternalLinkBrowserTool(browserUseCommonService,
+					textFileService, unifiedDirectoryManager, toolI18nService));
 			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService,
 			// innerStorageService, objectMapper,
 			// shortUrlService, textFileService, toolI18nService,

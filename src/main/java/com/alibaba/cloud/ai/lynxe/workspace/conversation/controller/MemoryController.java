@@ -261,7 +261,8 @@ public class MemoryController {
 										.readPlanTreeByRootId(rootPlanId);
 									if (record != null) {
 										allRecords.add(record);
-										// Consume one user+assistant pair so chat records use correct index
+										// Consume one user+assistant pair so chat records
+										// use correct index
 										chatMessageIndex += 2;
 									}
 									else {

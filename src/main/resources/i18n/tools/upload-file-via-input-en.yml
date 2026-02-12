@@ -1,0 +1,19 @@
+description: |
+  Upload file via standard file input. Set file(s) on an input type="file" element by index, using a regular file path (root plan directory). After setting the file, call click-browser to submit (e.g. "Upload with Standard Input"). The filePath is relative to the root plan directory.
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "index": {
+              "type": "integer",
+              "description": "Element index of the file input. This corresponds to the idx value (e.g., idx=0) shown in the ARIA snapshot for the input type=\"file\" element."
+          },
+          "filePath": {
+              "type": "string",
+              "description": "File path relative to the root plan directory, or a path that resolves within the plan (e.g. \"myfile.pdf\", \"uploads/doc.pdf\")."
+          }
+      },
+      "required": ["index", "filePath"],
+      "additionalProperties": false
+  }

@@ -1,0 +1,19 @@
+description: |
+  通过标准文件输入上传外部链接文件。在指定索引的 input type="file" 元素上设置文件，使用外部链接文件路径（linked_external 目录）。当文件位于已配置的外部文件夹（lynxe.general.externalLinkedFolder）时使用。设置文件后，可调用 click-browser 提交。filePath 相对于外部链接文件夹（可带或不带 \"linked_external/\" 前缀）。
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "index": {
+              "type": "integer",
+              "description": "文件输入框的元素索引。对应 ARIA 快照中 input type=\"file\" 元素显示的 idx 值（例如 idx=0）。"
+          },
+          "filePath": {
+              "type": "string",
+              "description": "相对于外部链接文件夹的文件路径。可包含或不包含 \"linked_external/\" 前缀。"
+          }
+      },
+      "required": ["index", "filePath"],
+      "additionalProperties": false
+  }
