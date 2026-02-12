@@ -16,6 +16,20 @@
 
 import log from 'loglevel'
 
-log.setDefaultLevel('warn')
+type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+const VALID_LEVELS: LogLevel[] = ['trace', 'debug', 'info', 'warn', 'error', 'silent']
+const envLevel = import.meta.env.VITE_LOG_LEVEL
+const level: LogLevel =
+  envLevel && VALID_LEVELS.includes(envLevel as LogLevel)
+    ? (envLevel as LogLevel)
+    : import.meta.env.DEV
+      ? 'debug'
+      : 'warn'
+log.setDefaultLevel(level)
+
+// Expose logger on window in development so you can change level from console, e.g. __logger.setLevel('trace')
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  ;(window as Window & { __logger?: typeof log }).__logger = log
+}
 
 export const logger = log
