@@ -16,8 +16,8 @@
 package com.alibaba.cloud.ai.lynxe.config.service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,17 +53,6 @@ public class DatabaseCleanupService {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
-
-	/**
-	 * Get all table names in the H2 database (PUBLIC schema).
-	 * @return List of table names
-	 */
-	public List<String> getAllTableNames() {
-		String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC' ORDER BY TABLE_NAME";
-		List<String> names = jdbcTemplate.queryForList(sql, String.class);
-		logger.debug("Retrieved {} table names from H2", names != null ? names.size() : 0);
-		return names != null ? names : List.of();
-	}
 
 	/**
 	 * Get row counts for all monitored tables

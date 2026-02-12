@@ -15,7 +15,6 @@
  */
 package com.alibaba.cloud.ai.lynxe.config.controller;
 
-import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,21 +37,6 @@ public class DatabaseCleanupController {
 
 	@Autowired
 	private DatabaseCleanupService databaseCleanupService;
-
-	/**
-	 * Get all table names in the H2 database.
-	 * @return List of table names
-	 */
-	@GetMapping("/tables")
-	public ResponseEntity<List<String>> getAllTables() {
-		try {
-			List<String> tables = databaseCleanupService.getAllTableNames();
-			return ResponseEntity.ok(tables);
-		}
-		catch (Exception e) {
-			return ResponseEntity.internalServerError().build();
-		}
-	}
 
 	/**
 	 * Get row counts for all monitored tables
