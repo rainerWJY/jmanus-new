@@ -299,29 +299,6 @@ export function useRightPanel() {
   }
 
   /**
-   * Truncate long text by keeping start and end, replacing middle with ellipsis
-   * @param text - The text to truncate
-   * @param maxLength - Maximum length before truncation (default: 20000)
-   * @param startLength - Length to keep at the start (default: 10000)
-   * @param endLength - Length to keep at the end (default: 10000)
-   * @returns Truncated text if exceeds maxLength, original text otherwise
-   */
-  const truncateLongText = (
-    text: string,
-    maxLength = 20000,
-    startLength = 10000,
-    endLength = 10000
-  ): string => {
-    if (!text || text.length <= maxLength) {
-      return text
-    }
-    const ellipsis = '\n\n... [Content truncated, middle part removed] ...\n\n'
-    const start = text.substring(0, startLength)
-    const end = text.substring(text.length - endLength)
-    return start + ellipsis + end
-  }
-
-  /**
    * Format JSON data for display
    * @param jsonData - The data to format
    * @returns Formatted JSON string or 'N/A' if invalid
@@ -364,8 +341,7 @@ export function useRightPanel() {
       formatted = String(jsonData)
     }
 
-    // Truncate if exceeds 20000 characters
-    return truncateLongText(formatted)
+    return formatted
   }
 
   /**
