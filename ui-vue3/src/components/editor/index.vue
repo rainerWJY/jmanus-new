@@ -29,6 +29,7 @@ defineOptions({
   name: 'MonacoEditor',
 })
 
+import { logger } from '@/utils/logger'
 import { onMounted, watch } from 'vue'
 import useMonaco from './MonacoEditor'
 
@@ -97,7 +98,7 @@ onMounted(() => {
       emit('change', editor.getValue())
     })
     editor.onDidBlurEditorText(() => {
-      console.log(222)
+      logger.debug(222)
       emit('blur')
     })
   }

@@ -16,7 +16,6 @@
 
 import log from 'loglevel'
 
-const isDev = import.meta.env.DEV
-log.setDefaultLevel(isDev ? 'debug' : 'warn')
+log.setDefaultLevel('warn')
 
 export const logger = log

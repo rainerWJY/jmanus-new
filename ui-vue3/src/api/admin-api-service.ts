@@ -18,6 +18,8 @@
  * Handles all API interactions related to administration configuration
  */
 
+import { logger } from '@/utils/logger'
+
 export interface ConfigOption {
   value: string
   label: string
@@ -57,7 +59,7 @@ export class AdminApiService {
       }
       return await response.json()
     } catch (error) {
-      console.error(`Failed to get ${groupName} group configuration:`, error)
+      logger.error(`Failed to get ${groupName} group configuration:`, error)
       throw error
     }
   }
@@ -85,7 +87,7 @@ export class AdminApiService {
 
       return { success: true, message: 'Configuration saved successfully' }
     } catch (error) {
-      console.error('Batch update configuration failed:', error)
+      logger.error('Batch update configuration failed:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Update failed, please try again',
@@ -104,7 +106,7 @@ export class AdminApiService {
       }
       return await response.json()
     } catch (error) {
-      console.error(`Failed to get configuration item[${id}]:`, error)
+      logger.error(`Failed to get configuration item[${id}]:`, error)
       throw error
     }
   }
@@ -128,7 +130,7 @@ export class AdminApiService {
 
       return { success: true, message: 'Configuration updated successfully' }
     } catch (error) {
-      console.error('Failed to update configuration item:', error)
+      logger.error('Failed to update configuration item:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Update failed, please try again',
@@ -154,7 +156,7 @@ export class AdminApiService {
 
       return { success: true, message: 'All configurations reset to defaults successfully' }
     } catch (error) {
-      console.error('Failed to reset configurations to defaults:', error)
+      logger.error('Failed to reset configurations to defaults:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Reset failed, please try again',

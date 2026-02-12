@@ -1,5 +1,6 @@
-import { ref } from 'vue'
 import type { ApiResponse } from '@/types/mcp'
+import { logger } from '@/utils/logger'
+import { ref } from 'vue'
 
 export function useRequest() {
   const loading = ref(false)
@@ -15,16 +16,16 @@ export function useRequest() {
 
       if (result.success && successMessage) {
         // Need to pass showMessage function from outside to avoid circular dependencies
-        console.log(successMessage)
+        logger.debug(successMessage)
       } else if (!result.success && errorMessage) {
-        console.error(errorMessage)
+        logger.error(errorMessage)
       }
 
       return result
     } catch (error) {
-      console.error('Request execution failed:', error)
+      logger.error('Request execution failed:', error)
       if (errorMessage) {
-        console.error(errorMessage)
+        logger.error(errorMessage)
       }
       return null
     } finally {

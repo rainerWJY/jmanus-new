@@ -209,6 +209,7 @@ import { NamespaceApiService, type Namespace } from '@/api/namespace-api-service
 import { useToast } from '@/plugins/useToast'
 import ConfigPanel from './components/configPanel.vue'
 import { usenameSpaceStore } from '@/stores/namespace'
+import { logger } from '@/utils/logger'
 
 type NameSpaceField = string | null | undefined
 
@@ -248,7 +249,7 @@ const loadData = async () => {
     namespaces.splice(0, namespaces.length, ...loadedNamespaces)
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
-    console.error('Failed to load data:', errorMessage)
+    logger.error('Failed to load data:', errorMessage)
     error(t('config.namespaceConfig.loadDataFailed') + ': ' + errorMessage)
   } finally {
     loading.value = false

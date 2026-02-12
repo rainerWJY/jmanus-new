@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -34,7 +35,7 @@ function saveToLocalStorage(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (e) {
-    console.warn('[ParameterHistoryStore] Failed to save to localStorage:', e)
+    logger.warn('[ParameterHistoryStore] Failed to save to localStorage:', e)
   }
 }
 
@@ -93,7 +94,7 @@ export const useParameterHistoryStore = defineStore('parameterHistory', () => {
   function saveParameterSet(planTemplateId: string, paramSet: Record<string, string>): void {
     if (!planTemplateId || Object.keys(paramSet).length === 0) return
     if (isDuplicate(planTemplateId, paramSet)) {
-      console.log('[ParameterHistoryStore] Parameter set is duplicate, not saving')
+      logger.debug('[ParameterHistoryStore] Parameter set is duplicate, not saving')
       return
     }
 
@@ -109,7 +110,7 @@ export const useParameterHistoryStore = defineStore('parameterHistory', () => {
       [planTemplateId]: history,
     }
     persist()
-    console.log('[ParameterHistoryStore] Saved parameter set to history for', planTemplateId)
+    logger.debug('[ParameterHistoryStore] Saved parameter set to history for', planTemplateId)
   }
 
   function getToolHistoryIndex(planTemplateId: string): number {
@@ -129,10 +130,10 @@ export const useParameterHistoryStore = defineStore('parameterHistory', () => {
     if (planTemplateId) {
       const { [planTemplateId]: _, ...rest } = toolHistoryIndices.value
       toolHistoryIndices.value = rest
-      console.log('[ParameterHistoryStore] Reset history navigation index for', planTemplateId)
+      logger.debug('[ParameterHistoryStore] Reset history navigation index for', planTemplateId)
     } else {
       toolHistoryIndices.value = {}
-      console.log('[ParameterHistoryStore] Reset all tool history navigation indices')
+      logger.debug('[ParameterHistoryStore] Reset all tool history navigation indices')
     }
     persist()
   }
@@ -150,14 +151,14 @@ export const useParameterHistoryStore = defineStore('parameterHistory', () => {
     const { [planTemplateId]: _, ...rest } = parameterHistory.value
     parameterHistory.value = rest
     resetParamHistoryNavigation(planTemplateId)
-    console.log('[ParameterHistoryStore] Cleared history for', planTemplateId)
+    logger.debug('[ParameterHistoryStore] Cleared history for', planTemplateId)
   }
 
   function clearAllHistory(): void {
     parameterHistory.value = {}
     toolHistoryIndices.value = {}
     persist()
-    console.log('[ParameterHistoryStore] Cleared all history')
+    logger.debug('[ParameterHistoryStore] Cleared all history')
   }
 
   return {

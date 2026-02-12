@@ -18,6 +18,7 @@ import { PlanTemplateApiService } from '@/api/plan-template-service'
 import { i18n } from '@/base/i18n'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { computed, reactive } from 'vue'
 
 export class TemplateStore {
@@ -56,7 +57,7 @@ export class TemplateStore {
         this.groupCollapseState = parsed || {}
       }
     } catch (error) {
-      console.warn('[TemplateStore] Failed to load group collapse state:', error)
+      logger.warn('[TemplateStore] Failed to load group collapse state:', error)
     }
   }
 
@@ -65,7 +66,7 @@ export class TemplateStore {
     try {
       localStorage.setItem('sidebarGroupCollapseState', JSON.stringify(this.groupCollapseState))
     } catch (error) {
-      console.warn('[TemplateStore] Failed to save group collapse state:', error)
+      logger.warn('[TemplateStore] Failed to save group collapse state:', error)
     }
   }
 
@@ -126,7 +127,7 @@ export class TemplateStore {
     this.isLoading = true
     this.errorMessage = ''
     try {
-      console.log('[TemplateStore] Starting to load plan template list...')
+      logger.debug('[TemplateStore] Starting to load plan template list...')
       const configVOs = await PlanTemplateApiService.getAllPlanTemplateConfigVOs()
 
       planTemplateConfigStore.setPlanTemplateList(configVOs)
@@ -144,9 +145,9 @@ export class TemplateStore {
         }
       }
 
-      console.log(`[TemplateStore] Successfully loaded ${list.length} plan templates`)
+      logger.debug(`[TemplateStore] Successfully loaded ${list.length} plan templates`)
     } catch (error: unknown) {
-      console.error('[TemplateStore] Failed to load plan template list:', error)
+      logger.error('[TemplateStore] Failed to load plan template list:', error)
       planTemplateConfigStore.setPlanTemplateList([])
       const message = error instanceof Error ? error.message : 'Unknown error'
       this.errorMessage = `Load failed: ${message}`
@@ -161,14 +162,14 @@ export class TemplateStore {
     planTemplateConfigStore.setSelectedTemplate(template)
     this.hasTaskRequirementModified = false
 
-    console.log(`[TemplateStore] Selected plan template: ${template.planTemplateId}`)
+    logger.debug(`[TemplateStore] Selected plan template: ${template.planTemplateId}`)
   }
 
   async createNewTemplate(planType: string) {
     const planTemplateConfigStore = usePlanTemplateConfigStore()
     try {
       const planTemplateId = await PlanTemplateApiService.generatePlanTemplateId()
-      console.log('[TemplateStore] Generated plan template ID from backend:', planTemplateId)
+      logger.debug('[TemplateStore] Generated plan template ID from backend:', planTemplateId)
 
       const emptyTemplate: PlanTemplateConfigVO = {
         planTemplateId: planTemplateId,
@@ -181,11 +182,11 @@ export class TemplateStore {
       planTemplateConfigStore.setCurrentPlanTemplateId(null)
       this.hasTaskRequirementModified = false
 
-      console.log('[TemplateStore] Created new empty plan template')
+      logger.debug('[TemplateStore] Created new empty plan template')
     } catch (error) {
-      console.error('[TemplateStore] Failed to generate plan template ID:', error)
+      logger.error('[TemplateStore] Failed to generate plan template ID:', error)
       const fallbackId = `planTemplate-${Date.now()}`
-      console.warn('[TemplateStore] Using fallback plan template ID:', fallbackId)
+      logger.warn('[TemplateStore] Using fallback plan template ID:', fallbackId)
       const emptyTemplate: PlanTemplateConfigVO = {
         planTemplateId: fallbackId,
         title: i18n.global.t('sidebar.newTemplateName'),
@@ -203,7 +204,7 @@ export class TemplateStore {
     const planTemplateConfigStore = usePlanTemplateConfigStore()
     const planTemplateId = template.planTemplateId
     if (!planTemplateId) {
-      console.warn('[TemplateStore] deleteTemplate: Invalid template object or ID')
+      logger.warn('[TemplateStore] deleteTemplate: Invalid template object or ID')
       return
     }
     try {
@@ -212,9 +213,9 @@ export class TemplateStore {
         this.clearSelection()
       }
       await this.loadPlanTemplateList()
-      console.log(`[TemplateStore] Plan template ${planTemplateId} has been deleted`)
+      logger.debug(`[TemplateStore] Plan template ${planTemplateId} has been deleted`)
     } catch (error: unknown) {
-      console.error('Failed to delete plan template:', error)
+      logger.error('Failed to delete plan template:', error)
       await this.loadPlanTemplateList()
       throw error
     }

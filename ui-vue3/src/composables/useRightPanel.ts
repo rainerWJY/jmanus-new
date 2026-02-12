@@ -19,6 +19,7 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { computed, nextTick, readonly, ref } from 'vue'
 
 /**
@@ -67,7 +68,7 @@ export function useRightPanel() {
     if (!stepId) return null
 
     const availablePlans = Object.keys(planExecution.planExecutionRecords.value)
-    console.log(
+    logger.debug(
       '[useRightPanel] Searching for rootPlanId, stepId:',
       stepId,
       'Available plans:',
@@ -88,7 +89,7 @@ export function useRightPanel() {
           if (agentExecution.stepId === stepId) {
             // Found the step in main plan, return the rootPlanId (or currentPlanId if rootPlanId is not available)
             const rootPlanId = record.rootPlanId || record.currentPlanId
-            console.log('[useRightPanel] Found stepId in main plan, rootPlanId:', rootPlanId)
+            logger.debug('[useRightPanel] Found stepId in main plan, rootPlanId:', rootPlanId)
             return rootPlanId || null
           }
 
@@ -101,7 +102,7 @@ export function useRightPanel() {
                 stepId
               )
               if (subRootPlanId) {
-                console.log('[useRightPanel] Found stepId in sub-plan, rootPlanId:', subRootPlanId)
+                logger.debug('[useRightPanel] Found stepId in sub-plan, rootPlanId:', subRootPlanId)
                 return subRootPlanId
               }
             }
@@ -112,11 +113,11 @@ export function useRightPanel() {
 
     // If planExecutionRecords is empty, this is expected - data might not be loaded yet
     if (availablePlans.length === 0) {
-      console.log(
+      logger.debug(
         '[useRightPanel] planExecutionRecords is empty, will use currentRootPlanId as fallback'
       )
     } else {
-      console.warn(
+      logger.warn(
         '[useRightPanel] Could not find rootPlanId for stepId:',
         stepId,
         'in',
@@ -141,7 +142,7 @@ export function useRightPanel() {
     for (const agentExecution of subPlan.agentExecutionSequence) {
       if (agentExecution.stepId === stepId) {
         const foundRootPlanId = subPlan.rootPlanId || subPlan.currentPlanId || null
-        console.log('[useRightPanel] Found stepId in sub-plan, rootPlanId:', foundRootPlanId)
+        logger.debug('[useRightPanel] Found stepId in sub-plan, rootPlanId:', foundRootPlanId)
         return foundRootPlanId
       }
 
@@ -178,10 +179,10 @@ export function useRightPanel() {
    * @param stepId - The step ID to display
    */
   const handleStepSelected = async (stepId: string): Promise<void> => {
-    console.log('[useRightPanel] Step selected:', { stepId })
+    logger.debug('[useRightPanel] Step selected:', { stepId })
 
     if (!stepId) {
-      console.warn('[useRightPanel] No stepId provided')
+      logger.warn('[useRightPanel] No stepId provided')
       selectedStep.value = null
       selectedRootPlanId.value = null
       return
@@ -189,19 +190,19 @@ export function useRightPanel() {
 
     // Switch to 'details' tab when a step is selected
     setActiveTab('details')
-    console.log('[useRightPanel] Switched to details tab')
+    logger.debug('[useRightPanel] Switched to details tab')
 
     try {
       // Find the rootPlanId for this step first
       const rootPlanId = findRootPlanIdForStep(stepId)
       if (rootPlanId) {
         selectedRootPlanId.value = rootPlanId
-        console.log('[useRightPanel] Set selectedRootPlanId to:', rootPlanId)
+        logger.debug('[useRightPanel] Set selectedRootPlanId to:', rootPlanId)
       } else {
         // If not found, clear it (will fall back to currentRootPlanId)
         selectedRootPlanId.value = null
         // Only log as info, not warning, since fallback to currentRootPlanId is expected behavior
-        console.log(
+        logger.debug(
           '[useRightPanel] Could not find rootPlanId for step, will use currentRootPlanId as fallback'
         )
       }
@@ -210,7 +211,7 @@ export function useRightPanel() {
       const agentExecutionDetail = await DirectApiService.getAgentExecutionDetail(stepId)
 
       if (!agentExecutionDetail) {
-        console.warn('[useRightPanel] Agent execution detail not found for stepId:', stepId)
+        logger.warn('[useRightPanel] Agent execution detail not found for stepId:', stepId)
         selectedStep.value = null
         selectedRootPlanId.value = null
         return
@@ -227,13 +228,13 @@ export function useRightPanel() {
       }
 
       selectedStep.value = stepData
-      console.log('[useRightPanel] Step details updated:', stepData)
+      logger.debug('[useRightPanel] Step details updated:', stepData)
 
       // Force reactivity update
       await nextTick()
-      console.log('[useRightPanel] After nextTick - selectedStep:', selectedStep.value)
+      logger.debug('[useRightPanel] After nextTick - selectedStep:', selectedStep.value)
     } catch (error) {
-      console.error('[useRightPanel] Error fetching step details:', error)
+      logger.error('[useRightPanel] Error fetching step details:', error)
       selectedStep.value = null
       selectedRootPlanId.value = null
     }
@@ -244,11 +245,11 @@ export function useRightPanel() {
    */
   const refreshCurrentStep = async (): Promise<void> => {
     if (!selectedStep.value?.stepId) {
-      console.warn('[useRightPanel] No step selected for refresh')
+      logger.warn('[useRightPanel] No step selected for refresh')
       return
     }
 
-    console.log('[useRightPanel] Refreshing current step:', selectedStep.value.stepId)
+    logger.debug('[useRightPanel] Refreshing current step:', selectedStep.value.stepId)
 
     try {
       const agentExecutionDetail = await DirectApiService.refreshAgentExecutionDetail(
@@ -261,10 +262,10 @@ export function useRightPanel() {
         selectedStep.value.completed = agentExecutionDetail.status === 'FINISHED'
         selectedStep.value.current = agentExecutionDetail.status === 'RUNNING'
 
-        console.log('[useRightPanel] Step refreshed successfully')
+        logger.debug('[useRightPanel] Step refreshed successfully')
       }
     } catch (error) {
-      console.error('[useRightPanel] Error refreshing step:', error)
+      logger.error('[useRightPanel] Error refreshing step:', error)
     }
   }
 
@@ -274,7 +275,7 @@ export function useRightPanel() {
    */
   const setActiveTab = (tab: 'config' | 'details' | 'files'): void => {
     activeTab.value = tab
-    console.log('[useRightPanel] Active tab set to:', tab)
+    logger.debug('[useRightPanel] Active tab set to:', tab)
   }
 
   /**
@@ -284,7 +285,7 @@ export function useRightPanel() {
    * @param rootPlanId - The root plan ID to update (deprecated, kept for compatibility)
    */
   const updateDisplayedPlanProgress = (_rootPlanId: string): void => {
-    // console.log('[useRightPanel] updateDisplayedPlanProgress called with rootPlanId:', rootPlanId)
+    // logger.debug('[useRightPanel] updateDisplayedPlanProgress called with rootPlanId:', rootPlanId)
     // No-op: currentRootPlanId is now reactively derived from useMessageDialog
   }
 
@@ -294,7 +295,7 @@ export function useRightPanel() {
   const clearSelectedStep = (): void => {
     selectedStep.value = null
     selectedRootPlanId.value = null
-    console.log('[useRightPanel] Selected step cleared')
+    logger.debug('[useRightPanel] Selected step cleared')
   }
 
   /**
@@ -375,7 +376,7 @@ export function useRightPanel() {
     selectedRootPlanId.value = null
     activeTab.value = 'config'
     // Note: currentRootPlanId is computed from useMessageDialog, so no need to reset it
-    console.log('[useRightPanel] State reset')
+    logger.debug('[useRightPanel] State reset')
   }
 
   return {

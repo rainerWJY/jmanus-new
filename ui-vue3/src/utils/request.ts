@@ -23,6 +23,8 @@ import type {
 } from 'axios'
 import axios from 'axios'
 
+import { logger } from '@/utils/logger'
+
 const service: AxiosInstance = axios.create({
   baseURL: '/api/v1',
   timeout: 30 * 1000,
@@ -51,12 +53,12 @@ response.use(
     ) {
       return Promise.resolve(response.data)
     }
-    console.error(response.data)
+    logger.error(response.data)
     return Promise.reject(response.data)
   },
   error => {
     if (error) {
-      console.error(error)
+      logger.error(error)
     }
     return Promise.reject(error.response.data)
   }

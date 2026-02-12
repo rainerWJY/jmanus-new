@@ -27,6 +27,8 @@
 import { Icon } from '@iconify/vue'
 import type { CSSProperties } from 'vue'
 
+import { logger } from '@/utils/logger'
+
 const props = defineProps<{
   content?: {
     title: string
@@ -39,9 +41,9 @@ const props = defineProps<{
 const emit = defineEmits(['clickCard'])
 
 const handleClick = () => {
-  console.log('[BlurCard] handleClick called with content:', props.content)
+  logger.debug('[BlurCard] handleClick called with content:', props.content)
   emit('clickCard', props.content)
-  console.log('[BlurCard] clickCard event emitted')
+  logger.debug('[BlurCard] clickCard event emitted')
 }
 </script>
 

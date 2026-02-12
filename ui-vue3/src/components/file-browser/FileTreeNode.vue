@@ -98,6 +98,7 @@
 import { ref, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { FileBrowserApiService, type FileNode } from '@/api/file-browser-api-service'
+import { logger } from '@/utils/logger'
 
 interface Props {
   node: FileNode
@@ -180,7 +181,7 @@ const copyPath = async () => {
     await navigator.clipboard.writeText(props.node.path)
     // You could show a toast message here
   } catch (err) {
-    console.error('Failed to copy path:', err)
+    logger.error('Failed to copy path:', err)
   }
   hideContextMenu()
 }

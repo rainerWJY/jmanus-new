@@ -417,6 +417,7 @@ import { useAppStore } from '@/stores/new/app'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -456,7 +457,7 @@ const copyToClipboard = async (text: string | null | undefined) => {
     await navigator.clipboard.writeText(text)
     toast.success(t('rightPanel.copySuccess') || 'Copied to clipboard')
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+    logger.error('Failed to copy to clipboard:', error)
     toast.error(t('rightPanel.copyFailed') || 'Failed to copy')
   }
 }
@@ -520,10 +521,10 @@ const handleCreateNewPlan = async () => {
     }
 
     // Reload available tools to ensure fresh tool list
-    console.log('[RightPanel] 🔄 Reloading available tools for new template')
+    logger.debug('[RightPanel] 🔄 Reloading available tools for new template')
     await availableToolsStore.loadAvailableTools()
   } catch (error) {
-    console.error('[RightPanel] Failed to create new plan:', error)
+    logger.error('[RightPanel] Failed to create new plan:', error)
     const message = error instanceof Error ? error.message : t('rightPanel.createPlanFailed')
     toast.error(message)
   }
@@ -651,7 +652,7 @@ const autoScrollToBottomIfNeeded = () => {
   nextTick(() => {
     if (scrollContainer.value) {
       scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
-      console.log('[RightPanel] Auto scroll to bottom')
+      logger.debug('[RightPanel] Auto scroll to bottom')
     }
   })
 }
@@ -674,7 +675,7 @@ const initScrollListener = () => {
   const setupScrollListener = () => {
     const element = scrollContainer.value
     if (!element) {
-      console.log('[RightPanel] Scroll container not found, retrying...')
+      logger.debug('[RightPanel] Scroll container not found, retrying...')
       return false
     }
 
@@ -685,7 +686,7 @@ const initScrollListener = () => {
     // Initial state check
     shouldAutoScrollToBottom.value = true // Reset to auto scroll state
     checkScrollState()
-    console.log('[RightPanel] Scroll listener initialized successfully')
+    logger.debug('[RightPanel] Scroll listener initialized successfully')
     return true
   }
 
@@ -705,7 +706,7 @@ const initScrollListener = () => {
 
 // Lifecycle - initialization on mount
 onMounted(() => {
-  console.log('[RightPanel] Component mounted')
+  logger.debug('[RightPanel] Component mounted')
   // Use nextTick to ensure DOM is rendered
   nextTick(() => {
     initScrollListener()
@@ -714,7 +715,7 @@ onMounted(() => {
 
 // Lifecycle - cleanup on unmount
 onUnmounted(() => {
-  console.log('[RightPanel] Component unmounting, cleaning up...')
+  logger.debug('[RightPanel] Component unmounting, cleaning up...')
   cleanup()
 })
 

@@ -19,6 +19,8 @@ import type {
   PlanTemplateConfigVO,
 } from '../types/plan-template'
 
+import { logger } from '@/utils/logger'
+
 export interface ParameterRequirements {
   parameters: string[]
   hasParameters: boolean
@@ -77,7 +79,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to create or update plan template with tool:', error)
+      logger.error('Failed to create or update plan template with tool:', error)
       throw error
     }
   }
@@ -91,7 +93,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get plan template config VO:', error)
+      logger.error('Failed to get plan template config VO:', error)
       throw error
     }
   }
@@ -105,7 +107,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get all plan template config VOs:', error)
+      logger.error('Failed to get all plan template config VOs:', error)
       throw error
     }
   }
@@ -125,7 +127,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to delete plan template:', error)
+      logger.error('Failed to delete plan template:', error)
       throw error
     }
   }
@@ -139,7 +141,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to export all plan templates:', error)
+      logger.error('Failed to export all plan templates:', error)
       throw error
     }
   }
@@ -165,7 +167,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to import plan templates:', error)
+      logger.error('Failed to import plan templates:', error)
       throw error
     }
   }
@@ -186,7 +188,7 @@ export class PlanTemplateApiService {
       const data = await result.json()
       return data.planTemplateId
     } catch (error) {
-      console.error('Failed to generate plan template ID:', error)
+      logger.error('Failed to generate plan template ID:', error)
       throw error
     }
   }
@@ -204,7 +206,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get plan versions:', error)
+      logger.error('Failed to get plan versions:', error)
       throw error
     }
   }
@@ -218,7 +220,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get plan template list:', error)
+      logger.error('Failed to get plan template list:', error)
       throw error
     }
   }
@@ -235,7 +237,7 @@ export class PlanTemplateApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Error getting parameter requirements:', error)
+      logger.error('Error getting parameter requirements:', error)
       throw error
     }
   }

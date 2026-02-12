@@ -15,6 +15,7 @@
  */
 
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 
 export interface Memory {
   id: number
@@ -60,7 +61,7 @@ export class MemoryApiService {
       const data: MemoryResponse = await result.json()
       return data.memories ?? []
     } catch (error) {
-      console.error('Failed to get memory list:', error)
+      logger.error('Failed to get memory list:', error)
       throw error
     }
   }
@@ -75,7 +76,7 @@ export class MemoryApiService {
       }
       return data.data
     } catch (error) {
-      console.error('Failed to get memory:', error)
+      logger.error('Failed to get memory:', error)
       throw error
     }
   }
@@ -99,7 +100,7 @@ export class MemoryApiService {
       }
       return data.data
     } catch (error) {
-      console.error('Failed to create memory:', error)
+      logger.error('Failed to create memory:', error)
       throw error
     }
   }
@@ -123,7 +124,7 @@ export class MemoryApiService {
       }
       return data.data
     } catch (error) {
-      console.error('Failed to update memory:', error)
+      logger.error('Failed to update memory:', error)
       throw error
     }
   }
@@ -135,7 +136,7 @@ export class MemoryApiService {
       })
       await this.handleResponse(response)
     } catch (error) {
-      console.error('Failed to delete memory:', error)
+      logger.error('Failed to delete memory:', error)
       throw error
     }
   }
@@ -150,7 +151,7 @@ export class MemoryApiService {
       }
       return data.data
     } catch (error) {
-      console.error('Failed to generate conversation ID:', error)
+      logger.error('Failed to generate conversation ID:', error)
       throw error
     }
   }
@@ -167,7 +168,7 @@ export class MemoryApiService {
       const data: PlanExecutionRecord[] = await result.json()
       return data || []
     } catch (error) {
-      console.error('Failed to get conversation history:', error)
+      logger.error('Failed to get conversation history:', error)
       throw error
     }
   }

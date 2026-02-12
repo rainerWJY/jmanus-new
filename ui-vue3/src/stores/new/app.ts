@@ -15,6 +15,7 @@
  */
 
 import { ConfigApiService } from '@/api/config-api-service'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -46,7 +47,7 @@ export const useAppStore = defineStore('app', () => {
       version.value = info
     } catch (error: unknown) {
       versionError.value = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[AppStore] Failed to load version:', error)
+      logger.error('[AppStore] Failed to load version:', error)
     } finally {
       versionLoading.value = false
     }
@@ -69,7 +70,7 @@ export const useAppStore = defineStore('app', () => {
       initStatus.value = result
       initStatusLastCheck.value = now
     } catch (error: unknown) {
-      console.error('[AppStore] Failed to check init status:', error)
+      logger.error('[AppStore] Failed to check init status:', error)
       initStatus.value = { success: false, initialized: false }
       initStatusLastCheck.value = now
     }

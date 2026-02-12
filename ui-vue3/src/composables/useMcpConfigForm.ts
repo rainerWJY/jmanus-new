@@ -1,5 +1,6 @@
-import { reactive } from 'vue'
 import type { McpConfigFormData, McpServer } from '@/types/mcp'
+import { logger } from '@/utils/logger'
+import { reactive } from 'vue'
 
 export function useMcpConfigForm() {
   // Unified configuration form data
@@ -73,7 +74,7 @@ export function useMcpConfigForm() {
 
       configForm.status = server.status
     } catch (error) {
-      console.error('Failed to parse server configuration:', error)
+      logger.error('Failed to parse server configuration:', error)
       // If parsing fails, use default values
       configForm.mcpServerName = server.mcpServerName || ''
       configForm.connectionType = server.connectionType

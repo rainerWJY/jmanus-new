@@ -43,6 +43,7 @@ import { useAppStore } from '@/stores/new/app'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { onMounted } from 'vue'
 import TemplateList from './TemplateList.vue'
@@ -81,7 +82,7 @@ const handleCreateNewTemplate = async () => {
   rightPanel.setActiveTab('config')
 
   // Reload available tools to ensure fresh tool list
-  console.log('[Sidebar] 🔄 Reloading available tools for new template')
+  logger.debug('[Sidebar] 🔄 Reloading available tools for new template')
   await availableToolsStore.loadAvailableTools()
 }
 

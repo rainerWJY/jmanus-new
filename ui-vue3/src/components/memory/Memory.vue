@@ -203,6 +203,7 @@ interface MemoryWithExpanded extends Memory {
 import { Icon } from '@iconify/vue'
 import { useAppStore } from '@/stores/new/app'
 import { useConversationStore } from '@/stores/new/conversation'
+import { logger } from '@/utils/logger'
 import { computed } from 'vue'
 
 const appStore = useAppStore()
@@ -262,7 +263,7 @@ const loadMessages = async () => {
   try {
     await conversationStore.loadConversations()
   } catch (e) {
-    console.error('error:', e)
+    logger.error('error:', e)
     conversationStore.setConversations([])
   }
 }
@@ -323,7 +324,7 @@ const saveName = async () => {
       )
       showNameModal.value = false
     } catch (error) {
-      console.error('error:', error)
+      logger.error('error:', error)
     }
   }
 }
@@ -365,7 +366,7 @@ const confirmDelete = async () => {
     showDeleteModal.value = false
     currentDeleteId.value = null
   } catch (error) {
-    console.error('error:', error)
+    logger.error('error:', error)
   }
 }
 </script>

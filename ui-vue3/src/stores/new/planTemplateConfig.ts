@@ -21,6 +21,7 @@ import type {
   StepConfig,
   ToolConfigVO,
 } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { computed, reactive, ref } from 'vue'
 
@@ -316,7 +317,7 @@ export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () =
           currentVersionIndex.value = -1
         }
       } catch (versionError) {
-        console.warn('Failed to load plan versions:', versionError)
+        logger.warn('Failed to load plan versions:', versionError)
         planVersions.value = []
         currentVersionIndex.value = -1
       }
@@ -324,7 +325,7 @@ export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () =
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load plan template config'
-      console.error('Failed to load plan template config:', err)
+      logger.error('Failed to load plan template config:', err)
       return false
     } finally {
       isLoading.value = false
@@ -347,7 +348,7 @@ export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () =
         const actualPlanTemplateId = result.planTemplateId || config.planTemplateId
 
         if (actualPlanTemplateId && actualPlanTemplateId !== config.planTemplateId) {
-          console.log(
+          logger.debug(
             '[planTemplateConfigStore] PlanTemplateId replaced by backend:',
             config.planTemplateId,
             '->',
@@ -401,7 +402,7 @@ export const usePlanTemplateConfigStore = defineStore('planTemplateConfig', () =
       return result.success
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to save plan template config'
-      console.error('Failed to save plan template config:', err)
+      logger.error('Failed to save plan template config:', err)
       return false
     } finally {
       isLoading.value = false

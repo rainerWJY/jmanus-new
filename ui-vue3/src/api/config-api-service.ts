@@ -1,6 +1,8 @@
 import type { AxiosResponse } from 'axios'
 import axios from 'axios'
 
+import { logger } from '@/utils/logger'
+
 export interface ModelOption {
   value: string
   label: string
@@ -24,7 +26,7 @@ export class ConfigApiService {
       })
       return response.data
     } catch (error) {
-      console.error('Failed to fetch available models:', error)
+      logger.error('Failed to fetch available models:', error)
       return { options: [], total: 0 }
     }
   }
@@ -42,7 +44,7 @@ export class ConfigApiService {
       if (!response.ok) throw new Error(`Failed to get version: ${response.status}`)
       return await response.json()
     } catch (error: unknown) {
-      console.error('[ConfigApiService] Failed to get version:', error)
+      logger.error('[ConfigApiService] Failed to get version:', error)
       return {
         version: 'unknown',
         buildTime: 'unknown',

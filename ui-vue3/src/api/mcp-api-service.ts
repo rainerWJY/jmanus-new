@@ -19,6 +19,8 @@
  * Responsible for handling all API interactions related to MCP configuration
  */
 
+import { logger } from '@/utils/logger'
+
 export interface McpServer {
   id: number
   mcpServerName: string
@@ -90,7 +92,7 @@ export class McpApiService {
 
       return { success: true, message: 'Successfully added MCP server' }
     } catch (error) {
-      console.error('Failed to add MCP server:', error)
+      logger.error('Failed to add MCP server:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to add, please retry',
@@ -122,7 +124,7 @@ export class McpApiService {
 
       return { success: true, message: 'Successfully imported MCP servers' }
     } catch (error) {
-      console.error('Failed to import MCP servers:', error)
+      logger.error('Failed to import MCP servers:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to import, please retry',
@@ -153,7 +155,7 @@ export class McpApiService {
       const action = mcpConfig.id !== undefined ? 'updated' : 'added'
       return { success: true, message: `Successfully ${action} MCP server` }
     } catch (error) {
-      console.error('Failed to save MCP server:', error)
+      logger.error('Failed to save MCP server:', error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to save, please retry',
@@ -182,7 +184,7 @@ export class McpApiService {
       }
       return { success: true, message: 'Successfully deleted MCP server' }
     } catch (error) {
-      console.error(`Failed to delete MCP server[${id}]:`, error)
+      logger.error(`Failed to delete MCP server[${id}]:`, error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to delete, please retry',
@@ -204,7 +206,7 @@ export class McpApiService {
       }
       return { success: true, message: 'Successfully enabled MCP server' }
     } catch (error) {
-      console.error(`Failed to enable MCP server[${id}]:`, error)
+      logger.error(`Failed to enable MCP server[${id}]:`, error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to enable, please retry',
@@ -226,7 +228,7 @@ export class McpApiService {
       }
       return { success: true, message: 'Successfully disabled MCP server' }
     } catch (error) {
-      console.error(`Failed to disable MCP server[${id}]:`, error)
+      logger.error(`Failed to disable MCP server[${id}]:`, error)
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to disable, please retry',

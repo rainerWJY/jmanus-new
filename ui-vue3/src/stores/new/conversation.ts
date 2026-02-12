@@ -15,6 +15,7 @@
  */
 
 import { MemoryApiService, type Memory } from '@/api/memory-api-service'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -49,7 +50,7 @@ export const useConversationStore = defineStore('conversation', () => {
       const list = await MemoryApiService.getMemories()
       conversations.value = list
     } catch (error) {
-      console.error('[ConversationStore] Failed to load conversations:', error)
+      logger.error('[ConversationStore] Failed to load conversations:', error)
       conversations.value = []
     }
   }

@@ -15,6 +15,7 @@
  */
 
 import type { FileInfo } from '@/api/file-upload-api-service'
+import { logger } from '@/utils/logger'
 import { reactive, readonly, ref } from 'vue'
 
 /**
@@ -32,12 +33,12 @@ export function useFileUpload() {
    * @param key Upload key for the file session
    */
   const setUploadedFiles = (files: FileInfo[], key: string | null) => {
-    console.log('[useFileUpload] Setting uploaded files:', files.length, 'uploadKey:', key)
+    logger.debug('[useFileUpload] Setting uploaded files:', files.length, 'uploadKey:', key)
     // Clear existing files and set new ones
     uploadedFiles.length = 0
     uploadedFiles.push(...files)
     uploadKey.value = key
-    console.log(
+    logger.debug(
       '[useFileUpload] Updated state - files:',
       uploadedFiles.length,
       'key:',
@@ -50,9 +51,9 @@ export function useFileUpload() {
    * @param files Array of file information to add
    */
   const addUploadedFiles = (files: FileInfo[]) => {
-    console.log('[useFileUpload] Adding files to existing session:', files.length)
+    logger.debug('[useFileUpload] Adding files to existing session:', files.length)
     uploadedFiles.push(...files)
-    console.log('[useFileUpload] Total files after add:', uploadedFiles.length)
+    logger.debug('[useFileUpload] Total files after add:', uploadedFiles.length)
   }
 
   /**
@@ -60,16 +61,16 @@ export function useFileUpload() {
    * @param fileName Name of the file to remove
    */
   const removeFile = (fileName: string) => {
-    console.log('[useFileUpload] Removing file:', fileName)
+    logger.debug('[useFileUpload] Removing file:', fileName)
     const index = uploadedFiles.findIndex(file => file.originalName === fileName)
     if (index !== -1) {
       uploadedFiles.splice(index, 1)
-      console.log('[useFileUpload] File removed, remaining:', uploadedFiles.length)
+      logger.debug('[useFileUpload] File removed, remaining:', uploadedFiles.length)
 
       // Clear uploadKey if no files remain
       if (uploadedFiles.length === 0) {
         uploadKey.value = null
-        console.log('[useFileUpload] Cleared uploadKey - no files remaining')
+        logger.debug('[useFileUpload] Cleared uploadKey - no files remaining')
       }
     }
   }
@@ -78,10 +79,10 @@ export function useFileUpload() {
    * Clear all uploaded files and upload key
    */
   const clearFiles = () => {
-    console.log('[useFileUpload] Clearing all files and uploadKey')
+    logger.debug('[useFileUpload] Clearing all files and uploadKey')
     uploadedFiles.length = 0
     uploadKey.value = null
-    console.log('[useFileUpload] Files cleared')
+    logger.debug('[useFileUpload] Files cleared')
   }
 
   /**

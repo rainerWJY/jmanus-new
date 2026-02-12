@@ -37,6 +37,7 @@ import { storeToRefs } from 'pinia'
 import { usenameSpaceStore } from '@/stores/namespace'
 import { notEmpty } from '@/utils'
 import { NamespaceApiService, type Namespace } from '@/api/namespace-api-service'
+import { logger } from '@/utils/logger'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -66,7 +67,7 @@ const handleNamespaceChange = (value: string, option: { host?: string }) => {
       )
       window.open(newUrl.toString(), '_blank' + '?namespace=' + value)
     } catch (e) {
-      console.error('Failed to construct new URL:', e)
+      logger.error('Failed to construct new URL:', e)
       const currentPath = window.location.pathname + window.location.search
       // Fallback to original behavior if URL construction fails
       const newUrl = normalizedHost + currentPath

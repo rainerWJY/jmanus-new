@@ -97,6 +97,7 @@ import { DatabaseCleanupApiService, type TableCounts } from '@/api/database-clea
 import Modal from '@/components/modal/index.vue'
 import { useToast } from '@/plugins/useToast'
 import ConfigPanel from '@/views/configs/components/configPanel.vue'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -160,7 +161,7 @@ const loadCounts = async () => {
   try {
     tableCounts.value = await DatabaseCleanupApiService.getTableCounts()
   } catch (error) {
-    console.error('Failed to load table counts:', error)
+    logger.error('Failed to load table counts:', error)
     toast.error(
       t('config.databaseCleanup.refreshFailed') +
         ': ' +
@@ -183,7 +184,7 @@ const handleClearAll = async () => {
     // Reload counts to show updated values
     await loadCounts()
   } catch (error) {
-    console.error('Failed to clear tables:', error)
+    logger.error('Failed to clear tables:', error)
     toast.error(
       t('config.databaseCleanup.clearFailed') +
         ': ' +

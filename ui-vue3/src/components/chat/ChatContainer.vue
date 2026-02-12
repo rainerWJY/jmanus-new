@@ -136,6 +136,7 @@ import ResponseSection from './ResponseSection.vue'
 // Import composables
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import type { ChatMessage as ChatMessageType } from '@/types/message-dialog'
+import { logger } from '@/utils/logger'
 import { useMessageFormatting } from './composables/useMessageFormatting'
 import { useScrollBehavior } from './composables/useScrollBehavior'
 
@@ -214,7 +215,7 @@ const handleCopyMessage = async (messageId: string) => {
     await navigator.clipboard.writeText(plainText)
     // Could add toast notification here
   } catch (error) {
-    console.error('Failed to copy message:', error)
+    logger.error('Failed to copy message:', error)
   }
 }
 
@@ -230,7 +231,7 @@ const handleRegenerateMessage = (messageId: string) => {
     })
     startStreaming(messageId)
     // TODO: Trigger actual regeneration API call here
-    console.warn('[ChatContainer] Regenerate not yet implemented')
+    logger.warn('[ChatContainer] Regenerate not yet implemented')
   }
 }
 
@@ -245,12 +246,12 @@ const handleRetryMessage = (messageId: string) => {
     updateMessage(messageId, updates)
     startStreaming(messageId)
     // TODO: Trigger actual retry API call here
-    console.warn('[ChatContainer] Retry not yet implemented')
+    logger.warn('[ChatContainer] Retry not yet implemented')
   }
 }
 
 const handleStepSelected = (stepId: string) => {
-  console.log('[ChatContainer] Step selected:', stepId)
+  logger.debug('[ChatContainer] Step selected:', stepId)
   emit('step-selected', stepId)
 }
 
@@ -258,10 +259,10 @@ const handleStepSelected = (stepId: string) => {
 // TODO: Implement actual user input submission logic when needed
 // This should send user input to the backend for plan execution continuation
 const handleUserInputSubmit = (message: ChatMessageType, inputData: Record<string, unknown>) => {
-  console.log('[ChatContainer] User input submitted:', inputData, 'for message:', message.id)
+  logger.debug('[ChatContainer] User input submitted:', inputData, 'for message:', message.id)
   // TODO: Send user input to backend via API
   // Should call messageDialog or planExecution API to continue plan execution
-  console.warn('[ChatContainer] User input submission not yet implemented')
+  logger.warn('[ChatContainer] User input submission not yet implemented')
 }
 
 // Message handling methods removed - ChatContainer is now a pure display component

@@ -352,6 +352,7 @@
 import { AdminApiService, type ConfigItem } from '@/api/admin-api-service'
 import { useAppStore } from '@/stores/new/app'
 import Switch from '@/components/switch/index.vue'
+import { logger } from '@/utils/logger'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -691,7 +692,7 @@ const loadAllConfigs = async () => {
           subGroups,
         }
       } catch (error) {
-        console.warn(`Failed to load config group ${groupName}, skipping:`, error)
+        logger.warn(`Failed to load config group ${groupName}, skipping:`, error)
         return null
       }
     })
@@ -701,9 +702,9 @@ const loadAllConfigs = async () => {
     // Filter out empty configuration groups
     configGroups.value = results.filter(group => group !== null) as ConfigGroup[]
 
-    console.log(t('config.basicConfig.loadConfigSuccess'), configGroups.value)
+    logger.debug(t('config.basicConfig.loadConfigSuccess'), configGroups.value)
   } catch (error) {
-    console.error(t('config.basicConfig.loadConfigFailed'), error)
+    logger.error(t('config.basicConfig.loadConfigFailed'), error)
     showMessage(t('config.basicConfig.loadConfigFailed'), 'error')
   } finally {
     initialLoading.value = false
@@ -747,7 +748,7 @@ const saveAllConfigs = async () => {
       showMessage(result.message || t('config.basicConfig.saveFailed'), 'error')
     }
   } catch (error) {
-    console.error(t('config.basicConfig.saveFailed'), error)
+    logger.error(t('config.basicConfig.saveFailed'), error)
     showMessage(t('config.basicConfig.saveFailed'), 'error')
   } finally {
     loading.value = false
@@ -849,7 +850,7 @@ const exportConfigs = () => {
 
     showMessage(t('config.basicConfig.exportSuccess'))
   } catch (error) {
-    console.error(t('config.basicConfig.exportFailed'), error)
+    logger.error(t('config.basicConfig.exportFailed'), error)
     showMessage(t('config.basicConfig.exportFailed'), 'error')
   }
 }
@@ -906,7 +907,7 @@ const importConfigs = (event: Event) => {
         showMessage(result.message || t('config.basicConfig.importFailed'), 'error')
       }
     } catch (error) {
-      console.error(t('config.basicConfig.importFailed'), error)
+      logger.error(t('config.basicConfig.importFailed'), error)
       showMessage(t('config.basicConfig.importFailed'), 'error')
     } finally {
       loading.value = false
@@ -936,7 +937,7 @@ const restoreAllDefaults = async () => {
       showMessage(result.message || t('config.basicConfig.restoreAllDefaultsFailed'), 'error')
     }
   } catch (error) {
-    console.error(t('config.basicConfig.restoreAllDefaultsFailed'), error)
+    logger.error(t('config.basicConfig.restoreAllDefaultsFailed'), error)
     showMessage(t('config.basicConfig.restoreAllDefaultsFailed'), 'error')
   } finally {
     loading.value = false

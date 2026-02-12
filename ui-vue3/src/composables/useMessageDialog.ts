@@ -25,6 +25,7 @@ import type {
 } from '@/types/message-dialog'
 import type { PlanExecutionRequestPayload } from '@/types/plan-execution'
 import type { AgentExecutionRecord, PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { LlmCheckService } from '@/utils/llm-check'
 import { storeToRefs } from 'pinia'
 import { computed, readonly, ref, watchEffect } from 'vue'
@@ -118,7 +119,7 @@ export function useMessageDialog() {
 
     dialogList.value.push(dialog)
     activeDialogId.value = dialog.id
-    console.log('[useMessageDialog] Created new dialog round:', dialog.id, {
+    logger.debug('[useMessageDialog] Created new dialog round:', dialog.id, {
       conversationId: selectedConversationId.value,
       rootPlanId: rootPlanId.value,
     })
@@ -191,7 +192,7 @@ export function useMessageDialog() {
     if (index !== -1) {
       const deletedDialog = dialogList.value[index]
       dialogList.value.splice(index, 1)
-      console.log('[useMessageDialog] Deleted dialog round:', dialogId)
+      logger.debug('[useMessageDialog] Deleted dialog round:', dialogId)
 
       // If deleted dialog was active, set first dialog with same conversationId as active or null
       if (activeDialogId.value === dialogId) {
@@ -217,7 +218,7 @@ export function useMessageDialog() {
     dialogsToDelete.forEach(dialog => {
       deleteDialog(dialog.id)
     })
-    console.log(
+    logger.debug(
       `[useMessageDialog] Deleted ${dialogsToDelete.length} dialog round(s) for plan:`,
       planId
     )
@@ -232,7 +233,7 @@ export function useMessageDialog() {
     dialogsToDelete.forEach(dialog => {
       deleteDialog(dialog.id)
     })
-    console.log(
+    logger.debug(
       `[useMessageDialog] Deleted ${dialogsToDelete.length} dialog round(s) for conversation:`,
       convId
     )
@@ -332,7 +333,7 @@ export function useMessageDialog() {
           conversationStore.setSelectedConversationId(response.conversationId)
           // Also set on dialog for reference
           targetDialog.conversationId = response.conversationId
-          console.log('[useMessageDialog] Conversation ID set:', response.conversationId)
+          logger.debug('[useMessageDialog] Conversation ID set:', response.conversationId)
         }
 
         // Update assistant message with response
@@ -356,7 +357,7 @@ export function useMessageDialog() {
 
           // Actively notify usePlanExecution to track this plan
           planExecution.handlePlanExecutionRequested(newRootPlanId)
-          console.log('[useMessageDialog] Root plan ID set and tracking started:', newRootPlanId)
+          logger.debug('[useMessageDialog] Root plan ID set and tracking started:', newRootPlanId)
         } else {
           // Direct response mode
           const updates: Partial<ChatMessage> = {
@@ -395,7 +396,7 @@ export function useMessageDialog() {
                 // Update conversationId if present (persisted)
                 conversationStore.setSelectedConversationId(chunk.conversationId)
                 targetDialog.conversationId = chunk.conversationId
-                console.log(
+                logger.debug(
                   '[useMessageDialog] Conversation ID set from stream:',
                   chunk.conversationId
                 )
@@ -404,7 +405,7 @@ export function useMessageDialog() {
                 const chunkWithStreamId = chunk as { streamId?: string }
                 if (chunkWithStreamId.streamId) {
                   currentStreamId.value = chunkWithStreamId.streamId
-                  console.log(
+                  logger.debug(
                     '[useMessageDialog] Stream ID received from backend:',
                     currentStreamId.value
                   )
@@ -431,7 +432,7 @@ export function useMessageDialog() {
                 })
               } else if (chunk.type === 'cancelled') {
                 // Stream was cancelled (backend-driven cancellation)
-                console.log('[useMessageDialog] Stream cancelled by backend')
+                logger.debug('[useMessageDialog] Stream cancelled by backend')
                 stopStreaming(assistantMessage.id)
                 currentStreamId.value = null
                 updateMessageInDialog(targetDialog.id, assistantMessage.id, {
@@ -454,7 +455,7 @@ export function useMessageDialog() {
         } catch (streamError) {
           // Handle abort or other stream errors
           if (streamError instanceof Error && streamError.name === 'AbortError') {
-            console.log('[useMessageDialog] Stream was aborted by user')
+            logger.debug('[useMessageDialog] Stream was aborted by user')
             streamWasAborted = true
             // Update message to show stopped status
             if (targetDialog && assistantMessage) {
@@ -506,7 +507,7 @@ export function useMessageDialog() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to send message'
       error.value = errorMessage
-      console.error('[useMessageDialog] Send message failed:', err)
+      logger.error('[useMessageDialog] Send message failed:', err)
 
       // Update assistant message with error
       if (targetDialog && assistantMessage) {
@@ -635,7 +636,7 @@ export function useMessageDialog() {
         // 1. We didn't send a conversationId (first request)
         // 2. Backend generated a new one (shouldn't happen if we sent one)
         if (newConversationId !== currentConversationId) {
-          console.log(
+          logger.debug(
             '[useMessageDialog] Conversation ID changed:',
             currentConversationId,
             '->',
@@ -647,7 +648,7 @@ export function useMessageDialog() {
         } else {
           // Ensure dialog has the conversationId even if it didn't change
           targetDialog.conversationId = newConversationId
-          console.log('[useMessageDialog] Conversation ID unchanged:', newConversationId)
+          logger.debug('[useMessageDialog] Conversation ID unchanged:', newConversationId)
         }
       } else {
         // If backend didn't return conversationId, ensure dialog uses the one we have
@@ -676,7 +677,7 @@ export function useMessageDialog() {
 
         // Actively notify usePlanExecution to track this plan
         planExecution.handlePlanExecutionRequested(newRootPlanId)
-        console.log('[useMessageDialog] Root plan ID set and tracking started:', newRootPlanId)
+        logger.debug('[useMessageDialog] Root plan ID set and tracking started:', newRootPlanId)
       } else {
         const updates: Partial<ChatMessage> = {
           content: 'Plan execution started',
@@ -695,7 +696,7 @@ export function useMessageDialog() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to execute plan'
       error.value = errorMessage
-      console.error('[useMessageDialog] Execute plan failed:', err)
+      logger.error('[useMessageDialog] Execute plan failed:', err)
 
       // Update assistant message with error
       if (targetDialog && assistantMessage) {
@@ -873,28 +874,28 @@ export function useMessageDialog() {
     // Validate required parameters
     if (!streamId || !convId) {
       const errorMsg = `Cannot cancel chat stream: missing required parameters. streamId: ${streamId}, conversationId: ${convId}`
-      console.error('[useMessageDialog]', errorMsg)
+      logger.error('[useMessageDialog]', errorMsg)
       throw new Error(errorMsg)
     }
 
     // Try to cancel on backend, but don't fail if stream already completed
     let backendCancelled = false
     try {
-      console.log('[useMessageDialog] Attempting backend cancellation for streamId:', streamId)
+      logger.debug('[useMessageDialog] Attempting backend cancellation for streamId:', streamId)
       await DirectApiService.cancelChatStream(convId, streamId)
-      console.log('[useMessageDialog] Backend cancellation request sent')
+      logger.debug('[useMessageDialog] Backend cancellation request sent')
       backendCancelled = true
     } catch (error) {
       // If stream doesn't exist (already completed), treat as success and continue cleanup
       const errorMessage = error instanceof Error ? error.message : String(error)
       if (errorMessage.includes('No active stream found') || errorMessage.includes('400')) {
-        console.log(
+        logger.debug(
           '[useMessageDialog] Stream already completed or cancelled on backend, continuing with cleanup'
         )
         backendCancelled = false // Stream was already done, but we still need to clean up frontend
       } else {
         // For other errors, log but still proceed with cleanup
-        console.warn(
+        logger.warn(
           '[useMessageDialog] Backend cancellation failed, but continuing with cleanup:',
           error
         )
@@ -904,7 +905,7 @@ export function useMessageDialog() {
     // Always abort client-side for immediate feedback (even if backend cancel failed)
     const controller = activeStreamAbortController.value
     if (controller) {
-      console.log('[useMessageDialog] Aborting client-side connection')
+      logger.debug('[useMessageDialog] Aborting client-side connection')
       controller.abort()
       activeStreamAbortController.value = null
     }
@@ -959,7 +960,7 @@ export function useMessageDialog() {
     if (placeholder !== undefined) {
       inputPlaceholder.value = placeholder
     }
-    console.log('[useMessageDialog] Input state updated:', {
+    logger.debug('[useMessageDialog] Input state updated:', {
       enabled,
       placeholder,
       isRunning: isRunning.value,
@@ -972,7 +973,7 @@ export function useMessageDialog() {
    */
   const setConversationId = (id: string | null) => {
     conversationStore.setSelectedConversationId(id)
-    console.log('[useMessageDialog] Set conversationId:', id)
+    logger.debug('[useMessageDialog] Set conversationId:', id)
   }
 
   /**
@@ -1109,14 +1110,14 @@ export function useMessageDialog() {
     // Also access dialogList to ensure we re-run when dialogs change
     const dialogs = dialogList.value
 
-    console.log(
+    logger.debug(
       '[useMessageDialog] watchEffect triggered - records count:',
       recordsArray.length,
       'keys:',
       Object.keys(records)
     )
-    console.log('[useMessageDialog] watchEffect - dialogList count:', dialogs.length)
-    console.log(
+    logger.debug('[useMessageDialog] watchEffect - dialogList count:', dialogs.length)
+    logger.debug(
       '[useMessageDialog] watchEffect - dialogs with planId:',
       dialogs.filter(d => d.planId).map(d => ({ id: d.id, planId: d.planId }))
     )
@@ -1124,7 +1125,7 @@ export function useMessageDialog() {
     // Process all dialogs that have associated planIds
     for (const dialog of dialogs) {
       if (!dialog.planId) {
-        console.log('[useMessageDialog] watchEffect: Skipping dialog without planId:', dialog.id)
+        logger.debug('[useMessageDialog] watchEffect: Skipping dialog without planId:', dialog.id)
         continue
       }
 
@@ -1136,15 +1137,19 @@ export function useMessageDialog() {
           m.planExecution?.currentPlanId === dialog.planId
       )
       if (!message) {
-        console.log('[useMessageDialog] watchEffect: No message found for planId:', dialog.planId, {
-          dialogMessages: dialog.messages.map(m => ({
-            id: m.id,
-            type: m.type,
-            planExecutionRootPlanId: m.planExecution?.rootPlanId,
-            planExecutionCurrentPlanId: m.planExecution?.currentPlanId,
-            hasPlanExecution: !!m.planExecution,
-          })),
-        })
+        logger.debug(
+          '[useMessageDialog] watchEffect: No message found for planId:',
+          dialog.planId,
+          {
+            dialogMessages: dialog.messages.map(m => ({
+              id: m.id,
+              type: m.type,
+              planExecutionRootPlanId: m.planExecution?.rootPlanId,
+              planExecutionCurrentPlanId: m.planExecution?.currentPlanId,
+              hasPlanExecution: !!m.planExecution,
+            })),
+          }
+        )
         continue
       }
 
@@ -1179,7 +1184,7 @@ export function useMessageDialog() {
                   recordValue.currentPlanId === message.planExecution.currentPlanId)))
           ) {
             recordEntry = [recordKey, recordValue]
-            console.log('[useMessageDialog] watchEffect: Found record by value matching:', {
+            logger.debug('[useMessageDialog] watchEffect: Found record by value matching:', {
               dialogPlanId: dialog.planId,
               recordKey,
               recordRootPlanId: recordValue.rootPlanId,
@@ -1197,7 +1202,7 @@ export function useMessageDialog() {
         // Don't skip - this ensures the execution chain displays immediately
         const messagePlanExecution = message.planExecution
         if (messagePlanExecution && messagePlanExecution.status === 'running') {
-          console.log(
+          logger.debug(
             '[useMessageDialog] watchEffect: Message has planExecution but record not found yet, keeping initial state:',
             {
               dialogId: dialog.id,
@@ -1212,7 +1217,7 @@ export function useMessageDialog() {
           continue
         }
         // If message doesn't have planExecution or status is not 'running', skip
-        console.log(
+        logger.debug(
           '[useMessageDialog] watchEffect: No record found and message has no running planExecution:',
           {
             dialogId: dialog.id,
@@ -1232,7 +1237,7 @@ export function useMessageDialog() {
         readonlyRecord as PlanExecutionRecord
       ) as PlanExecutionRecord
 
-      console.log('[useMessageDialog] watchEffect: Updating message with plan record:', {
+      logger.debug('[useMessageDialog] watchEffect: Updating message with plan record:', {
         dialogId: dialog.id,
         messageId: message.id,
         planId: dialog.planId,
@@ -1284,7 +1289,7 @@ export function useMessageDialog() {
       hasTrackedPlans || hasRunningPlansInRecords || hasDialogsWaitingForPlanId
 
     if (!hasRunningPlans && isRunning.value) {
-      console.log('[useMessageDialog] All plans completed, resetting isRunning', {
+      logger.debug('[useMessageDialog] All plans completed, resetting isRunning', {
         hasTrackedPlans,
         hasRunningPlansInRecords,
         hasDialogsWaitingForPlanId,

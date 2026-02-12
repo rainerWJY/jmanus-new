@@ -15,6 +15,7 @@
  */
 
 import { useAppStore } from '@/stores/new/app'
+import { logger } from '@/utils/logger'
 
 /**
  * LLM configuration check utility class
@@ -42,7 +43,7 @@ export class LlmCheckService {
 
       return { initialized: true }
     } catch (error) {
-      console.error('[LlmCheckService] Failed to check LLM configuration:', error)
+      logger.error('[LlmCheckService] Failed to check LLM configuration:', error)
       return {
         initialized: false,
         message:

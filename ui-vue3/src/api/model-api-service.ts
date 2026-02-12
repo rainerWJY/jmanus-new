@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
+
 // Define interface types
 export interface Model {
   id: string
@@ -82,7 +84,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get Model list:', error)
+      logger.error('Failed to get Model list:', error)
       throw error
     }
   }
@@ -96,7 +98,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get Model list:', error)
+      logger.error('Failed to get Model list:', error)
       throw error
     }
   }
@@ -110,7 +112,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error(`Failed to get Model[${id}] details:`, error)
+      logger.error(`Failed to get Model[${id}] details:`, error)
       throw error
     }
   }
@@ -139,7 +141,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to create Model:', error)
+      logger.error('Failed to create Model:', error)
       throw error
     }
   }
@@ -173,7 +175,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error(`Failed to update Model[${id}]:`, error)
+      logger.error(`Failed to update Model[${id}]:`, error)
       throw error
     }
   }
@@ -196,7 +198,7 @@ export class ModelApiService {
       }
       await this.handleResponse(response)
     } catch (error) {
-      console.error(`Failed to delete Model[${id}]:`, error)
+      logger.error(`Failed to delete Model[${id}]:`, error)
       throw error
     }
   }
@@ -216,7 +218,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to validate model configuration:', error)
+      logger.error('Failed to validate model configuration:', error)
       throw error
     }
   }
@@ -235,7 +237,7 @@ export class ModelApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error(`Failed to set model[${id}] as default:`, error)
+      logger.error(`Failed to set model[${id}] as default:`, error)
       throw error
     }
   }
@@ -257,7 +259,7 @@ export class ModelConfigModel {
       this.models = await ModelApiService.getAllModels()
       return this.models
     } catch (error) {
-      console.error('Failed to load Model list:', error)
+      logger.error('Failed to load Model list:', error)
       throw error
     }
   }
@@ -270,7 +272,7 @@ export class ModelConfigModel {
       this.currentModel = await ModelApiService.getModelById(id)
       return this.currentModel
     } catch (error) {
-      console.error('Failed to load Model details:', error)
+      logger.error('Failed to load Model details:', error)
       throw error
     }
   }
@@ -304,7 +306,7 @@ export class ModelConfigModel {
 
       return result
     } catch (error) {
-      console.error('Failed to save Model:', error)
+      logger.error('Failed to save Model:', error)
       throw error
     }
   }
@@ -322,7 +324,7 @@ export class ModelConfigModel {
         this.currentModel = null
       }
     } catch (error) {
-      console.error('Failed to delete Model:', error)
+      logger.error('Failed to delete Model:', error)
       throw error
     }
   }
@@ -353,7 +355,7 @@ export class ModelConfigModel {
       }
       return model
     } catch (error) {
-      console.error('Failed to parse Model JSON:', error)
+      logger.error('Failed to parse Model JSON:', error)
       throw new Error('Model configuration format is incorrect')
     }
   }
@@ -375,7 +377,7 @@ export class ModelConfigModel {
         this.currentModel.isDefault = true
       }
     } catch (error) {
-      console.error('Failed to set default model:', error)
+      logger.error('Failed to set default model:', error)
       throw error
     }
   }

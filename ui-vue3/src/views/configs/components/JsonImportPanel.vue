@@ -81,6 +81,7 @@ import type {
   McpServerJsonConfig,
   TabConfig,
 } from '@/types/mcp'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -338,7 +339,7 @@ const normalizeMcpConfig = (config: unknown): McpConfigJson => {
         delete normalizedServer.baseUrl
       } else if (!hasUrl && !hasBaseUrl) {
         // If neither url nor baseUrl exists, keep as is (let validation function handle error)
-        console.warn(`Server ${serverId} has no command but also no url or baseUrl`)
+        logger.warn(`Server ${serverId} has no command but also no url or baseUrl`)
       }
     }
 

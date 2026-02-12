@@ -152,6 +152,7 @@ import { PlanTemplateApiService, type ParameterRequirements } from '@/api/plan-t
 import Modal from '@/components/modal/index.vue'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -292,7 +293,7 @@ const loadParameterRequirements = async () => {
     const requirements = await PlanTemplateApiService.getParameterRequirements(planTemplateId)
     parameterRequirements.value = requirements
 
-    console.log('[PublishModal] Parameter requirements loaded:', requirements)
+    logger.debug('[PublishModal] Parameter requirements loaded:', requirements)
 
     // Initialize form parameters with extracted parameters
     // Preserve existing descriptions from toolConfig.inputSchema if available
@@ -320,7 +321,7 @@ const loadParameterRequirements = async () => {
         name: param,
         description: backendParamsMap.get(param) || formParamsMap.get(param) || param,
       }))
-      console.log(
+      logger.debug(
         '[PublishModal] Updated formData.parameters with requirements:',
         formData.parameters
       )
@@ -328,13 +329,13 @@ const loadParameterRequirements = async () => {
       // IMPORTANT: When no parameters in plan template, clear formData.parameters
       // This ensures old toolConfig parameters are removed from UI
       formData.parameters = []
-      console.log('[PublishModal] No parameters in plan template, cleared formData.parameters')
+      logger.debug('[PublishModal] No parameters in plan template, cleared formData.parameters')
     }
   } catch (error) {
-    console.error('[PublishModal] Failed to load parameter requirements:', error)
+    logger.error('[PublishModal] Failed to load parameter requirements:', error)
     // Don't show error for 404 - template might not be ready yet
     if (error instanceof Error && !error.message.includes('404')) {
-      console.warn('[PublishModal] Parameter requirements not available yet, will retry later')
+      logger.warn('[PublishModal] Parameter requirements not available yet, will retry later')
     }
     parameterRequirements.value = {
       parameters: [],
@@ -351,13 +352,13 @@ const loadParameterRequirements = async () => {
 // Use frontend parameter list (from plan template) as source of truth
 // Preserve descriptions from backend for matching parameters
 const mergeParametersWithBackend = (): Array<{ name: string; description: string }> => {
-  console.log('[PublishModal] Starting parameter merge')
-  console.log('[PublishModal] Frontend parameters:', parameterRequirements.value.parameters)
-  console.log('[PublishModal] Form parameters:', formData.parameters)
+  logger.debug('[PublishModal] Starting parameter merge')
+  logger.debug('[PublishModal] Frontend parameters:', parameterRequirements.value.parameters)
+  logger.debug('[PublishModal] Form parameters:', formData.parameters)
 
   // Get backend parameters from toolConfig.inputSchema
   const backendInputSchema = selectedTemplate.value?.toolConfig?.inputSchema || []
-  console.log('[PublishModal] Backend inputSchema:', backendInputSchema)
+  logger.debug('[PublishModal] Backend inputSchema:', backendInputSchema)
 
   // Create a map of backend parameters by name
   const backendParamsMap = new Map<string, string>()
@@ -383,14 +384,14 @@ const mergeParametersWithBackend = (): Array<{ name: string; description: string
       }
     })
 
-    console.log('[PublishModal] Merged parameters (from plan template):', merged)
+    logger.debug('[PublishModal] Merged parameters (from plan template):', merged)
     return merged
   }
 
   // When hasParameters is false (no parameters in plan template)
   // Return empty array to clear backend parameters
   // This ensures frontend parameter list (even if empty) replaces backend
-  console.log('[PublishModal] No parameters in plan template, clearing backend parameters')
+  logger.debug('[PublishModal] No parameters in plan template, clearing backend parameters')
   return []
 }
 
@@ -464,12 +465,12 @@ const validateForm = (): boolean => {
 
 // Handle publishing
 const handlePublish = async () => {
-  console.log('[PublishModal] Starting to handle publish request')
-  console.log('[PublishModal] Form data:', formData)
-  console.log('[PublishModal] Publish as HTTP service:', publishAsHttpService.value)
+  logger.debug('[PublishModal] Starting to handle publish request')
+  logger.debug('[PublishModal] Form data:', formData)
+  logger.debug('[PublishModal] Publish as HTTP service:', publishAsHttpService.value)
 
   if (!validateForm()) {
-    console.log('[PublishModal] Form validation failed')
+    logger.debug('[PublishModal] Form validation failed')
     return
   }
 
@@ -479,7 +480,7 @@ const handlePublish = async () => {
     // Preserve descriptions from backend toolConfig for matching parameters
     const mergedParameters = mergeParametersWithBackend()
 
-    console.log('[PublishModal] Merged parameters:', mergedParameters)
+    logger.debug('[PublishModal] Merged parameters:', mergedParameters)
 
     // Prepare inputSchema from merged parameters
     const inputSchema = mergedParameters
@@ -512,7 +513,7 @@ const handlePublish = async () => {
     if (publishAsHttpService.value) enabledServices.push('HTTP Service')
 
     if (enabledServices.length > 0) {
-      console.log(
+      logger.debug(
         '[PublishModal] Service published successfully. Enabled services:',
         enabledServices.join(', ')
       )
@@ -521,14 +522,14 @@ const handlePublish = async () => {
       await availableToolsStore.loadAvailableTools()
       emit('published', null)
     } else {
-      console.log('[PublishModal] Only saving tool, not publishing as any service')
+      logger.debug('[PublishModal] Only saving tool, not publishing as any service')
       showMessage(t('mcpService.saveSuccess'), 'success')
       // Refresh available tools list even when only saving (tool might have been updated)
       await availableToolsStore.loadAvailableTools()
       emit('published', null)
     }
   } catch (err: unknown) {
-    console.error('[PublishModal] Failed to publish service:', err)
+    logger.error('[PublishModal] Failed to publish service:', err)
     const message = err instanceof Error ? err.message : 'Unknown error'
     showMessage(t('mcpService.publishFailed') + ': ' + message, 'error')
   } finally {
@@ -556,7 +557,10 @@ const handleDelete = async () => {
 
   deleting.value = true
   try {
-    console.log('[PublishModal] Starting to delete tool config for planTemplateId:', planTemplateId)
+    logger.debug(
+      '[PublishModal] Starting to delete tool config for planTemplateId:',
+      planTemplateId
+    )
 
     // Remove toolConfig from store with guard to prevent watcher syncing
     planTemplateConfigStore.setToolConfigWithGuard(undefined)
@@ -570,7 +574,7 @@ const handleDelete = async () => {
 
     // selectedTemplate is automatically refreshed by planTemplateConfigStore.save()
 
-    console.log('[PublishModal] Deleted successfully')
+    logger.debug('[PublishModal] Deleted successfully')
     showMessage(t('mcpService.deleteSuccess'), 'success')
 
     // Close modal
@@ -579,7 +583,7 @@ const handleDelete = async () => {
     // Notify parent component of successful deletion
     emit('published', null)
   } catch (error: unknown) {
-    console.error('[PublishModal] Failed to delete tool config:', error)
+    logger.error('[PublishModal] Failed to delete tool config:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     showMessage(t('mcpService.deleteFailed') + ': ' + message, 'error')
   } finally {
@@ -590,7 +594,7 @@ const handleDelete = async () => {
 // Watch modal display state
 const watchModal = async () => {
   if (showModal.value) {
-    console.log('[PublishModal] Modal opened, starting to initialize data')
+    logger.debug('[PublishModal] Modal opened, starting to initialize data')
     initializeFormData()
     await loadParameterRequirements()
   }
@@ -646,7 +650,7 @@ watch(
 // Initialize when component mounts
 onMounted(async () => {
   if (showModal.value) {
-    console.log('[PublishModal] Initialize when component mounted')
+    logger.debug('[PublishModal] Initialize when component mounted')
     initializeFormData()
     await loadParameterRequirements()
   }

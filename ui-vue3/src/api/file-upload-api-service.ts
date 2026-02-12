@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
+
 /**
  * File information interface matching FileUploadResult.FileInfo from Java
  */
@@ -78,7 +80,7 @@ export class FileUploadApiService {
    */
   public static async uploadFiles(files: File[]): Promise<FileUploadResult> {
     try {
-      console.log('[FileUploadApiService] Uploading files:', files.length)
+      logger.debug('[FileUploadApiService] Uploading files:', files.length)
 
       const formData = new FormData()
       files.forEach(file => {
@@ -95,7 +97,7 @@ export class FileUploadApiService {
       }
 
       const result: FileUploadResult = await response.json()
-      console.log(
+      logger.debug(
         '[FileUploadApiService] Files uploaded successfully:',
         result.successfulFiles,
         'uploadKey:',
@@ -103,7 +105,7 @@ export class FileUploadApiService {
       )
       return result
     } catch (error) {
-      console.error('[FileUploadApiService] Error uploading files:', error)
+      logger.error('[FileUploadApiService] Error uploading files:', error)
       throw error
     }
   }
@@ -115,7 +117,7 @@ export class FileUploadApiService {
    */
   public static async getUploadedFiles(uploadKey: string): Promise<GetUploadedFilesResponse> {
     try {
-      console.log('[FileUploadApiService] Getting uploaded files for uploadKey:', uploadKey)
+      logger.debug('[FileUploadApiService] Getting uploaded files for uploadKey:', uploadKey)
 
       const response = await fetch(`/api/file-upload/files/${encodeURIComponent(uploadKey)}`)
 
@@ -124,7 +126,7 @@ export class FileUploadApiService {
       }
 
       const result: GetUploadedFilesResponse = await response.json()
-      console.log(
+      logger.debug(
         '[FileUploadApiService] Got uploaded files:',
         result.totalCount,
         'for uploadKey:',
@@ -132,7 +134,7 @@ export class FileUploadApiService {
       )
       return result
     } catch (error) {
-      console.error('[FileUploadApiService] Error getting uploaded files:', error)
+      logger.error('[FileUploadApiService] Error getting uploaded files:', error)
       throw error
     }
   }
@@ -145,7 +147,7 @@ export class FileUploadApiService {
    */
   public static async deleteFile(uploadKey: string, fileName: string): Promise<DeleteFileResponse> {
     try {
-      console.log('[FileUploadApiService] Deleting file:', fileName, 'from uploadKey:', uploadKey)
+      logger.debug('[FileUploadApiService] Deleting file:', fileName, 'from uploadKey:', uploadKey)
 
       const response = await fetch(
         `/api/file-upload/files/${encodeURIComponent(uploadKey)}/${encodeURIComponent(fileName)}`,
@@ -162,10 +164,10 @@ export class FileUploadApiService {
       }
 
       const result: DeleteFileResponse = await response.json()
-      console.log('[FileUploadApiService] File deleted successfully:', result.success)
+      logger.debug('[FileUploadApiService] File deleted successfully:', result.success)
       return result
     } catch (error) {
-      console.error('[FileUploadApiService] Error deleting file:', error)
+      logger.error('[FileUploadApiService] Error deleting file:', error)
       throw error
     }
   }
@@ -176,7 +178,7 @@ export class FileUploadApiService {
    */
   public static async getUploadConfig(): Promise<UploadConfig> {
     try {
-      console.log('[FileUploadApiService] Getting upload configuration')
+      logger.debug('[FileUploadApiService] Getting upload configuration')
 
       const response = await fetch('/api/file-upload/config')
 
@@ -185,10 +187,10 @@ export class FileUploadApiService {
       }
 
       const result: UploadConfig = await response.json()
-      console.log('[FileUploadApiService] Got upload configuration:', result)
+      logger.debug('[FileUploadApiService] Got upload configuration:', result)
       return result
     } catch (error) {
-      console.error('[FileUploadApiService] Error getting upload configuration:', error)
+      logger.error('[FileUploadApiService] Error getting upload configuration:', error)
       throw error
     }
   }

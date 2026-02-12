@@ -18,6 +18,7 @@ import { useConversationStore } from '@/stores/new/conversation'
 import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
 import type { InputMessage } from '@/types/message-dialog'
 import type { PlanExecutionRecordResponse } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { LlmCheckService } from '@/utils/llm-check'
 
 export class DirectApiService {
@@ -55,7 +56,7 @@ export class DirectApiService {
     abortSignal?: AbortSignal
   ): Promise<{ conversationId?: string; message?: string }> {
     return LlmCheckService.withLlmCheck(async () => {
-      console.log('[DirectApiService] sendChatMessage called with:', {
+      logger.debug('[DirectApiService] sendChatMessage called with:', {
         input: query.input,
         uploadedFiles: query.uploadedFiles,
         uploadKey: query.uploadKey,
@@ -71,7 +72,7 @@ export class DirectApiService {
       const conversationStore = useConversationStore()
       if (conversationStore.selectedConversationId) {
         requestBody.conversationId = conversationStore.selectedConversationId
-        console.log(
+        logger.debug(
           '[DirectApiService] Including conversationId from conversation store:',
           conversationStore.selectedConversationId
         )
@@ -80,17 +81,17 @@ export class DirectApiService {
       // Include uploaded files if present
       if (query.uploadedFiles && query.uploadedFiles.length > 0) {
         requestBody.uploadedFiles = query.uploadedFiles
-        console.log('[DirectApiService] Including uploaded files:', query.uploadedFiles.length)
+        logger.debug('[DirectApiService] Including uploaded files:', query.uploadedFiles.length)
       }
 
       // Include uploadKey if present
       if (query.uploadKey) {
         requestBody.uploadKey = query.uploadKey
-        console.log('[DirectApiService] Including uploadKey:', query.uploadKey)
+        logger.debug('[DirectApiService] Including uploadKey:', query.uploadKey)
       }
 
-      console.log('[DirectApiService] Making SSE request to:', `${this.BASE_URL}/chat`)
-      console.log('[DirectApiService] Request body:', requestBody)
+      logger.debug('[DirectApiService] Making SSE request to:', `${this.BASE_URL}/chat`)
+      logger.debug('[DirectApiService] Request body:', requestBody)
 
       const fetchOptions: RequestInit = {
         method: 'POST',
@@ -112,21 +113,21 @@ export class DirectApiService {
       } catch (fetchError) {
         // Handle abort errors gracefully
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.log('[DirectApiService] Fetch request was aborted')
+          logger.debug('[DirectApiService] Fetch request was aborted')
           throw fetchError
         }
         throw fetchError
       }
 
-      console.log('[DirectApiService] Response status:', response.status, response.ok)
-      console.log('[DirectApiService] Response headers:', {
+      logger.debug('[DirectApiService] Response status:', response.status, response.ok)
+      logger.debug('[DirectApiService] Response headers:', {
         contentType: response.headers.get('Content-Type'),
         transferEncoding: response.headers.get('Transfer-Encoding'),
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[DirectApiService] Request failed:', errorText)
+        logger.error('[DirectApiService] Request failed:', errorText)
         throw new Error(`Failed to send chat message: ${response.status}`)
       }
 
@@ -141,30 +142,30 @@ export class DirectApiService {
       let conversationId: string | undefined
       let accumulatedMessage = ''
 
-      console.log('[DirectApiService] Starting to read SSE stream...')
+      logger.debug('[DirectApiService] Starting to read SSE stream...')
 
       try {
         while (true) {
           // Check if aborted before reading
           if (abortSignal?.aborted) {
-            console.log('[DirectApiService] Stream aborted, stopping read')
+            logger.debug('[DirectApiService] Stream aborted, stopping read')
             reader.releaseLock()
             throw new DOMException('The operation was aborted.', 'AbortError')
           }
 
           const { done, value } = await reader.read()
-          console.log('[DirectApiService] Read chunk:', { done, valueLength: value?.length })
+          logger.debug('[DirectApiService] Read chunk:', { done, valueLength: value?.length })
           if (done) break
 
           // Check if aborted after reading
           if (abortSignal?.aborted) {
-            console.log('[DirectApiService] Stream aborted after read, stopping processing')
+            logger.debug('[DirectApiService] Stream aborted after read, stopping processing')
             reader.releaseLock()
             throw new DOMException('The operation was aborted.', 'AbortError')
           }
 
           buffer += decoder.decode(value, { stream: true })
-          console.log(
+          logger.debug(
             '[DirectApiService] Buffer length:',
             buffer.length,
             'content:',
@@ -172,7 +173,7 @@ export class DirectApiService {
           )
           const lines = buffer.split('\n\n')
           buffer = lines.pop() || '' // Keep incomplete line in buffer
-          console.log(
+          logger.debug(
             '[DirectApiService] Split into',
             lines.length,
             'lines, buffer remaining:',
@@ -180,11 +181,11 @@ export class DirectApiService {
           )
 
           for (const line of lines) {
-            console.log('[DirectApiService] Processing line:', line)
+            logger.debug('[DirectApiService] Processing line:', line)
             if (line.startsWith('data:')) {
               // Handle both 'data:' and 'data: ' formats
               const data = line.startsWith('data: ') ? line.slice(6) : line.slice(5)
-              console.log('[DirectApiService] Extracted data:', data)
+              logger.debug('[DirectApiService] Extracted data:', data)
               try {
                 const parsed = JSON.parse(data) as {
                   type: string
@@ -192,11 +193,11 @@ export class DirectApiService {
                   conversationId?: string
                   message?: string
                 }
-                console.log('[DirectApiService] Parsed SSE event:', parsed)
+                logger.debug('[DirectApiService] Parsed SSE event:', parsed)
 
                 if (parsed.type === 'start' && parsed.conversationId) {
                   conversationId = parsed.conversationId
-                  console.log(
+                  logger.debug(
                     '[DirectApiService] Got start event with conversationId:',
                     conversationId
                   )
@@ -205,7 +206,7 @@ export class DirectApiService {
                   }
                 } else if (parsed.type === 'chunk' && parsed.content) {
                   accumulatedMessage += parsed.content
-                  console.log(
+                  logger.debug(
                     '[DirectApiService] Got chunk, accumulated length:',
                     accumulatedMessage.length
                   )
@@ -213,12 +214,12 @@ export class DirectApiService {
                     onChunk({ type: 'chunk', content: parsed.content })
                   }
                 } else if (parsed.type === 'done') {
-                  console.log('[DirectApiService] Got done event')
+                  logger.debug('[DirectApiService] Got done event')
                   if (onChunk) {
                     onChunk({ type: 'done' })
                   }
                 } else if (parsed.type === 'error') {
-                  console.error('[DirectApiService] Got error event:', parsed.message)
+                  logger.error('[DirectApiService] Got error event:', parsed.message)
                   if (onChunk) {
                     onChunk({
                       type: 'error',
@@ -230,7 +231,7 @@ export class DirectApiService {
                   throw new Error(parsed.message || 'Streaming error occurred')
                 }
               } catch (parseError) {
-                console.error(
+                logger.error(
                   '[DirectApiService] Error parsing SSE data:',
                   parseError,
                   'Data:',
@@ -249,7 +250,7 @@ export class DirectApiService {
         result.conversationId = conversationId
       }
       result.message = accumulatedMessage || 'No response received'
-      console.log('[DirectApiService] sendChatMessage completed:', result)
+      logger.debug('[DirectApiService] sendChatMessage completed:', result)
       return result
     })
   }
@@ -264,7 +265,7 @@ export class DirectApiService {
     serviceGroup?: string
   ): Promise<unknown> {
     return LlmCheckService.withLlmCheck(async () => {
-      console.log('[DirectApiService] executeByToolName called with:', {
+      logger.debug('[DirectApiService] executeByToolName called with:', {
         toolName,
         replacementParams,
         uploadedFiles,
@@ -282,7 +283,7 @@ export class DirectApiService {
       const conversationStore = useConversationStore()
       if (conversationStore.selectedConversationId) {
         requestBody.conversationId = conversationStore.selectedConversationId
-        console.log(
+        logger.debug(
           '[DirectApiService] Including conversationId from conversation store:',
           conversationStore.selectedConversationId
         )
@@ -291,32 +292,32 @@ export class DirectApiService {
       // Include serviceGroup if provided
       if (serviceGroup) {
         requestBody.serviceGroup = serviceGroup
-        console.log('[DirectApiService] Including serviceGroup:', serviceGroup)
+        logger.debug('[DirectApiService] Including serviceGroup:', serviceGroup)
       }
 
       // Include replacement parameters if present
       if (replacementParams && Object.keys(replacementParams).length > 0) {
         requestBody.replacementParams = replacementParams
-        console.log('[DirectApiService] Including replacement params:', replacementParams)
+        logger.debug('[DirectApiService] Including replacement params:', replacementParams)
       }
 
       // Include uploaded files if present
       if (uploadedFiles && uploadedFiles.length > 0) {
         requestBody.uploadedFiles = uploadedFiles
-        console.log('[DirectApiService] Including uploaded files:', uploadedFiles.length)
+        logger.debug('[DirectApiService] Including uploaded files:', uploadedFiles.length)
       }
 
       // Include uploadKey if present
       if (uploadKey) {
         requestBody.uploadKey = uploadKey
-        console.log('[DirectApiService] Including uploadKey:', uploadKey)
+        logger.debug('[DirectApiService] Including uploadKey:', uploadKey)
       }
 
-      console.log(
+      logger.debug(
         '[DirectApiService] Making request to:',
         `${this.BASE_URL}/executeByToolNameAsync`
       )
-      console.log('[DirectApiService] Request body:', requestBody)
+      logger.debug('[DirectApiService] Request body:', requestBody)
 
       const response = await fetch(`${this.BASE_URL}/executeByToolNameAsync`, {
         method: 'POST',
@@ -324,16 +325,16 @@ export class DirectApiService {
         body: JSON.stringify(requestBody),
       })
 
-      console.log('[DirectApiService] Response status:', response.status, response.ok)
+      logger.debug('[DirectApiService] Response status:', response.status, response.ok)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[DirectApiService] Request failed:', errorText)
+        logger.error('[DirectApiService] Request failed:', errorText)
         throw new Error(`Failed to execute: ${response.status}`)
       }
 
       const result = await response.json()
-      console.log('[DirectApiService] executeByToolName response:', result)
+      logger.debug('[DirectApiService] executeByToolName response:', result)
       return result
     })
   }
@@ -350,7 +351,7 @@ export class DirectApiService {
     taskResult?: string
   }> {
     return LlmCheckService.withLlmCheck(async () => {
-      console.log('[DirectApiService] Getting task status for planId:', planId)
+      logger.debug('[DirectApiService] Getting task status for planId:', planId)
 
       const response = await fetch(`${this.BASE_URL}/taskStatus/${planId}`, {
         method: 'GET',
@@ -369,7 +370,7 @@ export class DirectApiService {
   // Stop a running task by plan ID
   public static async stopTask(planId: string): Promise<unknown> {
     return LlmCheckService.withLlmCheck(async () => {
-      console.log('[DirectApiService] Stopping task for planId:', planId)
+      logger.debug('[DirectApiService] Stopping task for planId:', planId)
 
       const response = await fetch(`${this.BASE_URL}/stopTask/${planId}`, {
         method: 'POST',
@@ -391,7 +392,7 @@ export class DirectApiService {
     streamId: string
   ): Promise<{ status: string; message: string }> {
     return LlmCheckService.withLlmCheck(async () => {
-      console.log('[DirectApiService] Cancelling chat stream:', { conversationId, streamId })
+      logger.debug('[DirectApiService] Cancelling chat stream:', { conversationId, streamId })
 
       const response = await fetch(`${this.BASE_URL}/chat/${conversationId}/${streamId}/cancel`, {
         method: 'POST',
@@ -425,7 +426,7 @@ export class DirectApiService {
       }
       return data
     } catch (error: unknown) {
-      console.error('[DirectApiService] Failed to get plan details:', error)
+      logger.error('[DirectApiService] Failed to get plan details:', error)
       return null
     }
   }
@@ -440,7 +441,7 @@ export class DirectApiService {
       }
       return await response.json()
     } catch (error: unknown) {
-      console.error('[DirectApiService] Failed to delete execution details:', error)
+      logger.error('[DirectApiService] Failed to delete execution details:', error)
       throw error
     }
   }
@@ -493,7 +494,7 @@ export class DirectApiService {
       const response = await fetch(`${this.BASE_URL}/agent-execution/${stepId}`)
       if (!response.ok) {
         if (response.status === 404) {
-          console.warn(`[DirectApiService] Agent execution detail not found for stepId: ${stepId}`)
+          logger.warn(`[DirectApiService] Agent execution detail not found for stepId: ${stepId}`)
           return null
         }
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -501,7 +502,7 @@ export class DirectApiService {
       const data = await response.json()
       return data as AgentExecutionRecordDetail
     } catch (error) {
-      console.error(
+      logger.error(
         `[DirectApiService] Error fetching agent execution detail for stepId: ${stepId}:`,
         error
       )

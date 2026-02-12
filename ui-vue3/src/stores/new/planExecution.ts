@@ -17,6 +17,7 @@
 import { DirectApiService } from '@/api/lynxe-service'
 import { useTaskStore } from '@/stores/new/task'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
 
@@ -40,14 +41,14 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
 
   function setCachedPlanRecord(planId: string, record: PlanExecutionRecord): void {
     if (!planId) {
-      console.warn('[PlanExecutionStore] Cannot cache plan record with empty planId')
+      logger.warn('[PlanExecutionStore] Cannot cache plan record with empty planId')
       return
     }
     recordsByPlanId.value = {
       ...recordsByPlanId.value,
       [planId]: record,
     }
-    console.log('[PlanExecutionStore] Cached plan record:', planId)
+    logger.debug('[PlanExecutionStore] Cached plan record:', planId)
   }
 
   function getTrackedPlanIds(): string[] {
@@ -70,18 +71,18 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
         const retryCount = planRetryAttempts.get(planId) || 0
         if (retryCount < MAX_RETRY_ATTEMPTS) {
           planRetryAttempts.set(planId, retryCount + 1)
-          console.log(
+          logger.debug(
             `[PlanExecutionStore] Plan ${planId} not found yet, retrying (${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`
           )
           setTimeout(() => {
             if (trackedPlanIds.value.has(planId)) {
               pollPlanStatus(planId).catch(error => {
-                console.error(`[PlanExecutionStore] Retry poll failed for ${planId}:`, error)
+                logger.error(`[PlanExecutionStore] Retry poll failed for ${planId}:`, error)
               })
             }
           }, POLL_INTERVAL)
         } else {
-          console.warn(
+          logger.warn(
             `[PlanExecutionStore] Plan ${planId} not found after ${MAX_RETRY_ATTEMPTS} attempts, giving up`
           )
           untrackPlan(planId)
@@ -94,10 +95,7 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
 
       const recordKey = details.rootPlanId || details.currentPlanId
       if (!recordKey) {
-        console.warn(
-          '[PlanExecutionStore] Plan record has no rootPlanId or currentPlanId:',
-          details
-        )
+        logger.warn('[PlanExecutionStore] Plan record has no rootPlanId or currentPlanId:', details)
         return
       }
 
@@ -110,30 +108,30 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
           ...recordsByPlanId.value,
           [planId]: details,
         }
-        console.log('[PlanExecutionStore] Stored record with both keys:', { planId, recordKey })
+        logger.debug('[PlanExecutionStore] Stored record with both keys:', { planId, recordKey })
       }
 
       if (details.completed) {
-        console.log(`[PlanExecutionStore] Plan ${recordKey} completed, checking for summary...`)
+        logger.debug(`[PlanExecutionStore] Plan ${recordKey} completed, checking for summary...`)
         const hasSummary = details.summary || details.result || details.message
         const currentPollCount = completedPlansPollCount.get(recordKey) || 0
 
         if (!hasSummary && currentPollCount < POST_COMPLETION_POLL_COUNT) {
           completedPlansPollCount.set(recordKey, currentPollCount + 1)
-          console.log(
+          logger.debug(
             `[PlanExecutionStore] Plan ${recordKey} completed but no summary yet, continuing to poll (${currentPollCount + 1}/${POST_COMPLETION_POLL_COUNT})`
           )
         } else {
-          console.log(`[PlanExecutionStore] Plan ${recordKey} completed, cleaning up...`, {
+          logger.debug(`[PlanExecutionStore] Plan ${recordKey} completed, cleaning up...`, {
             hasSummary: !!hasSummary,
             pollCount: currentPollCount,
           })
           try {
             await DirectApiService.deleteExecutionDetails(recordKey)
-            console.log(`[PlanExecutionStore] Deleted execution details for plan: ${recordKey}`)
+            logger.debug(`[PlanExecutionStore] Deleted execution details for plan: ${recordKey}`)
           } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown error'
-            console.error(`[PlanExecutionStore] Failed to delete execution details: ${message}`)
+            logger.error(`[PlanExecutionStore] Failed to delete execution details: ${message}`)
           }
           untrackPlan(planId)
           completedPlansPollCount.delete(recordKey)
@@ -153,22 +151,22 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
         details.message &&
         !details.message.includes('Failed to get detailed information')
       ) {
-        console.error(`[PlanExecutionStore] Plan ${recordKey} failed:`, details.message)
+        logger.error(`[PlanExecutionStore] Plan ${recordKey} failed:`, details.message)
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.error(`[PlanExecutionStore] Failed to poll plan status for ${planId}:`, errorMessage)
+      logger.error(`[PlanExecutionStore] Failed to poll plan status for ${planId}:`, errorMessage)
       const retryCount = planRetryAttempts.get(planId) || 0
       if (retryCount < MAX_RETRY_ATTEMPTS) {
         planRetryAttempts.set(planId, retryCount + 1)
-        console.log(
+        logger.debug(
           `[PlanExecutionStore] Network error for ${planId}, retrying (${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`
         )
         setTimeout(
           () => {
             if (trackedPlanIds.value.has(planId)) {
               pollPlanStatus(planId).catch(err => {
-                console.error(`[PlanExecutionStore] Retry poll failed for ${planId}:`, err)
+                logger.error(`[PlanExecutionStore] Retry poll failed for ${planId}:`, err)
               })
             }
           },
@@ -180,7 +178,7 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
 
   async function pollAllTrackedPlans(): Promise<void> {
     if (isPolling.value) {
-      console.log('[PlanExecutionStore] Previous polling still in progress, skipping')
+      logger.debug('[PlanExecutionStore] Previous polling still in progress, skipping')
       return
     }
     const plansToPoll = new Set(trackedPlanIds.value)
@@ -194,7 +192,7 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
       const pollPromises = Array.from(plansToPoll).map(planId => pollPlanStatus(planId))
       await Promise.all(pollPromises)
     } catch (error: unknown) {
-      console.error('[PlanExecutionStore] Failed to poll tracked plans:', error)
+      logger.error('[PlanExecutionStore] Failed to poll tracked plans:', error)
     } finally {
       isPolling.value = false
     }
@@ -207,12 +205,12 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
     pollTimer.value = window.setInterval(() => {
       pollAllTrackedPlans()
     }, POLL_INTERVAL)
-    console.log('[PlanExecutionStore] Started adaptive polling')
+    logger.debug('[PlanExecutionStore] Started adaptive polling')
   }
 
   function stopPolling(): void {
     if (completedPlansPollCount.size > 0) {
-      console.log(
+      logger.debug(
         `[PlanExecutionStore] Not stopping polling - ${completedPlansPollCount.size} completed plans still waiting for summary`
       )
       return
@@ -221,24 +219,24 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
       clearInterval(pollTimer.value)
       pollTimer.value = null
     }
-    console.log('[PlanExecutionStore] Stopped polling')
+    logger.debug('[PlanExecutionStore] Stopped polling')
   }
 
   function trackPlan(planId: string): void {
     if (!planId) {
-      console.warn('[PlanExecutionStore] Cannot track empty planId')
+      logger.warn('[PlanExecutionStore] Cannot track empty planId')
       return
     }
     trackedPlanIds.value.add(planId)
     planPollAttempts.set(planId, 0)
     planRetryAttempts.set(planId, 0)
-    console.log('[PlanExecutionStore] Tracking plan:', planId)
+    logger.debug('[PlanExecutionStore] Tracking plan:', planId)
 
     if (!pollTimer.value) {
       startPolling()
     }
     pollPlanStatus(planId).catch(error => {
-      console.error(`[PlanExecutionStore] Initial poll failed for ${planId}:`, error)
+      logger.error(`[PlanExecutionStore] Initial poll failed for ${planId}:`, error)
     })
   }
 
@@ -246,7 +244,7 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
     trackedPlanIds.value.delete(planId)
     planPollAttempts.delete(planId)
     planRetryAttempts.delete(planId)
-    console.log('[PlanExecutionStore] Untracking plan:', planId)
+    logger.debug('[PlanExecutionStore] Untracking plan:', planId)
 
     if (trackedPlanIds.value.size === 0 && completedPlansPollCount.size === 0) {
       stopPolling()
@@ -254,14 +252,14 @@ export const usePlanExecutionStore = defineStore('planExecution', () => {
   }
 
   async function pollPlanStatusImmediately(planId: string): Promise<void> {
-    console.log(`[PlanExecutionStore] Polling plan status immediately for: ${planId}`)
+    logger.debug(`[PlanExecutionStore] Polling plan status immediately for: ${planId}`)
     await pollPlanStatus(planId)
   }
 
   function handlePlanExecutionRequested(planId: string): void {
-    console.log('[PlanExecutionStore] Received plan execution request:', { planId })
+    logger.debug('[PlanExecutionStore] Received plan execution request:', { planId })
     if (!planId) {
-      console.error('[PlanExecutionStore] Invalid plan execution request: missing planId')
+      logger.error('[PlanExecutionStore] Invalid plan execution request: missing planId')
       return
     }
     const taskStore = useTaskStore()

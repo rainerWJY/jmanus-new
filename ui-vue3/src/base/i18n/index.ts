@@ -18,6 +18,7 @@ import {
   getLanguage as getLanguageFromBackend,
   setLanguage as setLanguageInBackend,
 } from '@/api/language'
+import { logger } from '@/utils/logger'
 import { reactive } from 'vue'
 import { createI18n } from 'vue-i18n'
 import en from './en'
@@ -57,9 +58,9 @@ export const changeLanguage = async (locale: string) => {
   try {
     // Save to backend
     await setLanguageInBackend(locale as 'zh' | 'en')
-    console.log(`Successfully saved language to backend: ${locale}`)
+    logger.debug(`Successfully saved language to backend: ${locale}`)
   } catch (error) {
-    console.warn('Failed to save language to backend, continuing with localStorage only:', error)
+    logger.warn('Failed to save language to backend, continuing with localStorage only:', error)
     // Continue even if backend save fails for backward compatibility
   }
 
@@ -70,7 +71,7 @@ export const changeLanguage = async (locale: string) => {
   i18n.global.locale.value = locale as 'zh' | 'en'
   localeConfig.locale = locale
 
-  console.log(`Successfully switched frontend language to: ${locale}`)
+  logger.debug(`Successfully switched frontend language to: ${locale}`)
 }
 
 /**
@@ -91,10 +92,10 @@ export const changeLanguageWithAgentReset = async (locale: string) => {
     })
 
     if (promptResponse.ok) {
-      console.log(`Successfully reset prompts to language: ${locale}`)
+      logger.debug(`Successfully reset prompts to language: ${locale}`)
     } else {
       const promptError = await promptResponse.text()
-      console.error(`Failed to reset prompts to language: ${locale}`, promptError)
+      logger.error(`Failed to reset prompts to language: ${locale}`, promptError)
       // Continue with agent initialization even if prompt reset fails
     }
 
@@ -109,14 +110,14 @@ export const changeLanguageWithAgentReset = async (locale: string) => {
 
     if (agentResponse.ok) {
       const result = await agentResponse.json()
-      console.log(`Successfully initialized agents with language: ${locale}`, result)
+      logger.debug(`Successfully initialized agents with language: ${locale}`, result)
     } else {
       const error = await agentResponse.json()
-      console.error(`Failed to initialize agents with language: ${locale}`, error)
+      logger.error(`Failed to initialize agents with language: ${locale}`, error)
       throw new Error(error.error || 'Failed to initialize agents')
     }
   } catch (error) {
-    console.error('Error initializing agents and prompts during language change:', error)
+    logger.error('Error initializing agents and prompts during language change:', error)
     throw error
   }
 }
@@ -129,29 +130,29 @@ export const initializeLanguage = async () => {
   try {
     // Try to get language from backend
     const backendLanguage = await getLanguageFromBackend()
-    console.log(`Fetched language from backend: ${backendLanguage}`)
+    logger.debug(`Fetched language from backend: ${backendLanguage}`)
 
     // Update Vue i18n and localStorage
     i18n.global.locale.value = backendLanguage
     localeConfig.locale = backendLanguage
     localStorage.setItem(LOCAL_STORAGE_LOCALE, backendLanguage)
 
-    console.log(`Initialized language from backend: ${backendLanguage}`)
+    logger.debug(`Initialized language from backend: ${backendLanguage}`)
     return backendLanguage
   } catch (error) {
-    console.warn('Failed to fetch language from backend, trying localStorage:', error)
+    logger.warn('Failed to fetch language from backend, trying localStorage:', error)
 
     // Fallback to localStorage
     const storedLanguage = localStorage.getItem(LOCAL_STORAGE_LOCALE)
     if (storedLanguage && (storedLanguage === 'zh' || storedLanguage === 'en')) {
-      console.log(`Using language from localStorage: ${storedLanguage}`)
+      logger.debug(`Using language from localStorage: ${storedLanguage}`)
       i18n.global.locale.value = storedLanguage as 'zh' | 'en'
       localeConfig.locale = storedLanguage
       return storedLanguage as 'zh' | 'en'
     }
 
     // Final fallback to default "zh"
-    console.log('No language found, using default: zh')
+    logger.debug('No language found, using default: zh')
     i18n.global.locale.value = 'zh'
     localeConfig.locale = 'zh'
     localStorage.setItem(LOCAL_STORAGE_LOCALE, 'zh')

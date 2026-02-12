@@ -18,6 +18,8 @@ import { useAppStore } from '@/stores/new/app'
 import { routes } from '@/router/defaultRoutes'
 import { createRouter, createWebHashHistory } from 'vue-router'
 
+import { logger } from '@/utils/logger'
+
 const options = {
   history: createWebHashHistory('/ui'),
   routes,
@@ -46,7 +48,7 @@ router.beforeEach(async (to, _from, next) => {
       localStorage.setItem('hasInitialized', 'true')
     }
   } catch (error) {
-    console.warn('Failed to check initialization status:', error)
+    logger.warn('Failed to check initialization status:', error)
     const hasInitialized = localStorage.getItem('hasInitialized') === 'true'
     if (!hasInitialized) {
       next('/init')

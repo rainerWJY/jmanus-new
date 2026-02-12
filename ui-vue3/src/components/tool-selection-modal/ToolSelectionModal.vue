@@ -127,6 +127,7 @@
 import { storeToRefs } from 'pinia'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import type { Tool } from '@/types/tool'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import Modal from '../modal/index.vue'
@@ -308,7 +309,7 @@ const toggleToolSelection = (toolKey: string, event: Event) => {
 
   // Prevent undefined toolKey
   if (!toolKey) {
-    console.error('toolKey is undefined, cannot proceed')
+    logger.error('toolKey is undefined, cannot proceed')
     return
   }
 

@@ -295,6 +295,7 @@ import { useMcpConfigForm } from '@/composables/useMcpConfigForm'
 import { useToast } from '@/composables/useToast'
 import { useRequest } from '@/composables/useRequest'
 import type { McpServerSaveRequest, JsonValidationResult } from '@/types/mcp'
+import { logger } from '@/utils/logger'
 
 // Extend McpServer interface to include UI fields
 interface ExtendedMcpServer extends McpServer {
@@ -433,7 +434,7 @@ const handleAddServerFromJson = async (serverData: Record<string, unknown>) => {
       showToast(result.message, 'error')
     }
   } catch (error) {
-    console.error('Failed to add MCP server:', error)
+    logger.error('Failed to add MCP server:', error)
     showToast(t('config.mcpConfig.addFailed'), 'error')
   } finally {
     loading.value = false
@@ -459,7 +460,7 @@ const handleDeleteServer = async () => {
       showToast(result.message || t('config.mcpConfig.deleteFailed'), 'error')
     }
   } catch (error) {
-    console.error('Failed to delete MCP server:', error)
+    logger.error('Failed to delete MCP server:', error)
     showToast(t('config.mcpConfig.deleteFailed'), 'error')
   } finally {
     loading.value = false
@@ -558,7 +559,7 @@ const handleSave = async () => {
       showToast(result.message || t('config.mcpConfig.operationFailed'), 'error')
     }
   } catch (error) {
-    console.error('Save failed:', error)
+    logger.error('Save failed:', error)
     showToast(t('config.mcpConfig.saveFailed'), 'error')
   }
 }
@@ -755,7 +756,7 @@ const normalizeMcpConfig = (config: Record<string, unknown>): Record<string, unk
         delete normalizedServer.baseUrl
       } else if (!hasUrl && !hasBaseUrl) {
         // If neither url nor baseUrl exists, keep as is (let validation function handle error)
-        console.warn(t('config.mcpConfig.serverConfigWarning', { serverId }))
+        logger.warn(t('config.mcpConfig.serverConfigWarning', { serverId }))
       }
     }
 
@@ -799,7 +800,7 @@ const loadMcpServers = async () => {
       selectServer(servers.value[0])
     }
   } catch (error) {
-    console.error('Failed to load MCP server list:', error)
+    logger.error('Failed to load MCP server list:', error)
     showToast(t('config.basicConfig.loadConfigFailed'), 'error')
   } finally {
     loading.value = false
@@ -839,7 +840,7 @@ const toggleServerStatus = async (server: McpServer) => {
       showToast(result.message || t('config.mcpConfig.statusToggleFailed'), 'error')
     }
   } catch (error) {
-    console.error('Status toggle failed:', error)
+    logger.error('Status toggle failed:', error)
     showToast(t('config.mcpConfig.statusToggleFailed'), 'error')
   } finally {
     loading.value = false
@@ -920,7 +921,7 @@ const exportAllConfigs = async () => {
         const config = JSON.parse(server.connectionConfig)
         exportData.mcpServers[server.mcpServerName] = config
       } catch (error) {
-        console.error(`Failed to parse server configuration: ${server.mcpServerName}`, error)
+        logger.error(`Failed to parse server configuration: ${server.mcpServerName}`, error)
       }
     })
 
@@ -937,7 +938,7 @@ const exportAllConfigs = async () => {
 
     showToast(t('config.mcpConfig.exportSuccess'))
   } catch (error) {
-    console.error('Failed to export MCP servers:', error)
+    logger.error('Failed to export MCP servers:', error)
     showToast(t('config.mcpConfig.exportFailed'), 'error')
   } finally {
     loading.value = false

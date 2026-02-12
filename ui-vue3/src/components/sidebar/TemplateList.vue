@@ -214,6 +214,7 @@ import { useToast } from '@/plugins/useToast'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore, type TemplateStoreType } from '@/stores/new/templateStore'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, onUnmounted, ref, watch } from 'vue'
@@ -254,7 +255,7 @@ const handleOrganizationChange = (event: Event) => {
 const getRelativeTimeString = (date: Date): string => {
   // Check if date is valid
   if (isNaN(date.getTime())) {
-    console.warn('Invalid date received:', date)
+    logger.warn('Invalid date received:', date)
     return t('time.unknown')
   }
 
@@ -404,7 +405,7 @@ const handleDeleteTemplate = async () => {
     templateToDelete.value = null
     // Success toast removed - deletion is confirmed by modal closing and template disappearing from list
   } catch (error) {
-    console.error('Failed to delete template:', error)
+    logger.error('Failed to delete template:', error)
     toast.error(
       t('sidebar.deleteFailed') ||
         `Delete failed: ${error instanceof Error ? error.message : String(error)}`

@@ -104,6 +104,7 @@
 
 <script setup lang="ts">
 import type { UserInputWaitState } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import UserInputForm from './UserInputForm.vue'
 import { useMessageFormatting } from './composables/useMessageFormatting'
@@ -143,7 +144,7 @@ const copyToClipboard = async () => {
     await navigator.clipboard.writeText(plainText)
     emit('copy')
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+    logger.error('Failed to copy to clipboard:', error)
   }
 }
 
@@ -154,7 +155,7 @@ const copyPartToClipboard = async (part: string) => {
     await navigator.clipboard.writeText(plainText)
     emit('copy')
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+    logger.error('Failed to copy to clipboard:', error)
   }
 }
 
@@ -163,7 +164,7 @@ const handleRetry = () => {
 }
 
 const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
-  console.log('[ResponseSection] User input submitted:', inputData)
+  logger.debug('[ResponseSection] User input submitted:', inputData)
   emit('user-input-submitted', inputData)
 }
 </script>

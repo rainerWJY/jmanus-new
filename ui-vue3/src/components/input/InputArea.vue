@@ -90,6 +90,7 @@ import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { useTaskStore } from '@/stores/new/task'
 import type { InputMessage } from '@/types/message-dialog'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
@@ -170,7 +171,7 @@ const isMac = computed(() => {
 const loadInnerTools = async () => {
   isLoadingTools.value = true
   try {
-    console.log('[InputArea] Loading inner tools from planTemplateList...')
+    logger.debug('[InputArea] Loading inner tools from planTemplateList...')
     const allTools = planTemplateConfigStore.getAllCoordinatorToolsFromTemplates()
 
     // Filter tools: enableInternalToolcall=true and exactly one parameter
@@ -209,12 +210,12 @@ const loadInnerTools = async () => {
           filteredTools.push(toolOption)
         }
       } catch (e) {
-        console.warn('[InputArea] Failed to parse inputSchema for tool:', tool.toolName, e)
+        logger.warn('[InputArea] Failed to parse inputSchema for tool:', tool.toolName, e)
       }
     }
 
     innerToolOptions.value = filteredTools
-    console.log('[InputArea] Loaded', filteredTools.length, 'inner tools with single parameter')
+    logger.debug('[InputArea] Loaded', filteredTools.length, 'inner tools with single parameter')
 
     // Restore selected tool from localStorage and validate it still exists
     const savedTool = localStorage.getItem('inputAreaSelectedTool')
@@ -227,13 +228,13 @@ const loadInnerTools = async () => {
           isRestoringSelection.value = true
           try {
             selectedOption.value = savedTool
-            console.log('[InputArea] Restored selected tool from localStorage:', savedTool)
+            logger.debug('[InputArea] Restored selected tool from localStorage:', savedTool)
           } finally {
             // Reset flag after restoration completes
             isRestoringSelection.value = false
           }
         } else {
-          console.log('[InputArea] Saved tool no longer available, resetting to chat mode')
+          logger.debug('[InputArea] Saved tool no longer available, resetting to chat mode')
           localStorage.removeItem('inputAreaSelectedTool')
           // Only reset if current selection matches the saved one (avoid clearing user's new selection)
           if (selectedOption.value === savedTool) {
@@ -247,7 +248,7 @@ const loadInnerTools = async () => {
           isRestoringSelection.value = true
           try {
             selectedOption.value = savedTool
-            console.log(
+            logger.debug(
               '[InputArea] Restored selected tool from localStorage (tools not loaded yet):',
               savedTool
             )
@@ -258,7 +259,7 @@ const loadInnerTools = async () => {
       }
     }
   } catch (error) {
-    console.error('[InputArea] Failed to load inner tools:', error)
+    logger.error('[InputArea] Failed to load inner tools:', error)
     innerToolOptions.value = []
   } finally {
     isLoadingTools.value = false
@@ -292,7 +293,7 @@ const loadHistory = () => {
       inputHistory.value = JSON.parse(stored)
     }
   } catch (error) {
-    console.error('[InputArea] Failed to load history:', error)
+    logger.error('[InputArea] Failed to load history:', error)
     inputHistory.value = []
   }
 }
@@ -301,7 +302,7 @@ const saveHistory = () => {
   try {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(inputHistory.value))
   } catch (error) {
-    console.error('[InputArea] Failed to save history:', error)
+    logger.error('[InputArea] Failed to save history:', error)
   }
 }
 
@@ -362,7 +363,7 @@ watch(
   planTemplateList,
   () => {
     // Reload tools when planTemplateList changes
-    console.log('[InputArea] planTemplateList changed, reloading inner tools')
+    logger.debug('[InputArea] planTemplateList changed, reloading inner tools')
     loadInnerTools()
   },
   { deep: true }
@@ -381,7 +382,7 @@ onMounted(() => {
     () => taskStore.taskToInput,
     newTaskToInput => {
       if (newTaskToInput?.trim()) {
-        console.log('[InputArea] taskToInput changed, setting input value:', newTaskToInput)
+        logger.debug('[InputArea] taskToInput changed, setting input value:', newTaskToInput)
         nextTick(() => {
           setInputValue(newTaskToInput.trim())
           taskStore.getAndClearTaskToInput()
@@ -394,7 +395,7 @@ onMounted(() => {
 
 // Function to reset session when starting a new conversation session
 const resetSession = () => {
-  console.log('[FileUpload] Resetting session and clearing uploadKey')
+  logger.debug('[FileUpload] Resetting session and clearing uploadKey')
   fileUploadRef.value?.resetSession()
 }
 
@@ -404,19 +405,19 @@ onUnmounted(() => {
 })
 // File upload event handlers - now just update placeholder based on shared state
 const handleFilesUploaded = (files: FileInfo[], key: string | null) => {
-  console.log('[InputArea] Files uploaded event received:', files.length, 'uploadKey:', key)
+  logger.debug('[InputArea] Files uploaded event received:', files.length, 'uploadKey:', key)
   // State is already updated in shared composable, just update placeholder
   updateFileUploadPlaceholder()
 }
 
 const handleFilesRemoved = (files: FileInfo[]) => {
-  console.log('[InputArea] Files removed event received, remaining:', files.length)
+  logger.debug('[InputArea] Files removed event received, remaining:', files.length)
   // State is already updated in shared composable, just update placeholder
   updateFileUploadPlaceholder()
 }
 
 const handleUploadKeyChanged = (key: string | null) => {
-  console.log('[InputArea] Upload key changed:', key)
+  logger.debug('[InputArea] Upload key changed:', key)
   // State is already updated in shared composable
 }
 
@@ -443,15 +444,15 @@ watch(
 )
 
 const handleUploadStarted = () => {
-  console.log('[InputArea] Upload started')
+  logger.debug('[InputArea] Upload started')
 }
 
 const handleUploadCompleted = () => {
-  console.log('[InputArea] Upload completed')
+  logger.debug('[InputArea] Upload completed')
 }
 
 const handleUploadError = (error: unknown) => {
-  console.error('[InputArea] Upload error:', error)
+  logger.error('[InputArea] Upload error:', error)
 }
 
 // Computed property for disabled state - use messageDialog isRunning
@@ -562,9 +563,9 @@ const handleSend = async () => {
   const currentUploadKey = fileUpload.uploadKey.value
   if (currentUploadKey) {
     query.uploadKey = currentUploadKey
-    console.log('[InputArea] Including uploadKey in message:', currentUploadKey)
+    logger.debug('[InputArea] Including uploadKey in message:', currentUploadKey)
   } else {
-    console.log('[InputArea] No uploadKey available for message')
+    logger.debug('[InputArea] No uploadKey available for message')
   }
 
   // Check if a tool is selected (not chat mode)
@@ -607,7 +608,7 @@ const handleSend = async () => {
       extendedQuery.replacementParams = {
         [selectedTool.paramName]: finalInput,
       }
-      console.log(
+      logger.debug(
         '[InputArea] Sending message with tool:',
         selectedTool.toolName,
         'serviceGroup:',
@@ -631,17 +632,17 @@ const handleSend = async () => {
     await messageDialog.sendMessage(query)
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('[InputArea] Send message failed:', errorMessage)
+    logger.error('[InputArea] Send message failed:', errorMessage)
   }
 }
 
 const handleStop = async () => {
-  console.log('[InputArea] Stop button clicked')
+  logger.debug('[InputArea] Stop button clicked')
   const success = await stopTask()
   if (success) {
-    console.log('[InputArea] Task stopped successfully')
+    logger.debug('[InputArea] Task stopped successfully')
   } else {
-    console.error('[InputArea] Failed to stop task')
+    logger.error('[InputArea] Failed to stop task')
   }
 }
 

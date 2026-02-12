@@ -147,6 +147,7 @@
 import { PlanTemplateApiService } from '@/api/plan-template-service'
 import type { CronConfig } from '@/types/cron-task'
 import type { PlanTemplate } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { CronTaskUtils } from '@/utils/cron-task-utils'
 import { Icon } from '@iconify/vue'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -189,7 +190,7 @@ const fetchTemplates = async () => {
       }))
     }
   } catch (error) {
-    console.error('Failed to get template list:', error)
+    logger.error('Failed to get template list:', error)
   }
 }
 

@@ -20,6 +20,7 @@ import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useToast } from '@/composables/useToast'
 import { useConversationStore } from '@/stores/new/conversation'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -74,7 +75,7 @@ export function useConversationHistory() {
    */
   const parseBackendDate = (dateValue: string | number[] | number | null | undefined): Date => {
     if (!dateValue) {
-      console.warn('[useConversationHistory] Date value is null/undefined, using current time')
+      logger.warn('[useConversationHistory] Date value is null/undefined, using current time')
       return new Date()
     }
 
@@ -94,7 +95,7 @@ export function useConversationHistory() {
         if (!isNaN(date.getTime())) {
           return date
         }
-        console.warn('[useConversationHistory] Failed to parse date array:', dateValue)
+        logger.warn('[useConversationHistory] Failed to parse date array:', dateValue)
         return new Date()
       }
 
@@ -137,7 +138,7 @@ export function useConversationHistory() {
           }
         }
 
-        console.warn('[useConversationHistory] Failed to parse date string:', dateValue)
+        logger.warn('[useConversationHistory] Failed to parse date string:', dateValue)
         return new Date()
       }
 
@@ -149,15 +150,15 @@ export function useConversationHistory() {
         if (!isNaN(date.getTime())) {
           return date
         }
-        console.warn('[useConversationHistory] Failed to parse date number:', dateValue)
+        logger.warn('[useConversationHistory] Failed to parse date number:', dateValue)
         return new Date()
       }
 
       // Unknown format
-      console.warn('[useConversationHistory] Unknown date format:', dateValue, typeof dateValue)
+      logger.warn('[useConversationHistory] Unknown date format:', dateValue, typeof dateValue)
       return new Date()
     } catch (error) {
-      console.warn('[useConversationHistory] Error parsing date:', dateValue, error)
+      logger.warn('[useConversationHistory] Error parsing date:', dateValue, error)
       return new Date()
     }
   }
@@ -170,7 +171,7 @@ export function useConversationHistory() {
     if (!record) return
 
     // Debug: Log the actual date values before parsing
-    console.log('[useConversationHistory] Processing record:', {
+    logger.debug('[useConversationHistory] Processing record:', {
       userRequest: record.userRequest,
       startTime: record.startTime,
       startTimeType: typeof record.startTime,
@@ -197,7 +198,7 @@ export function useConversationHistory() {
         if (record.rootPlanId) {
           ;(dialog as { planId?: string }).planId = record.rootPlanId
         }
-        console.log(
+        logger.debug(
           '[useConversationHistory] Set conversationId on history dialog:',
           historyDialog.id,
           conversationId
@@ -208,7 +209,7 @@ export function useConversationHistory() {
     // Add user message (the original query) to the new dialog
     if (record.userRequest && record.startTime) {
       const parsedDate = parseBackendDate(record.startTime)
-      console.log('[useConversationHistory] Parsed date:', {
+      logger.debug('[useConversationHistory] Parsed date:', {
         original: record.startTime,
         parsed: parsedDate,
         parsedISO: parsedDate.toISOString(),
@@ -271,7 +272,7 @@ export function useConversationHistory() {
     showErrorToast: boolean = true
   ): Promise<void> => {
     if (!conversationId) {
-      console.warn('[useConversationHistory] Cannot load history: conversationId is empty')
+      logger.warn('[useConversationHistory] Cannot load history: conversationId is empty')
       return
     }
 
@@ -291,12 +292,12 @@ export function useConversationHistory() {
 
       // Fetch conversation history from backend
       const historyRecords = await MemoryApiService.getConversationHistory(conversationId)
-      console.log('[useConversationHistory] Loaded conversation history:', historyRecords)
+      logger.debug('[useConversationHistory] Loaded conversation history:', historyRecords)
 
       // Debug: Log date formats to help diagnose parsing issues
       if (historyRecords.length > 0) {
         const firstRecord = historyRecords[0]
-        console.log('[useConversationHistory] Sample date formats:', {
+        logger.debug('[useConversationHistory] Sample date formats:', {
           startTime: firstRecord.startTime,
           endTime: firstRecord.endTime,
           startTimeType: typeof firstRecord.startTime,
@@ -308,13 +309,13 @@ export function useConversationHistory() {
         processHistoryRecord(record)
       }
 
-      console.log(
+      logger.debug(
         '[useConversationHistory] Successfully loaded conversation history with',
         historyRecords.length,
         'dialog rounds'
       )
     } catch (error) {
-      console.error('[useConversationHistory] Failed to load conversation history:', error)
+      logger.error('[useConversationHistory] Failed to load conversation history:', error)
       if (showErrorToast) {
         showToast(t('memory.loadHistoryFailed'), 'error')
       }

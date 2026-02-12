@@ -239,6 +239,7 @@ import { useParameterHistoryStore } from '@/stores/new/parameterHistory'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
 import type { PlanData, PlanExecutionRequestPayload } from '@/types/plan-execution'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -453,7 +454,7 @@ const canExecute = computed(() => {
 
 // File upload event handlers - state is already updated in shared composable
 const handleFilesUploaded = (files: FileInfo[], key: string | null) => {
-  console.log(
+  logger.debug(
     '[ExecutionController] Files uploaded event received:',
     files.length,
     'uploadKey:',
@@ -463,37 +464,37 @@ const handleFilesUploaded = (files: FileInfo[], key: string | null) => {
 }
 
 const handleFilesRemoved = (files: FileInfo[]) => {
-  console.log('[ExecutionController] Files removed event received, remaining:', files.length)
+  logger.debug('[ExecutionController] Files removed event received, remaining:', files.length)
   // State is already updated in shared composable
 }
 
 const handleUploadKeyChanged = (key: string | null) => {
-  console.log('[ExecutionController] Upload key changed:', key)
+  logger.debug('[ExecutionController] Upload key changed:', key)
   // State is already updated in shared composable
 }
 
 const handleUploadStarted = () => {
-  console.log('[ExecutionController] Upload started')
+  logger.debug('[ExecutionController] Upload started')
 }
 
 const handleUploadCompleted = () => {
-  console.log('[ExecutionController] Upload completed')
+  logger.debug('[ExecutionController] Upload completed')
 }
 
 const handleUploadError = (error: unknown) => {
-  console.error('[ExecutionController] Upload error:', error)
+  logger.error('[ExecutionController] Upload error:', error)
 }
 
 // Methods
 const handleExecutePlan = async () => {
-  console.log('[ExecutionController] 🚀 Execute button clicked')
+  logger.debug('[ExecutionController] 🚀 Execute button clicked')
 
   // Mark that user has attempted to execute (for validation message)
   hasAttemptedExecute.value = true
 
   // Check if there's already an execution in progress using unified state
   if (!taskExecutionState.canExecute.value || props.isExecuting) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ⏸️ Execution already in progress. canExecute: {}, isExecuting: {}',
       taskExecutionState.canExecute.value,
       props.isExecuting
@@ -504,12 +505,12 @@ const handleExecutePlan = async () => {
 
   // Check if task requirements have been modified
   if (templateStore.hasTaskRequirementModified) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ⚠️ Task requirements modified, showing save confirmation dialog'
     )
     // Prepare payload but don't execute yet
     if (!validateParameters()) {
-      console.log('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
+      logger.debug('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
       // Keep hasAttemptedExecute as true to show validation message
       return
     }
@@ -542,7 +543,7 @@ const handleExecutePlan = async () => {
 const proceedWithExecution = async () => {
   // Double-check execution state before proceeding (defense in depth)
   if (!taskExecutionState.canExecute.value || props.isExecuting) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ⏸️ Execution already in progress in proceedWithExecution. Skipping.'
     )
     return
@@ -554,7 +555,7 @@ const proceedWithExecution = async () => {
 
   // Validate parameters before execution
   if (!validateParameters()) {
-    console.log('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
+    logger.debug('[ExecutionController] ❌ Parameter validation failed:', parameterErrors.value)
     // Keep hasAttemptedExecute as true to show validation message
     return
   }
@@ -562,7 +563,7 @@ const proceedWithExecution = async () => {
   // Validate that all tools exist before execution
   const toolsValidation = await validateToolsExist()
   if (!toolsValidation.isValid) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ❌ Tool validation failed:',
       toolsValidation.nonExistentTools
     )
@@ -593,7 +594,7 @@ const proceedWithExecution = async () => {
   try {
     // Get plan data from store
     if (!selectedTemplate.value) {
-      console.log('[ExecutionController] ❌ No template selected, returning')
+      logger.debug('[ExecutionController] ❌ No template selected, returning')
       toast.error(t('sidebar.selectPlanFirst'))
       return
     }
@@ -624,7 +625,7 @@ const proceedWithExecution = async () => {
 
     // Validate toolName is present
     if (!toolName || toolName.trim() === '') {
-      console.error('[ExecutionController] ❌ Tool name is required but not found')
+      logger.error('[ExecutionController] ❌ Tool name is required but not found')
       toast.error(t('sidebar.toolNameRequired') || 'Tool name is required for execution')
       return
     }
@@ -635,9 +636,9 @@ const proceedWithExecution = async () => {
         ? parameterValues.value
         : undefined
 
-    console.log('[ExecutionController] 🔄 Replacement params:', replacementParams)
-    console.log('[ExecutionController] 📋 Prepared plan data:', JSON.stringify(planData, null, 2))
-    console.log('[ExecutionController] 🔧 Tool name:', toolName, 'Service group:', serviceGroup)
+    logger.debug('[ExecutionController] 🔄 Replacement params:', replacementParams)
+    logger.debug('[ExecutionController] 📋 Prepared plan data:', JSON.stringify(planData, null, 2))
+    logger.debug('[ExecutionController] 🔧 Tool name:', toolName, 'Service group:', serviceGroup)
 
     // Build final payload with plan data
     const finalPayload: PlanExecutionRequestPayload = {
@@ -651,7 +652,7 @@ const proceedWithExecution = async () => {
       serviceGroup,
     }
 
-    console.log(
+    logger.debug(
       '[ExecutionController] 📤 Executing plan with payload:',
       JSON.stringify(finalPayload, null, 2)
     )
@@ -660,26 +661,26 @@ const proceedWithExecution = async () => {
     const result = await messageDialog.executePlan(finalPayload)
 
     if (result.success) {
-      console.log('[ExecutionController] ✅ Plan execution started successfully:', result.planId)
+      logger.debug('[ExecutionController] ✅ Plan execution started successfully:', result.planId)
       // Track the returned planId for API examples
       if (result.planId) {
         lastPlanId.value = result.planId
-        console.log('[ExecutionController] 📝 Tracked planId for API examples:', lastPlanId.value)
+        logger.debug('[ExecutionController] 📝 Tracked planId for API examples:', lastPlanId.value)
       }
     } else {
-      console.error('[ExecutionController] ❌ Plan execution failed:', result.error)
+      logger.error('[ExecutionController] ❌ Plan execution failed:', result.error)
       toast.error(result.error || t('sidebar.executeFailed'))
     }
   } catch (error: unknown) {
-    console.error('[ExecutionController] ❌ Error executing plan:', error)
+    logger.error('[ExecutionController] ❌ Error executing plan:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     toast.error(t('sidebar.executeFailed') + ': ' + message)
     // Note: isRunning will be reset by messageDialog.executePlan() on error
   } finally {
-    console.log('[ExecutionController] 🧹 Cleaning up after execution')
+    logger.debug('[ExecutionController] 🧹 Cleaning up after execution')
     // Clear parameters after execution
     clearExecutionParams()
-    console.log('[ExecutionController] ✅ Cleanup completed')
+    logger.debug('[ExecutionController] ✅ Cleanup completed')
   }
 }
 
@@ -717,7 +718,7 @@ const validateToolsExist = async (): Promise<{ isValid: boolean; nonExistentTool
 }
 
 const handleSaveAndExecute = async () => {
-  console.log('[ExecutionController] 💾 Save and execute requested')
+  logger.debug('[ExecutionController] 💾 Save and execute requested')
   try {
     // Save using store directly
     if (!selectedTemplate.value) {
@@ -801,7 +802,7 @@ const handleSaveAndExecute = async () => {
       pendingExecutionPayload.value = null
     }
   } catch (error: unknown) {
-    console.error('[ExecutionController] ❌ Failed to save before execute:', error)
+    logger.error('[ExecutionController] ❌ Failed to save before execute:', error)
     const message = error instanceof Error ? error.message : t('sidebar.saveFailed')
     toast.error(message)
     throw error
@@ -809,7 +810,7 @@ const handleSaveAndExecute = async () => {
 }
 
 const handleContinueExecution = async () => {
-  console.log('[ExecutionController] ⏩ Continue without save requested')
+  logger.debug('[ExecutionController] ⏩ Continue without save requested')
   if (pendingExecutionPayload.value) {
     // Rebuild payload with current template config
     await proceedWithExecution()
@@ -818,11 +819,11 @@ const handleContinueExecution = async () => {
 }
 
 const handlePublishMcpService = () => {
-  console.log('[ExecutionController] Publish MCP service button clicked')
-  console.log('[ExecutionController] currentPlanTemplateId:', currentPlanTemplateId.value)
+  logger.debug('[ExecutionController] Publish MCP service button clicked')
+  logger.debug('[ExecutionController] currentPlanTemplateId:', currentPlanTemplateId.value)
 
   if (!currentPlanTemplateId.value) {
-    console.log('[ExecutionController] No plan template selected, showing warning')
+    logger.debug('[ExecutionController] No plan template selected, showing warning')
     toast.error(t('mcpService.selectPlanTemplateFirst'))
     return
   }
@@ -831,20 +832,20 @@ const handlePublishMcpService = () => {
 }
 
 const handleStop = async () => {
-  console.log('[ExecutionController] Stop button clicked')
+  logger.debug('[ExecutionController] Stop button clicked')
   const success = await stopTask()
   if (success) {
-    console.log('[ExecutionController] Task stopped successfully')
+    logger.debug('[ExecutionController] Task stopped successfully')
     // State is automatically updated by useTaskStop.stopTask()
     // No need to manually update flags - unified state handles it
   } else {
-    console.error('[ExecutionController] Failed to stop task')
+    logger.error('[ExecutionController] Failed to stop task')
     toast.error(t('sidebar.executeFailed') || 'Failed to stop task')
   }
 }
 
 const clearExecutionParams = () => {
-  console.log('[ExecutionController] 🧹 clearExecutionParams called')
+  logger.debug('[ExecutionController] 🧹 clearExecutionParams called')
   executionParams.value = ''
   // Clear parameter values as well
   parameterValues.value = {}
@@ -852,7 +853,7 @@ const clearExecutionParams = () => {
   // Note: Local execution flag is managed by useTaskExecutionState
   // State is automatically updated when plan execution starts/completes
 
-  console.log('[ExecutionController] ✅ After clear - parameterValues cleared')
+  logger.debug('[ExecutionController] ✅ After clear - parameterValues cleared')
   // Execution params are now managed internally, no need to emit
 }
 
@@ -871,7 +872,7 @@ const refreshParameterRequirements = async () => {
   // Check if we should skip refresh due to debouncing
   const now = Date.now()
   if (now - lastRefreshTimestamp.value < REFRESH_DEBOUNCE_MS) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ⏸️ Skipping refresh - too soon after last refresh (debounced)'
     )
     return
@@ -884,11 +885,11 @@ const refreshParameterRequirements = async () => {
   // Also ensure selectedTemplate has been updated by planTemplateConfigStore.save()
   await new Promise(resolve => setTimeout(resolve, 1500))
 
-  console.log(
+  logger.debug(
     '[ExecutionController] 🔄 Refreshing parameter requirements for templateId:',
     currentPlanTemplateId.value
   )
-  console.log(
+  logger.debug(
     '[ExecutionController] 📋 Current selectedTemplate steps:',
     selectedTemplate.value?.steps?.map(s => s.stepRequirement).join(' ||| ')
   )
@@ -905,12 +906,12 @@ const refreshParameterRequirements = async () => {
   // Compare old and new parameter lists
   const newParams = [...parameterRequirements.value.parameters]
   if (areParameterListsEqual(currentParams, newParams)) {
-    console.log(
+    logger.debug(
       '[ExecutionController] ✅ Parameter list unchanged, values preserved:',
       JSON.stringify(parameterValues.value, null, 2)
     )
   } else {
-    console.log(
+    logger.debug(
       '[ExecutionController] 🔄 Parameter list changed:',
       JSON.stringify({ old: currentParams, new: newParams }, null, 2)
     )
@@ -920,17 +921,17 @@ const refreshParameterRequirements = async () => {
 // Load parameter requirements when plan template changes
 const loadParameterRequirements = async () => {
   const planTemplateId = currentPlanTemplateId.value
-  console.log(
+  logger.debug(
     '[ExecutionController] 🔄 loadParameterRequirements called for templateId:',
     planTemplateId
   )
-  console.log(
+  logger.debug(
     '[ExecutionController] 📊 Current parameterRequirements before load:',
     JSON.stringify(parameterRequirements.value, null, 2)
   )
 
   if (!planTemplateId) {
-    console.log('[ExecutionController] ❌ No template ID, resetting parameters')
+    logger.debug('[ExecutionController] ❌ No template ID, resetting parameters')
     parameterRequirements.value = {
       parameters: [],
       hasParameters: false,
@@ -942,7 +943,7 @@ const loadParameterRequirements = async () => {
 
   // Preserve current parameter values before clearing to prevent data loss
   const preservedValues = { ...parameterValues.value }
-  console.log(
+  logger.debug(
     '[ExecutionController] 💾 Preserved parameter values before reload:',
     JSON.stringify(preservedValues, null, 2)
   )
@@ -954,13 +955,13 @@ const loadParameterRequirements = async () => {
     requirements: '',
   }
   parameterValues.value = {}
-  console.log('[ExecutionController] 🧹 Cleared previous data before loading new template')
+  logger.debug('[ExecutionController] 🧹 Cleared previous data before loading new template')
 
   isLoadingParameters.value = true
   try {
-    console.log('[ExecutionController] 🌐 Fetching parameter requirements from API...')
+    logger.debug('[ExecutionController] 🌐 Fetching parameter requirements from API...')
     const requirements = await PlanTemplateApiService.getParameterRequirements(planTemplateId)
-    console.log(
+    logger.debug(
       '[ExecutionController] 📥 Received requirements from API:',
       JSON.stringify(requirements, null, 2)
     )
@@ -975,11 +976,11 @@ const loadParameterRequirements = async () => {
     })
     parameterValues.value = newValues
 
-    console.log(
+    logger.debug(
       '[ExecutionController] ✅ Updated parameterRequirements:',
       JSON.stringify(parameterRequirements.value, null, 2)
     )
-    console.log(
+    logger.debug(
       '[ExecutionController] ✅ Updated parameterValues:',
       JSON.stringify(parameterValues.value, null, 2)
     )
@@ -987,10 +988,10 @@ const loadParameterRequirements = async () => {
     // Update execution params with current parameter values
     updateExecutionParamsFromParameters()
   } catch (error) {
-    console.error('[ExecutionController] ❌ Failed to load parameter requirements:', error)
+    logger.error('[ExecutionController] ❌ Failed to load parameter requirements:', error)
     // Don't show error for 404 - template might not be ready yet
     if (error instanceof Error && !error.message.includes('404')) {
-      console.warn(
+      logger.warn(
         '[ExecutionController] ⚠️ Parameter requirements not available yet, will retry later'
       )
     }
@@ -1003,7 +1004,7 @@ const loadParameterRequirements = async () => {
     // Only restore if we have previous requirements with matching parameters
     const previousParams = Object.keys(preservedValues)
     if (previousParams.length > 0) {
-      console.log(
+      logger.debug(
         '[ExecutionController] 🔄 Restoring preserved values on error:',
         JSON.stringify(preservedValues, null, 2)
       )
@@ -1011,17 +1012,17 @@ const loadParameterRequirements = async () => {
     } else {
       parameterValues.value = {}
     }
-    console.log(
+    logger.debug(
       '[ExecutionController] 🔄 Reset parameterRequirements due to error:',
       JSON.stringify(parameterRequirements.value, null, 2)
     )
-    console.log(
+    logger.debug(
       '[ExecutionController] 🔄 Restored parameterValues:',
       JSON.stringify(parameterValues.value, null, 2)
     )
   } finally {
     isLoadingParameters.value = false
-    console.log('[ExecutionController] ✅ loadParameterRequirements completed')
+    logger.debug('[ExecutionController] ✅ loadParameterRequirements completed')
   }
 }
 
@@ -1094,7 +1095,7 @@ const updateExecutionParamsFromParameters = () => {
 const saveParameterSetToHistory = () => {
   const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
-    console.log('[ExecutionController] ⚠️ No planTemplateId, skipping history save')
+    logger.debug('[ExecutionController] ⚠️ No planTemplateId, skipping history save')
     return
   }
 
@@ -1103,7 +1104,7 @@ const saveParameterSetToHistory = () => {
     !parameterRequirements.value.hasParameters ||
     Object.keys(parameterValues.value).length === 0
   ) {
-    console.log('[ExecutionController] ⚠️ No parameters to save to history')
+    logger.debug('[ExecutionController] ⚠️ No parameters to save to history')
     return
   }
 
@@ -1113,7 +1114,7 @@ const saveParameterSetToHistory = () => {
   // Save to persistent store (store handles deduplication)
   parameterHistoryStore.saveParameterSet(planTemplateId, currentSet)
 
-  console.log(
+  logger.debug(
     '[ExecutionController] 💾 Saved parameter set to history:',
     JSON.stringify(currentSet, null, 2)
   )
@@ -1134,13 +1135,13 @@ const resetParamHistoryNavigation = () => {
 const navigateParameterSetHistory = (direction: 'up' | 'down') => {
   const planTemplateId = currentPlanTemplateId.value
   if (!planTemplateId) {
-    console.log('[ExecutionController] ⚠️ No planTemplateId, cannot navigate history')
+    logger.debug('[ExecutionController] ⚠️ No planTemplateId, cannot navigate history')
     return
   }
 
   const history = parameterHistoryStore.getHistory(planTemplateId)
   if (!history || history.length === 0) {
-    console.log('[ExecutionController] ⚠️ No history available for navigation')
+    logger.debug('[ExecutionController] ⚠️ No history available for navigation')
     return
   }
 
@@ -1178,7 +1179,7 @@ const navigateParameterSetHistory = (direction: 'up' | 'down') => {
       })
       parameterHistoryStore.setToolHistoryIndex(planTemplateId, -1)
       updateExecutionParamsFromParameters()
-      console.log('[ExecutionController] 📜 Cleared all parameter values')
+      logger.debug('[ExecutionController] 📜 Cleared all parameter values')
       return
     }
   }
@@ -1193,7 +1194,7 @@ const navigateParameterSetHistory = (direction: 'up' | 'down') => {
       })
       parameterHistoryStore.setToolHistoryIndex(planTemplateId, newIndex)
       updateExecutionParamsFromParameters()
-      console.log(
+      logger.debug(
         `[ExecutionController] 📜 Navigated to history index ${newIndex}:`,
         JSON.stringify(historySet, null, 2)
       )
@@ -1201,7 +1202,7 @@ const navigateParameterSetHistory = (direction: 'up' | 'down') => {
   } else if (newIndex === -1) {
     // Reset to current value (just reset index, values remain as user typed)
     parameterHistoryStore.setToolHistoryIndex(planTemplateId, -1)
-    console.log('[ExecutionController] 📜 Reset to current values')
+    logger.debug('[ExecutionController] 📜 Reset to current values')
   }
 }
 
@@ -1241,24 +1242,24 @@ watch(
     if (newId && newId !== oldId) {
       // Skip parameter reload if we're currently executing a plan
       if (taskExecutionState.isExecutionInProgress.value) {
-        console.log('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
+        logger.debug('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
         return
       }
 
       // Reset parameter history navigation when template changes
       resetParamHistoryNavigation()
 
-      console.log('[ExecutionController] 🔄 Template ID changed, will reload parameters')
+      logger.debug('[ExecutionController] 🔄 Template ID changed, will reload parameters')
       // If this is a new template ID (not from initial load), retry loading parameters
       if (oldId && newId.startsWith('planTemplate-')) {
-        console.log('[ExecutionController] ⏰ New template detected, retrying with delay...')
+        logger.debug('[ExecutionController] ⏰ New template detected, retrying with delay...')
         // Retry loading parameters with a delay for new templates
         setTimeout(() => {
-          console.log('[ExecutionController] ⏰ Delay timeout, calling loadParameterRequirements')
+          logger.debug('[ExecutionController] ⏰ Delay timeout, calling loadParameterRequirements')
           loadParameterRequirements()
         }, 1000)
       } else {
-        console.log('[ExecutionController] 🚀 Immediate reload of parameters')
+        logger.debug('[ExecutionController] 🚀 Immediate reload of parameters')
         loadParameterRequirements()
       }
     }
@@ -1274,26 +1275,26 @@ watch(
     if (oldValue === true && newValue === false && currentPlanTemplateId.value) {
       // Skip if currently executing
       if (taskExecutionState.isExecutionInProgress.value) {
-        console.log('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
+        logger.debug('[ExecutionController] ⏸️ Skipping parameter reload - plan is executing')
         return
       }
 
       // Check debounce to prevent rapid successive refreshes
       const now = Date.now()
       if (now - lastRefreshTimestamp.value < REFRESH_DEBOUNCE_MS) {
-        console.log(
+        logger.debug(
           '[ExecutionController] ⏸️ Skipping parameter refresh - debounced (too soon after last refresh)'
         )
         return
       }
 
-      console.log(
+      logger.debug(
         '[ExecutionController] 💾 Save completed (hasTaskRequirementModified: true -> false), refreshing parameters'
       )
       // Add a delay to ensure backend has processed the save and parameters are updated
       // Also ensure selectedTemplate has been updated by planTemplateConfigStore.save()
       await new Promise(resolve => setTimeout(resolve, 2000))
-      console.log('[ExecutionController] ⏰ Refreshing parameters after save')
+      logger.debug('[ExecutionController] ⏰ Refreshing parameters after save')
       await refreshParameterRequirements()
     }
   }

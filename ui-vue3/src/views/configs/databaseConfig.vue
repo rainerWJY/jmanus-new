@@ -175,6 +175,7 @@ import Modal from '@/components/modal/index.vue'
 import { useToast } from '@/plugins/useToast'
 import DatasourceConfigForm from '@/views/configs/components/DatasourceConfigForm.vue'
 import ConfigPanel from '@/views/configs/components/configPanel.vue'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -226,7 +227,7 @@ const loadConfigs = async () => {
   try {
     configs.value = await DatasourceConfigApiService.getAllConfigs()
   } catch (error) {
-    console.error('Failed to load datasource configurations:', error)
+    logger.error('Failed to load datasource configurations:', error)
     toast.error(
       `Failed to load configurations: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -313,7 +314,7 @@ const handleSave = async () => {
     const updated = await DatasourceConfigApiService.getConfigById(selectedConfig.value.id)
     selectConfig(updated)
   } catch (error) {
-    console.error('Failed to update configuration:', error)
+    logger.error('Failed to update configuration:', error)
     toast.error(
       `Failed to update configuration: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -352,7 +353,7 @@ const handleCreate = async () => {
     selectConfig(created)
     showAddForm.value = false
   } catch (error) {
-    console.error('Failed to create configuration:', error)
+    logger.error('Failed to create configuration:', error)
     toast.error(
       `Failed to create configuration: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -389,7 +390,7 @@ const confirmDelete = async () => {
     showDeleteModal.value = false
     configToDelete.value = null
   } catch (error) {
-    console.error('Failed to delete configuration:', error)
+    logger.error('Failed to delete configuration:', error)
     toast.error(
       `Failed to delete configuration: ${error instanceof Error ? error.message : String(error)}`
     )
@@ -416,7 +417,7 @@ const toggleConfigStatus = async (config: DatasourceConfig) => {
       selectConfig(reloaded)
     }
   } catch (error) {
-    console.error('Failed to toggle config status:', error)
+    logger.error('Failed to toggle config status:', error)
     toast.error(
       `Failed to toggle status: ${error instanceof Error ? error.message : String(error)}`
     )

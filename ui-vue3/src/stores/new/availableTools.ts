@@ -16,6 +16,7 @@
 
 import { ToolApiService } from '@/api/tool-api-service'
 import type { Tool } from '@/types/tool'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -42,9 +43,9 @@ export const useAvailableToolsStore = defineStore('availableTools', () => {
     error.value = null
 
     try {
-      console.log('[AvailableToolsStore] Loading available tools...')
+      logger.debug('[AvailableToolsStore] Loading available tools...')
       const tools = await ToolApiService.getAvailableTools()
-      console.log('[AvailableToolsStore] Loaded available tools:', tools)
+      logger.debug('[AvailableToolsStore] Loaded available tools:', tools)
       availableTools.value = tools
         .filter((tool: Tool) => tool.selectable !== false)
         .map((tool: Tool) => ({
@@ -56,7 +57,7 @@ export const useAvailableToolsStore = defineStore('availableTools', () => {
           selectable: tool.selectable,
         }))
     } catch (err) {
-      console.error('[AvailableToolsStore] Error loading tools:', err)
+      logger.error('[AvailableToolsStore] Error loading tools:', err)
       error.value = err instanceof Error ? err.message : 'Unknown error'
       availableTools.value = []
     } finally {

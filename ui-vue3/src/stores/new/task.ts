@@ -16,6 +16,7 @@
 
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { useTaskStop } from '@/composables/useTaskStop'
+import { logger } from '@/utils/logger'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -35,11 +36,11 @@ export const useTaskStore = defineStore('task', () => {
 
   // Set new task
   const setTask = (prompt: string) => {
-    console.log('[TaskStore] setTask called with prompt:', prompt)
+    logger.debug('[TaskStore] setTask called with prompt:', prompt)
 
     // Don't create tasks with empty prompts
     if (!prompt.trim()) {
-      console.warn('[TaskStore] Empty prompt provided, not creating task')
+      logger.warn('[TaskStore] Empty prompt provided, not creating task')
       return
     }
 
@@ -49,32 +50,32 @@ export const useTaskStore = defineStore('task', () => {
       processed: false,
     }
     currentTask.value = newTask
-    console.log('[TaskStore] Task set, currentTask.value:', currentTask.value)
+    logger.debug('[TaskStore] Task set, currentTask.value:', currentTask.value)
   }
 
   // Set task to input (for pre-filling input without executing)
   const setTaskToInput = (prompt: string) => {
-    console.log('[TaskStore] setTaskToInput called with prompt:', prompt)
+    logger.debug('[TaskStore] setTaskToInput called with prompt:', prompt)
     taskToInput.value = prompt
-    console.log('[TaskStore] Task to input set:', taskToInput.value)
+    logger.debug('[TaskStore] Task to input set:', taskToInput.value)
   }
 
   // Get and clear task to input
   const getAndClearTaskToInput = () => {
     const task = taskToInput.value
     taskToInput.value = ''
-    console.log('[TaskStore] getAndClearTaskToInput returning:', task)
+    logger.debug('[TaskStore] getAndClearTaskToInput returning:', task)
     return task
   }
 
   // Mark task as processed
   const markTaskAsProcessed = () => {
-    console.log('[TaskStore] markTaskAsProcessed called, current task:', currentTask.value)
+    logger.debug('[TaskStore] markTaskAsProcessed called, current task:', currentTask.value)
     if (currentTask.value) {
       currentTask.value.processed = true
-      console.log('[TaskStore] Task marked as processed:', currentTask.value)
+      logger.debug('[TaskStore] Task marked as processed:', currentTask.value)
     } else {
-      console.log('[TaskStore] No current task to mark as processed')
+      logger.debug('[TaskStore] No current task to mark as processed')
     }
   }
 
@@ -86,7 +87,7 @@ export const useTaskStore = defineStore('task', () => {
   // Check if there are unprocessed tasks
   const hasUnprocessedTask = () => {
     const result = currentTask.value && !currentTask.value.processed
-    console.log(
+    logger.debug(
       '[TaskStore] hasUnprocessedTask check - currentTask:',
       currentTask.value,
       'result:',
@@ -121,7 +122,7 @@ export const useTaskStore = defineStore('task', () => {
     planData: unknown
     params?: string
   }) => {
-    console.log('[TaskStore] emitPlanExecutionRequested called with payload:', payload)
+    logger.debug('[TaskStore] emitPlanExecutionRequested called with payload:', payload)
 
     // User is on direct page, send event directly
     window.dispatchEvent(new CustomEvent('plan-execution-requested', { detail: payload }))
@@ -130,7 +131,7 @@ export const useTaskStore = defineStore('task', () => {
   // Set task as running with plan ID
   // Note: isRunning is now computed from planId and messageDialog.isRunning
   const setTaskRunning = (planId: string) => {
-    console.log('[TaskStore] setTaskRunning called with planId:', planId)
+    logger.debug('[TaskStore] setTaskRunning called with planId:', planId)
     // Create a task if none exists, or update existing one
     if (!currentTask.value) {
       // Create a new task for running state
@@ -140,17 +141,17 @@ export const useTaskStore = defineStore('task', () => {
         processed: false,
         planId: planId,
       }
-      console.log('[TaskStore] Created new task for running state:', currentTask.value)
+      logger.debug('[TaskStore] Created new task for running state:', currentTask.value)
     } else {
       currentTask.value.planId = planId
-      console.log('[TaskStore] Updated existing task:', currentTask.value)
+      logger.debug('[TaskStore] Updated existing task:', currentTask.value)
     }
   }
 
   // Stop current running task
   // Uses shared stop logic from useTaskStop composable
   const stopCurrentTask = async () => {
-    console.log('[TaskStore] stopCurrentTask called')
+    logger.debug('[TaskStore] stopCurrentTask called')
     if (currentTask.value?.planId) {
       // Use shared stop logic from composable
       const { stopTask } = useTaskStop()
@@ -163,7 +164,7 @@ export const useTaskStore = defineStore('task', () => {
   // Now computed from planId and messageDialog.isRunning
   const hasRunningTask = () => {
     const result = !!(currentTask.value?.planId && messageDialog.isRunning.value)
-    console.log('[TaskStore] hasRunningTask check - result:', result)
+    logger.debug('[TaskStore] hasRunningTask check - result:', result)
     return result
   }
 

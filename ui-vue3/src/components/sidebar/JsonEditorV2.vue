@@ -405,6 +405,7 @@ import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availab
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
 import type { PlanTemplateConfigVO, StepConfig } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -482,15 +483,15 @@ const setEditingFlag = () => {
 const syncDisplayDataFromConfig = () => {
   // Don't sync if user is actively editing to prevent losing unsaved changes
   if (isUserUpdating.value) {
-    console.log('[JsonEditorV2] syncDisplayDataFromConfig skipped: isUserUpdating is true')
+    logger.debug('[JsonEditorV2] syncDisplayDataFromConfig skipped: isUserUpdating is true')
     return
   }
 
-  console.log('[JsonEditorV2] syncDisplayDataFromConfig called')
+  logger.debug('[JsonEditorV2] syncDisplayDataFromConfig called')
   isSyncingFromConfig.value = true
   try {
     const config = planTemplateConfigStore.getConfig()
-    console.log('[JsonEditorV2] Syncing displayData with config:', {
+    logger.debug('[JsonEditorV2] Syncing displayData with config:', {
       title: config.title,
       stepsCount: config.steps?.length || 0,
       serviceGroup: config.serviceGroup,
@@ -512,7 +513,7 @@ const syncDisplayDataFromConfig = () => {
     displayData.steps = (config.steps || []).map(step => ({ ...step }))
     // Sync service group
     serviceGroup.value = config.serviceGroup || ''
-    console.log('[JsonEditorV2] displayData synced:', {
+    logger.debug('[JsonEditorV2] displayData synced:', {
       title: displayData.title,
       stepsCount: displayData.steps.length,
       serviceGroup: serviceGroup.value,
@@ -543,7 +544,7 @@ const syncDisplayDataFromConfig = () => {
 //     // Note: This is a fallback - the @input handlers should handle most cases
 //     if (currentPlanTemplateId.value) {
 //       templateStore.hasTaskRequirementModified = true
-//       console.log(
+//       logger.debug(
 //         '[JsonEditorV2] Task requirements modified (via watch), hasTaskRequirementModified set to true'
 //       )
 //     }
@@ -589,7 +590,7 @@ const handleRollback = () => {
     isUserUpdating.value = false
     planTemplateConfigStore.rollbackVersion()
   } catch (error) {
-    console.error('Error during rollback operation:', error)
+    logger.error('Error during rollback operation:', error)
     toast.error(t('sidebar.rollbackFailed') || 'Rollback failed')
   }
 }
@@ -604,7 +605,7 @@ const handleRestore = () => {
     isUserUpdating.value = false
     planTemplateConfigStore.restoreVersion()
   } catch (error) {
-    console.error('Error during restore operation:', error)
+    logger.error('Error during restore operation:', error)
     toast.error(t('sidebar.restoreFailed') || 'Restore failed')
   }
 }
@@ -715,7 +716,7 @@ const handleSave = async () => {
 
     toast.success(t('sidebar.saveSuccess', { message: 'Plan saved successfully', versionCount }))
   } catch (error: unknown) {
-    console.error('Failed to save plan modifications:', error)
+    logger.error('Failed to save plan modifications:', error)
     const message = error instanceof Error ? error.message : t('sidebar.saveFailed')
     toast.error(message)
     throw error // Re-throw to allow caller to handle
@@ -765,7 +766,7 @@ const handleAddStep = () => {
   displayData.steps.push(newStep)
   // Sync to store - no guard needed since setSteps() doesn't trigger watcher (needsFullRefresh is false)
   planTemplateConfigStore.setSteps(displayData.steps)
-  console.log('[JsonEditorV2] Added new step, total steps:', displayData.steps.length)
+  logger.debug('[JsonEditorV2] Added new step, total steps:', displayData.steps.length)
 }
 
 // Model selection state
@@ -1017,7 +1018,7 @@ const loadAvailableModels = async () => {
     const response = await ConfigApiService.getAvailableModels()
     availableModels.value = response.options
   } catch (error) {
-    console.error('Failed to load models:', error)
+    logger.error('Failed to load models:', error)
     modelsLoadError.value = error instanceof Error ? error.message : 'Failed to load models'
     availableModels.value = []
   } finally {
@@ -1065,16 +1066,16 @@ const isCopyingPlan = ref(false)
 
 // Copy plan function
 const handleCopyPlan = () => {
-  console.log('[JsonEditorV2] Copy plan clicked')
+  logger.debug('[JsonEditorV2] Copy plan clicked')
 
   if (!selectedTemplate.value) {
-    console.log('[JsonEditorV2] No template selected, cannot copy')
+    logger.debug('[JsonEditorV2] No template selected, cannot copy')
     toast.error(t('sidebar.selectPlanFirst'))
     return
   }
 
   newPlanTitle.value = (selectedTemplate.value?.title ?? t('sidebar.unnamedPlan')) + ' (copy)'
-  console.log('[JsonEditorV2] Opening copy plan modal')
+  logger.debug('[JsonEditorV2] Opening copy plan modal')
   showCopyPlanModal.value = true
 }
 
@@ -1111,7 +1112,7 @@ const confirmCopyPlan = async () => {
 
     // Generate a new planTemplateId from backend
     const newPlanTemplateId = await PlanTemplateApiService.generatePlanTemplateId()
-    console.log('[JsonEditorV2] Generated plan template ID from backend:', newPlanTemplateId)
+    logger.debug('[JsonEditorV2] Generated plan template ID from backend:', newPlanTemplateId)
 
     // Exclude toolConfig from the copy to avoid copying service configuration
     const { toolConfig: _toolConfig, ...configWithoutToolConfig } = currentConfig
@@ -1123,7 +1124,7 @@ const confirmCopyPlan = async () => {
       planTemplateId: newPlanTemplateId,
     }
 
-    console.log('[JsonEditorV2] Copying plan without toolConfig:', newPlanConfig)
+    logger.debug('[JsonEditorV2] Copying plan without toolConfig:', newPlanConfig)
 
     const result = await PlanTemplateApiService.createOrUpdatePlanTemplateWithTool(newPlanConfig)
 
@@ -1135,7 +1136,7 @@ const confirmCopyPlan = async () => {
       toast.error(t('sidebar.copyPlanFailed', { message: 'Failed to copy plan' }))
     }
   } catch (error: unknown) {
-    console.error('[JsonEditorV2] Error copying plan:', error)
+    logger.error('[JsonEditorV2] Error copying plan:', error)
     // Check if it's a duplicate title error
     if (
       error instanceof Error &&
@@ -1186,7 +1187,7 @@ watch(
 watch(
   currentPlanTemplateId,
   (newId, oldId) => {
-    console.log('[JsonEditorV2] currentPlanTemplateId changed:', { oldId, newId })
+    logger.debug('[JsonEditorV2] currentPlanTemplateId changed:', { oldId, newId })
     // Only reset if template actually changed (not initial load)
     if (oldId !== null && oldId !== undefined && newId !== oldId) {
       // Reset UI states when template changes
@@ -1202,7 +1203,9 @@ watch(
     }
     // Sync displayData when template changes (including when reloading same template)
     // This watch will trigger even when oldId === newId if we temporarily set to null
-    console.log('[JsonEditorV2] Calling syncDisplayDataFromConfig from currentPlanTemplateId watch')
+    logger.debug(
+      '[JsonEditorV2] Calling syncDisplayDataFromConfig from currentPlanTemplateId watch'
+    )
     syncDisplayDataFromConfig()
     // Load service group when template changes
     loadServiceGroup()
@@ -1246,7 +1249,7 @@ const loadAvailableServiceGroups = async () => {
         }
       })
     } catch (error) {
-      console.error('[JsonEditorV2] Failed to load service groups from tools:', error)
+      logger.error('[JsonEditorV2] Failed to load service groups from tools:', error)
     }
 
     // Load service groups from plan templates
@@ -1258,12 +1261,12 @@ const loadAvailableServiceGroups = async () => {
         }
       })
     } catch (error) {
-      console.error('[JsonEditorV2] Failed to load service groups from plan templates:', error)
+      logger.error('[JsonEditorV2] Failed to load service groups from plan templates:', error)
     }
 
     availableServiceGroups.value = Array.from(groupsSet).sort()
   } catch (error) {
-    console.error('[JsonEditorV2] Failed to load service groups:', error)
+    logger.error('[JsonEditorV2] Failed to load service groups:', error)
     availableServiceGroups.value = []
   } finally {
     isLoadingGroups.value = false
