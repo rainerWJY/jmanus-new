@@ -77,7 +77,7 @@
               isMessageStreaming(message.id) ||
               message.planExecution?.userInputWaitState?.waiting
             "
-            :content-parts="message.contentParts"
+            :content-parts="message.contentParts ?? []"
             :content="message.content || ''"
             :is-streaming="isMessageStreaming(message.id) || false"
             v-bind="{
