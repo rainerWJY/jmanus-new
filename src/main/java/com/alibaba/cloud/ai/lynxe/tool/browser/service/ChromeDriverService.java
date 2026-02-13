@@ -156,6 +156,24 @@ public class ChromeDriverService {
 		return currentDriver;
 	}
 
+	/**
+	 * Return the existing driver for the plan if one exists and is healthy. Does not
+	 * create a new driver. Use this when only reading state (e.g. env collection) to
+	 * avoid starting the browser unnecessarily.
+	 * @param planId the plan ID
+	 * @return existing DriverWrapper or null if none or unhealthy
+	 */
+	public DriverWrapper getDriverIfPresent(String planId) {
+		if (planId == null) {
+			return null;
+		}
+		DriverWrapper driver = drivers.get(planId);
+		if (driver != null && isDriverHealthy(driver)) {
+			return driver;
+		}
+		return null;
+	}
+
 	private void cleanupAllPlaywrightProcesses() {
 		log.info("Starting cleanup of all Playwright processes and drivers");
 		try {
