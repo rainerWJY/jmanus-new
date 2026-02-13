@@ -1,16 +1,19 @@
 description: |
-  点击下载链接并将文件保存到指定目录。
+  将文件下载到当前计划的 downloads 目录。提供 url（已知 URL 直接下载，如 PDF 链接）或 index（按 ARIA 快照中的元素索引点击下载链接/按钮）之一。使用 url 时，请求会使用浏览器上下文（相同 cookies）。
 
 parameters: |
   {
       "type": "object",
       "properties": {
+          "url": {
+              "type": "string",
+              "description": "要下载文件的直接 URL。当已知文件 URL（如 PDF 链接）时使用。使用浏览器上下文（相同 cookies）保存。"
+          },
           "index": {
               "type": "integer",
               "description": "要点击的下载链接或按钮的元素索引。这对应于 ARIA 快照中每个交互元素显示的 idx 值（例如 idx=39）。"
           }
       },
-      "required": ["index"],
       "additionalProperties": false
   }
 

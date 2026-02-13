@@ -16,6 +16,8 @@
 package com.alibaba.cloud.ai.lynxe.runtime.controller;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -364,16 +366,9 @@ public class FileBrowserController {
 			ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(mimeType));
 
-			if (isImage) {
-				// Serve images inline so they can be displayed in browser
-				responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
-						"inline; filename=\"" + targetFile.getFileName().toString() + "\"");
-			}
-			else {
-				// Serve other files as attachments
-				responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION,
-						"attachment; filename=\"" + targetFile.getFileName().toString() + "\"");
-			}
+			String dispositionType = isImage ? "inline" : "attachment";
+			String contentDisposition = buildContentDisposition(dispositionType, targetFile.getFileName().toString());
+			responseBuilder.header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition);
 
 			return responseBuilder.body(resource);
 
@@ -382,6 +377,30 @@ public class FileBrowserController {
 			logger.error("Error downloading file for planId: {}, path: {}", planId, filePath, e);
 			return ResponseEntity.internalServerError().build();
 		}
+	}
+
+	/**
+	 * Build a Content-Disposition header value that is safe for HTTP (ASCII/ISO-8859-1).
+	 * When the filename contains non-ASCII characters, uses RFC 5987 encoding
+	 * (filename*=UTF-8''percent-encoded) so Tomcat and clients accept it.
+	 */
+	private static String buildContentDisposition(String dispositionType, String filename) {
+		if (filename == null || filename.isEmpty()) {
+			return dispositionType + "; filename=\"download\"";
+		}
+		boolean asciiOnly = filename.chars().allMatch(c -> c < 128);
+		if (asciiOnly) {
+			return dispositionType + "; filename=\"" + filename.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+		}
+		String fallback = asciiFallbackFilename(filename);
+		String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+		return dispositionType + "; filename=\"" + fallback + "\"; filename*=UTF-8''" + encoded;
+	}
+
+	private static String asciiFallbackFilename(String filename) {
+		int lastDot = filename.lastIndexOf('.');
+		String ext = (lastDot > 0 && lastDot < filename.length() - 1) ? filename.substring(lastDot) : "";
+		return "download" + ext;
 	}
 
 	/**
