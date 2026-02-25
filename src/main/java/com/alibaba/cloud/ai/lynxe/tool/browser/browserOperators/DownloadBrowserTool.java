@@ -169,7 +169,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				return new ToolExecuteResult("Failed to create download directory: " + e.getMessage());
 			}
 
-			// Direct download by URL: prefer when url is provided (or when both url and index set).
+			// Direct download by URL: prefer when url is provided (or when both url and
+			// index set).
 			String urlToDownload = (inputUrl != null && !inputUrl.isBlank()) ? inputUrl.trim() : null;
 			if (urlToDownload != null) {
 				if (!urlToDownload.startsWith("http://") && !urlToDownload.startsWith("https://")) {
@@ -224,7 +225,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 			};
 			clickAction.run();
 
-			// Poll for new/document page in case onPopup never fires (e.g. some fund sites).
+			// Poll for new/document page in case onPopup never fires (e.g. some fund
+			// sites).
 			CompletableFuture<Page> pageDiffFuture = new CompletableFuture<>();
 			ScheduledExecutorService poller = Executors.newSingleThreadScheduledExecutor(r -> {
 				Thread t = new Thread(r, "download-page-diff-poller");
@@ -238,7 +240,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				try {
 					List<Page> pages = page.context().pages();
 					for (Page p : pages) {
-						if (p == null || p.isClosed()) continue;
+						if (p == null || p.isClosed())
+							continue;
 						String u = p.url();
 						if (u != null && !u.isBlank() && !urlsBeforeClick.contains(u)) {
 							pageDiffFuture.complete(p);
@@ -260,8 +263,10 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 					.get(DOWNLOAD_OR_POPUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 			}
 			catch (TimeoutException e) {
-				// Fallback: on some sites the new tab does not fire onPopup; detect by URL
-				// diff (same pattern as AbstractBrowserTool.clickAndSwitchToNewTabIfOpened).
+				// Fallback: on some sites the new tab does not fire onPopup; detect by
+				// URL
+				// diff (same pattern as
+				// AbstractBrowserTool.clickAndSwitchToNewTabIfOpened).
 				List<Page> pagesAfter = page.context().pages();
 				List<Page> pagesWithNewUrl = pagesAfter.stream()
 					.filter(p -> p.url() != null && !p.url().isBlank() && !urlsBeforeClick.contains(p.url()))
@@ -277,8 +282,10 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 					log.info("Same-tab navigation detected by URL diff; saving from URL.");
 					return saveFromUrl(newUrl, page, downloadDir);
 				}
-				// Fallback: any existing page with document-like URL (e.g. PDF tab already
-				// open; URL-based diff found 0 because that URL was already in urlsBeforeClick).
+				// Fallback: any existing page with document-like URL (e.g. PDF tab
+				// already
+				// open; URL-based diff found 0 because that URL was already in
+				// urlsBeforeClick).
 				Page docPage = pagesAfter.stream()
 					.filter(p -> p != null && !p.isClosed())
 					.filter(p -> isDocumentLikeUrl(p.url()))
@@ -292,7 +299,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 					log.info("Current page is document-like; saving from URL.");
 					return saveFromUrl(docPage.url(), page, downloadDir);
 				}
-				// Last fallback: current page URL looks like a document (no URL diff caught it).
+				// Last fallback: current page URL looks like a document (no URL diff
+				// caught it).
 				String currentUrl = page.url();
 				if (isDocumentLikeUrl(currentUrl)) {
 					log.info("Current page URL looks like a document; saving from URL.");
@@ -348,7 +356,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 						"Downloaded file saved to " + savePath.toString() + " (filename: " + safeName + ")");
 			}
 
-			// Popup or page-diff: new tab or same-tab navigation (e.g. PDF). Fetch and save.
+			// Popup or page-diff: new tab or same-tab navigation (e.g. PDF). Fetch and
+			// save.
 			Page resultPage = (Page) result;
 			if (resultPage == page) {
 				return saveFromUrl(resultPage.url(), page, downloadDir);

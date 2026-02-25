@@ -278,8 +278,8 @@ public class BrowserUseCommonService {
 	}
 
 	/**
-	 * Get the current browser state as a string. Does not create a browser session; if
-	 * no session exists for the plan, returns a no-session message so env collection does
+	 * Get the current browser state as a string. Does not create a browser session; if no
+	 * session exists for the plan, returns a no-session message so env collection does
 	 * not start the browser automatically.
 	 * @param planId the plan ID
 	 * @param rootPlanId the root plan ID
