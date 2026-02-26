@@ -118,6 +118,10 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 			if (oldString == null || newString == null) {
 				return new ToolExecuteResult("Error: old_string and new_string parameters are required");
 			}
+			if (oldString.isEmpty()) {
+				return new ToolExecuteResult(
+						"Error: old_string cannot be empty. For prepending content, create/write the file first or use a non-empty placeholder to replace.");
+			}
 
 			// Replace short URLs in path and strings
 			targetPath = replaceShortUrls(targetPath);
@@ -340,6 +344,9 @@ public class ReplaceFileOperator extends AbstractBaseTool<ReplaceFileOperator.Re
 	 * Count occurrences of a string in content (exact matching)
 	 */
 	private int countOccurrences(String content, String searchString) {
+		if (searchString == null || searchString.isEmpty()) {
+			return 0;
+		}
 		int count = 0;
 		int index = 0;
 		while ((index = content.indexOf(searchString, index)) != -1) {
