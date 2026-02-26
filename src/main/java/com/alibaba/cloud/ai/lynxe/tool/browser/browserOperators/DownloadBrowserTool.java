@@ -349,11 +349,12 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				Path savePath = downloadDir.resolve(safeName);
 				download.saveAs(savePath);
 				if (!Files.exists(savePath)) {
-					return new ToolExecuteResult("Download completed but file was not saved to " + savePath);
+					return new ToolExecuteResult(
+							"Download completed but file was not saved to " + DOWNLOADS_SUBDIR + "/" + safeName);
 				}
 				log.info("Download saved to {}", savePath);
-				return new ToolExecuteResult(
-						"Downloaded file saved to " + savePath.toString() + " (filename: " + safeName + ")");
+				String relativePath = DOWNLOADS_SUBDIR + "/" + safeName;
+				return new ToolExecuteResult("File saved to " + relativePath + " (filename: " + safeName + ")");
 			}
 
 			// Popup or page-diff: new tab or same-tab navigation (e.g. PDF). Fetch and
@@ -399,7 +400,8 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 			}
 			Files.write(savePath, body);
 			log.info("Saved document to {}", savePath);
-			return new ToolExecuteResult("File saved to " + savePath.toString() + " (filename: " + safeName + ")");
+			String relativePath = DOWNLOADS_SUBDIR + "/" + safeName;
+			return new ToolExecuteResult("File saved to " + relativePath + " (filename: " + safeName + ")");
 		}
 		catch (Exception e) {
 			log.error("Error saving from URL: {}", e.getMessage(), e);
@@ -444,8 +446,9 @@ public class DownloadBrowserTool extends AbstractBrowserTool<DownloadBrowserTool
 				getDriverWrapper().setCurrentPage(originalPage);
 			}
 			log.info("Saved document from new tab to {}", savePath);
+			String relativePath = DOWNLOADS_SUBDIR + "/" + safeName;
 			return new ToolExecuteResult(
-					"File opened in new tab was saved to " + savePath.toString() + " (filename: " + safeName + ")");
+					"File opened in new tab was saved to " + relativePath + " (filename: " + safeName + ")");
 		}
 		catch (Exception e) {
 			try {
