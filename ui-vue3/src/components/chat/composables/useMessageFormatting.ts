@@ -15,6 +15,7 @@
  */
 
 import type { ChatMessage } from '@/types/message-dialog'
+import { logger } from '@/utils/logger'
 import DOMPurify from 'dompurify'
 import hljs from 'highlight.js'
 import { marked } from 'marked'
@@ -45,13 +46,13 @@ marked.use({
           codeText = token
         } else {
           // Last resort: convert to string
-          console.warn('[useMessageFormatting] Unexpected token format:', typeof token, token)
+          logger.warn('[useMessageFormatting] Unexpected token format:', typeof token, token)
           codeText = String(token || '')
         }
 
         // Ensure codeText is a string
         if (typeof codeText !== 'string') {
-          console.warn(
+          logger.warn(
             '[useMessageFormatting] Code text is not a string:',
             typeof codeText,
             codeText
@@ -65,7 +66,7 @@ marked.use({
             const highlighted = hljs.highlight(codeText, { language }).value
             return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
           } catch (err) {
-            console.warn('[useMessageFormatting] Highlight.js error:', err)
+            logger.warn('[useMessageFormatting] Highlight.js error:', err)
           }
         }
         // Fallback: escape HTML and wrap in pre/code
@@ -77,7 +78,7 @@ marked.use({
           .replace(/'/g, '&#39;')
         return `<pre><code>${escaped}</code></pre>`
       } catch (error) {
-        console.error('[useMessageFormatting] Error in code renderer:', error, token)
+        logger.error('[useMessageFormatting] Error in code renderer:', error, token)
         // Ultimate fallback - escape all HTML entities properly
         // Note: & must be escaped first to avoid double-encoding
         const safeText = String(token?.text || token?.raw || token || '')
@@ -146,7 +147,7 @@ export function useMessageFormatting() {
 
       return sanitized
     } catch (error) {
-      console.error('[useMessageFormatting] Error formatting markdown:', error)
+      logger.error('[useMessageFormatting] Error formatting markdown:', error)
       // Fallback to plain text with escaped HTML
       return text
         .replace(/&/g, '&amp;')
@@ -194,7 +195,7 @@ export function useMessageFormatting() {
         minute: '2-digit',
       })
     } catch (error) {
-      console.warn('[useMessageFormatting] Error formatting timestamp:', timestamp, error)
+      logger.warn('[useMessageFormatting] Error formatting timestamp:', timestamp, error)
       return ''
     }
   }

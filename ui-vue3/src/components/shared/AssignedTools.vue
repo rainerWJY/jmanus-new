@@ -68,7 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { storeToRefs } from 'pinia'
+import { useAvailableToolsStore, type AvailableTool } from '@/stores/new/availableTools'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -99,13 +100,15 @@ const emit = defineEmits<{
   'tools-filtered': [filteredToolIds: string[]]
 }>()
 
-// Get available tools from singleton
-const availableToolsStore = useAvailableToolsSingleton()
-const availableTools = computed(() => availableToolsStore.availableTools.value)
+// Get available tools from store
+const availableToolsStore = useAvailableToolsStore()
+const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
+  storeToRefs(availableToolsStore)
+const availableTools = computed(() => availableToolsRef.value)
 
 // Load available tools on mount if not already loaded
 onMounted(() => {
-  if (availableTools.value.length === 0 && !availableToolsStore.isLoading.value) {
+  if (availableTools.value.length === 0 && !availableToolsLoading.value) {
     availableToolsStore.loadAvailableTools()
   }
 })
@@ -152,7 +155,7 @@ watch(
 
 // Methods
 const getToolDisplayNameWithGroup = (toolId: string): string => {
-  const tool = availableTools.value.find(t => t.key === toolId)
+  const tool = availableTools.value.find((t: AvailableTool) => t.key === toolId)
   if (!tool) return toolId
 
   // Use the tool.key directly as it already contains the correct format (serviceGroup-toolName)
@@ -161,7 +164,7 @@ const getToolDisplayNameWithGroup = (toolId: string): string => {
 }
 
 const getToolDescription = (toolId: string): string => {
-  const tool = availableTools.value.find(t => t.key === toolId)
+  const tool = availableTools.value.find((t: AvailableTool) => t.key === toolId)
   return tool ? tool.description : ''
 }
 </script>

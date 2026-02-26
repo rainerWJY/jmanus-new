@@ -323,17 +323,17 @@
           <h3 class="version-title">{{ $t('config.versionInfo.title') }}</h3>
         </div>
         <div class="version-content">
-          <div class="version-item" v-if="versionInfo.version">
+          <div class="version-item" v-if="appStore.version?.version">
             <span class="version-label">{{ $t('config.versionInfo.version') }}:</span>
-            <span class="version-value">{{ versionInfo.version }}</span>
+            <span class="version-value">{{ appStore.version.version }}</span>
           </div>
-          <div class="version-item" v-if="versionInfo.buildTime">
+          <div class="version-item" v-if="appStore.version?.buildTime">
             <span class="version-label">{{ $t('config.versionInfo.buildTime') }}:</span>
-            <span class="version-value">{{ versionInfo.buildTime }}</span>
+            <span class="version-value">{{ appStore.version.buildTime }}</span>
           </div>
-          <div class="version-item" v-if="versionInfo.timestamp">
+          <div class="version-item" v-if="appStore.version?.timestamp">
             <span class="version-label">{{ $t('config.versionInfo.currentTime') }}:</span>
-            <span class="version-value">{{ formatTimestamp(versionInfo.timestamp) }}</span>
+            <span class="version-value">{{ formatTimestamp(appStore.version.timestamp) }}</span>
           </div>
         </div>
       </div>
@@ -350,8 +350,9 @@
 
 <script setup lang="ts">
 import { AdminApiService, type ConfigItem } from '@/api/admin-api-service'
-import { CommonApiService } from '@/api/common-api-service'
+import { useAppStore } from '@/stores/new/app'
 import Switch from '@/components/switch/index.vue'
+import { logger } from '@/utils/logger'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -398,12 +399,8 @@ const message = reactive({
 // Search filter state
 const searchQuery = ref('')
 
-// Version information
-const versionInfo = ref<{ version: string; buildTime: string; timestamp: string }>({
-  version: '',
-  buildTime: '',
-  timestamp: '',
-})
+// App store for version
+const appStore = useAppStore()
 
 // Configuration item display name mapping
 const CONFIG_DISPLAY_NAMES: Record<string, string> = {
@@ -695,7 +692,7 @@ const loadAllConfigs = async () => {
           subGroups,
         }
       } catch (error) {
-        console.warn(`Failed to load config group ${groupName}, skipping:`, error)
+        logger.warn(`Failed to load config group ${groupName}, skipping:`, error)
         return null
       }
     })
@@ -705,9 +702,9 @@ const loadAllConfigs = async () => {
     // Filter out empty configuration groups
     configGroups.value = results.filter(group => group !== null) as ConfigGroup[]
 
-    console.log(t('config.basicConfig.loadConfigSuccess'), configGroups.value)
+    logger.debug(t('config.basicConfig.loadConfigSuccess'), configGroups.value)
   } catch (error) {
-    console.error(t('config.basicConfig.loadConfigFailed'), error)
+    logger.error(t('config.basicConfig.loadConfigFailed'), error)
     showMessage(t('config.basicConfig.loadConfigFailed'), 'error')
   } finally {
     initialLoading.value = false
@@ -751,7 +748,7 @@ const saveAllConfigs = async () => {
       showMessage(result.message || t('config.basicConfig.saveFailed'), 'error')
     }
   } catch (error) {
-    console.error(t('config.basicConfig.saveFailed'), error)
+    logger.error(t('config.basicConfig.saveFailed'), error)
     showMessage(t('config.basicConfig.saveFailed'), 'error')
   } finally {
     loading.value = false
@@ -853,7 +850,7 @@ const exportConfigs = () => {
 
     showMessage(t('config.basicConfig.exportSuccess'))
   } catch (error) {
-    console.error(t('config.basicConfig.exportFailed'), error)
+    logger.error(t('config.basicConfig.exportFailed'), error)
     showMessage(t('config.basicConfig.exportFailed'), 'error')
   }
 }
@@ -910,7 +907,7 @@ const importConfigs = (event: Event) => {
         showMessage(result.message || t('config.basicConfig.importFailed'), 'error')
       }
     } catch (error) {
-      console.error(t('config.basicConfig.importFailed'), error)
+      logger.error(t('config.basicConfig.importFailed'), error)
       showMessage(t('config.basicConfig.importFailed'), 'error')
     } finally {
       loading.value = false
@@ -940,20 +937,10 @@ const restoreAllDefaults = async () => {
       showMessage(result.message || t('config.basicConfig.restoreAllDefaultsFailed'), 'error')
     }
   } catch (error) {
-    console.error(t('config.basicConfig.restoreAllDefaultsFailed'), error)
+    logger.error(t('config.basicConfig.restoreAllDefaultsFailed'), error)
     showMessage(t('config.basicConfig.restoreAllDefaultsFailed'), 'error')
   } finally {
     loading.value = false
-  }
-}
-
-// Load version information
-const loadVersionInfo = async () => {
-  try {
-    const info = await CommonApiService.getVersion()
-    versionInfo.value = info
-  } catch (error) {
-    console.error('Failed to load version information:', error)
   }
 }
 
@@ -977,7 +964,7 @@ const formatTimestamp = (timestamp: string): string => {
 // Load configurations when the component is mounted
 onMounted(() => {
   loadAllConfigs()
-  loadVersionInfo()
+  appStore.loadVersion()
 })
 </script>
 

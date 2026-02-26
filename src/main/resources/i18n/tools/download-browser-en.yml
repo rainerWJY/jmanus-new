@@ -1,16 +1,19 @@
 description: |
-  Click download link and save file to specified directory.
+  Download a file to the plan's downloads directory. Provide either url (direct download from a known URL, e.g. a PDF link) or index (click the download link/button by element index from the ARIA snapshot). When using url, the request uses the browser context (same cookies).
 
 parameters: |
   {
       "type": "object",
       "properties": {
+          "url": {
+              "type": "string",
+              "description": "Direct URL of the file to download. Use when the file URL is already known (e.g. PDF link). Saves using the browser context (same cookies)."
+          },
           "index": {
               "type": "integer",
               "description": "Element index of the download link or button to click. This corresponds to the idx value (e.g., idx=39) shown in the ARIA snapshot for each interactive element."
           }
       },
-      "required": ["index"],
       "additionalProperties": false
   }
 

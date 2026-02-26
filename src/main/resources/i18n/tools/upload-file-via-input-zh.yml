@@ -1,0 +1,19 @@
+description: |
+  通过标准文件输入上传文件。在指定索引的 input type="file" 元素上设置文件，使用常规文件路径（根计划目录）。设置文件后，可调用 click-browser 提交（例如「通过标准输入上传」）。filePath 相对于根计划目录。
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "index": {
+              "type": "integer",
+              "description": "文件输入框的元素索引。对应 ARIA 快照中 input type=\"file\" 元素显示的 idx 值（例如 idx=0）。"
+          },
+          "filePath": {
+              "type": "string",
+              "description": "相对于根计划目录的文件路径，或可在计划内解析的路径（例如 \"myfile.pdf\"、\"uploads/doc.pdf\"）。"
+          }
+      },
+      "required": ["index", "filePath"],
+      "additionalProperties": false
+  }

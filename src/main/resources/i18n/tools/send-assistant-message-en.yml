@@ -1,0 +1,14 @@
+description: |
+  Send an assistant message to the user and add it to conversation memory. Use this tool when you want to show the user a message during plan execution (e.g. progress, status, or a direct reply). The message will appear in the chat and be persisted in conversation history.
+
+parameters: |
+  {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "The assistant message text to send to the user and add to conversation memory. This content will be shown in the chat and saved for the conversation."
+      }
+    },
+    "required": ["message"]
+  }

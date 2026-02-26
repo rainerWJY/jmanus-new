@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
+
 // Define interface types
 export interface FileNode {
   name: string
@@ -75,7 +77,7 @@ export class FileBrowserApiService {
 
       return apiResponse.data!
     } catch (error) {
-      console.error('Failed to get file tree:', error)
+      logger.error('Failed to get file tree:', error)
       throw error
     }
   }
@@ -97,7 +99,7 @@ export class FileBrowserApiService {
 
       return apiResponse.data!
     } catch (error) {
-      console.error('Failed to get file content:', error)
+      logger.error('Failed to get file content:', error)
       throw error
     }
   }
@@ -122,7 +124,7 @@ export class FileBrowserApiService {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Failed to download file:', error)
+      logger.error('Failed to download file:', error)
       throw error
     }
   }

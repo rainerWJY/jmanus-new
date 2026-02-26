@@ -278,7 +278,9 @@ public class BrowserUseCommonService {
 	}
 
 	/**
-	 * Get the current browser state as a string
+	 * Get the current browser state as a string. Does not create a browser session; if no
+	 * session exists for the plan, returns a no-session message so env collection does
+	 * not start the browser automatically.
 	 * @param planId the plan ID
 	 * @param rootPlanId the root plan ID
 	 * @return String representation of the current browser state
@@ -286,7 +288,16 @@ public class BrowserUseCommonService {
 	@SuppressWarnings("unchecked")
 	public String getCurrentToolStateString(String planId, String rootPlanId) {
 		try {
-			DriverWrapper driver = getDriver(planId);
+			// Use getDriverIfPresent so we do not start the browser when only collecting
+			// tool state (e.g. during agent think()). Browser starts only when a browser
+			// tool is actually executed (which calls getDriver(planId)).
+			DriverWrapper driver = chromeDriverService.getDriverIfPresent(planId);
+			if (driver == null) {
+				return """
+						No browser session for this plan.
+						Use browser tools (e.g. navigate) to open a page first.
+						""";
+			}
 			Map<String, Object> state = getCurrentState(driver.getCurrentPage(), rootPlanId);
 			// Build URL and title information
 			String urlInfo = String.format("\n   URL: %s\n   Title: %s", state.get("url"), state.get("title"));

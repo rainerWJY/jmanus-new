@@ -137,9 +137,10 @@
 </template>
 
 <script setup lang="ts">
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -243,9 +244,9 @@ const loadPlanTemplates = async () => {
     initialLoading.value = true
     const templates = await PlanTemplateApiService.getAllPlanTemplateConfigVOs()
     planTemplates.value = templates
-    console.log(`Loaded ${templates.length} plan templates`)
+    logger.debug(`Loaded ${templates.length} plan templates`)
   } catch (error) {
-    console.error('Failed to load plan templates:', error)
+    logger.error('Failed to load plan templates:', error)
     showMessage(t('config.planTemplate.loadFailed'), 'error')
     planTemplates.value = []
   } finally {
@@ -278,7 +279,7 @@ const handleExport = async () => {
 
     showMessage(t('config.planTemplate.exportSuccess'))
   } catch (error) {
-    console.error('Failed to export plan templates:', error)
+    logger.error('Failed to export plan templates:', error)
     const errorMessage =
       error instanceof Error ? error.message : t('config.planTemplate.exportFailed')
     showMessage(errorMessage, 'error')
@@ -321,7 +322,7 @@ const handleExportGroup = async (groupKey: string | null) => {
 
     showMessage(t('config.planTemplate.exportSuccess'))
   } catch (error) {
-    console.error('Failed to export group templates:', error)
+    logger.error('Failed to export group templates:', error)
     const errorMessage =
       error instanceof Error ? error.message : t('config.planTemplate.exportFailed')
     showMessage(errorMessage, 'error')

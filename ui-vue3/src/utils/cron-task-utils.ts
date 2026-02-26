@@ -16,6 +16,7 @@
 
 import type { CronConfig } from '@/types/cron-task'
 import { CronApiService } from '@/api/cron-api-service'
+import { logger } from '@/utils/logger'
 
 /**
  * CronTask utility functions collection
@@ -61,7 +62,7 @@ export const CronTaskUtils = {
 
       return result
     } catch (error) {
-      console.error('Failed to save cron task:', error)
+      logger.error('Failed to save cron task:', error)
       throw error
     }
   },
@@ -74,7 +75,7 @@ export const CronTaskUtils = {
     try {
       await CronApiService.deleteCronTask(String(taskId))
     } catch (error) {
-      console.error('Failed to delete cron task:', error)
+      logger.error('Failed to delete cron task:', error)
       throw error
     }
   },

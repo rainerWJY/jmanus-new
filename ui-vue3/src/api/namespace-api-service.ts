@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
+
 export interface Namespace {
   id: string
   code: string
@@ -49,7 +51,7 @@ export class NamespaceApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get Namespace list:', error)
+      logger.error('Failed to get Namespace list:', error)
       throw error
     }
   }
@@ -63,7 +65,7 @@ export class NamespaceApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error(`Failed to get Namespace[${id}] details:`, error)
+      logger.error(`Failed to get Namespace[${id}] details:`, error)
       throw error
     }
   }
@@ -83,7 +85,7 @@ export class NamespaceApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to create Namespace:', error)
+      logger.error('Failed to create Namespace:', error)
       throw error
     }
   }
@@ -103,7 +105,7 @@ export class NamespaceApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error(`Failed to update Namespace[${id}]:`, error)
+      logger.error(`Failed to update Namespace[${id}]:`, error)
       throw error
     }
   }
@@ -121,7 +123,7 @@ export class NamespaceApiService {
       }
       await this.handleResponse(response)
     } catch (error) {
-      console.error(`Failed to delete Namespace[${id}]:`, error)
+      logger.error(`Failed to delete Namespace[${id}]:`, error)
       throw error
     }
   }

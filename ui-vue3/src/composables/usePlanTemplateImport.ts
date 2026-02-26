@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-import { PlanTemplateApiService } from '@/api/plan-template-with-tool-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import type { PlanTemplateConfigVO } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 
 /**
  * Options for importing plan templates
@@ -141,11 +142,11 @@ export function usePlanTemplateImport() {
         if (onError) {
           onError('Import failed')
         } else {
-          console.error('Import failed')
+          logger.error('Import failed')
         }
       }
     } catch (error) {
-      console.error('Failed to import plan templates:', error)
+      logger.error('Failed to import plan templates:', error)
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to import plan templates'
       if (onError) {

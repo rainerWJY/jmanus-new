@@ -71,7 +71,7 @@
             </button>
             <button
               class="cron-task-btn"
-              @click="memoryStore.toggleSidebar()"
+              @click="appStore.toggleMemorySidebar()"
               :title="$t('memory.selectMemory')"
             >
               <Icon icon="carbon:calendar" width="20" />
@@ -113,10 +113,12 @@ import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
 import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/composables/useToast'
-import { memoryStore } from '@/stores/memory'
-import { useTaskStore } from '@/stores/task'
-import { templateStore } from '@/stores/templateStore'
+import { useAppStore } from '@/stores/new/app'
+import { useConversationStore } from '@/stores/new/conversation'
+import { useTaskStore } from '@/stores/new/task'
+import { templateStore } from '@/stores/new/templateStore'
 import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -133,6 +135,8 @@ const { toast } = useToast()
 const messageDialog = useMessageDialogSingleton()
 const planExecution = usePlanExecutionSingleton()
 const conversationHistory = useConversationHistorySingleton()
+const appStore = useAppStore()
+const conversationStore = useConversationStore()
 
 const prompt = ref<string>('')
 const rightPanelRef = ref()
@@ -155,9 +159,9 @@ const startSidebarX = ref(0)
 const startSidebarWidth = ref(0)
 
 onMounted(() => {
-  console.log('[Direct] onMounted called')
-  console.log('[Direct] taskStore.currentTask:', taskStore.currentTask)
-  console.log('[Direct] taskStore.hasUnprocessedTask():', taskStore.hasUnprocessedTask())
+  logger.debug('[Direct] onMounted called')
+  logger.debug('[Direct] taskStore.currentTask:', taskStore.currentTask)
+  logger.debug('[Direct] taskStore.hasUnprocessedTask():', taskStore.hasUnprocessedTask())
 
   // Watch for plan execution record changes (reactive approach)
   watch(
@@ -199,10 +203,10 @@ onMounted(() => {
 
           // Only clear currentRootPlanId if no other plans are running
           if (!hasOtherRunningPlans) {
-            console.log('[Direct] All plans completed, clearing currentRootPlanId')
+            logger.debug('[Direct] All plans completed, clearing currentRootPlanId')
             currentRootPlanId.value = null
           } else {
-            console.log(
+            logger.debug(
               '[Direct] Current plan completed but other plans are still running, keeping currentRootPlanId'
             )
           }
@@ -220,21 +224,24 @@ onMounted(() => {
       if (!currentRootPlanId.value && trackedIds.value.size > 0) {
         const firstTrackedId = Array.from(trackedIds.value)[0]
         currentRootPlanId.value = firstTrackedId
-        console.log('[Direct] Set currentRootPlanId to:', firstTrackedId)
+        logger.debug('[Direct] Set currentRootPlanId to:', firstTrackedId)
       }
     },
     { deep: true }
   )
 
   // Restore conversation history if conversationId exists in localStorage
-  const savedConversationId = memoryStore.getConversationId()
+  const savedConversationId = conversationStore.selectedConversationId
   if (savedConversationId) {
-    console.log('[Direct] Found saved conversationId, restoring conversation:', savedConversationId)
+    logger.debug(
+      '[Direct] Found saved conversationId, restoring conversation:',
+      savedConversationId
+    )
     nextTick(async () => {
       try {
         await conversationHistory.restoreConversationHistory(savedConversationId)
       } catch (error) {
-        console.error('[DirectView] Failed to restore conversation history:', error)
+        logger.error('[DirectView] Failed to restore conversation history:', error)
         // Don't show error message to user on page load, just log it
       }
     })
@@ -246,7 +253,7 @@ onMounted(() => {
   // Check if there is a task in the store
   if (taskStore.hasUnprocessedTask() && taskStore.currentTask) {
     const taskContent = taskStore.currentTask.prompt
-    console.log('[Direct] Found unprocessed task from store:', taskContent)
+    logger.debug('[Direct] Found unprocessed task from store:', taskContent)
 
     // Check if task content is not empty before processing
     if (taskContent.trim()) {
@@ -256,30 +263,30 @@ onMounted(() => {
       // Execute task directly without showing content in input box
       nextTick(async () => {
         try {
-          console.log('[Direct] Calling messageDialog.sendMessage with taskContent:', taskContent)
+          logger.debug('[Direct] Calling messageDialog.sendMessage with taskContent:', taskContent)
           await messageDialog.sendMessage({
             input: taskContent,
           })
         } catch (error) {
-          console.warn('[Direct] messageDialog.sendMessage failed, falling back to prompt:', error)
+          logger.warn('[Direct] messageDialog.sendMessage failed, falling back to prompt:', error)
           prompt.value = taskContent
         }
       })
     } else {
       // Task has empty content, just mark it as processed and don't execute
-      console.log('[Direct] Task has empty content, marking as processed without execution')
+      logger.debug('[Direct] Task has empty content, marking as processed without execution')
       taskStore.markTaskAsProcessed()
     }
   } else {
     // Check if there is a task to input (for pre-filling input without executing)
     // Note: InputArea automatically handles taskToInput via watch, so we don't need to clear it here
     if (taskStore.taskToInput) {
-      console.log('[Direct] taskToInput available, InputArea will handle it automatically')
+      logger.debug('[Direct] taskToInput available, InputArea will handle it automatically')
     } else {
       // Degrade to URL parameters (backward compatibility)
       prompt.value = (route.query.prompt as string) || ''
-      console.log('[Direct] Received task from URL:', prompt.value)
-      console.log('[Direct] No unprocessed task in store')
+      logger.debug('[Direct] Received task from URL:', prompt.value)
+      logger.debug('[Direct] No unprocessed task in store')
     }
   }
 
@@ -311,7 +318,7 @@ onMounted(() => {
     }
   })
 
-  console.log('[Direct] Final prompt value:', prompt.value)
+  logger.debug('[Direct] Final prompt value:', prompt.value)
   // Note: InputArea automatically handles taskToInput via watch
   // Note: Plan execution is now handled directly by Sidebar.vue using messageDialog.executePlan()
 })
@@ -320,26 +327,26 @@ onMounted(() => {
 watch(
   () => taskStore.currentTask,
   newTask => {
-    console.log('[Direct] Watch taskStore.currentTask triggered, newTask:', newTask)
+    logger.debug('[Direct] Watch taskStore.currentTask triggered, newTask:', newTask)
     if (newTask && !newTask.processed && newTask.prompt.trim()) {
       const taskContent = newTask.prompt
       taskStore.markTaskAsProcessed()
-      console.log('[Direct] Received new task from store:', taskContent)
+      logger.debug('[Direct] Received new task from store:', taskContent)
 
       // Execute task directly without showing content in input box
       nextTick(async () => {
         try {
-          console.log(
+          logger.debug(
             '[Direct] Directly executing new task via messageDialog.sendMessage:',
             taskContent
           )
           await messageDialog.sendMessage({ input: taskContent })
         } catch (error) {
-          console.warn('[Direct] messageDialog.sendMessage failed for new task:', error)
+          logger.warn('[Direct] messageDialog.sendMessage failed for new task:', error)
         }
       })
     } else {
-      console.log('[Direct] Task is null, already processed, or has empty prompt - ignoring')
+      logger.debug('[Direct] Task is null, already processed, or has empty prompt - ignoring')
     }
   },
   { immediate: false }
@@ -349,7 +356,7 @@ watch(
 watch(
   () => prompt.value,
   (newPrompt, oldPrompt) => {
-    console.log('[Direct] prompt value changed from:', oldPrompt, 'to:', newPrompt)
+    logger.debug('[Direct] prompt value changed from:', oldPrompt, 'to:', newPrompt)
     // Prompt is now only used for input field initial value, no automatic execution
   },
   { immediate: false }
@@ -358,7 +365,7 @@ watch(
 // Note: taskToInput is now handled automatically by InputArea.vue
 
 onUnmounted(() => {
-  console.log('[Direct] onUnmounted called, cleaning up resources')
+  logger.debug('[Direct] onUnmounted called, cleaning up resources')
 
   // Clear current root plan ID
   currentRootPlanId.value = null
@@ -582,7 +589,7 @@ const shouldProcessEventForCurrentPlan = (
   }
 
   // Otherwise, ignore the event (only log for active non-current plans)
-  console.log(
+  logger.debug(
     '[Direct] Ignoring event for non-current rootPlanId:',
     rootPlanId,
     'current:',
@@ -592,14 +599,14 @@ const shouldProcessEventForCurrentPlan = (
 }
 
 const handleStepSelected = (stepId: string) => {
-  console.log('[DirectView] Step selected:', stepId)
+  logger.debug('[DirectView] Step selected:', stepId)
 
   // Forward step selection to config/preview panel
   if (rightPanelRef.value && typeof rightPanelRef.value.handleStepSelected === 'function') {
-    console.log('[DirectView] Forwarding step selection to config/preview panel:', stepId)
+    logger.debug('[DirectView] Forwarding step selection to config/preview panel:', stepId)
     rightPanelRef.value.handleStepSelected(stepId)
   } else {
-    console.warn('[DirectView] rightPanelRef.handleStepSelected method not available')
+    logger.warn('[DirectView] rightPanelRef.handleStepSelected method not available')
   }
 }
 
@@ -608,21 +615,25 @@ const handleConfig = () => {
 }
 
 const memorySelected = async () => {
-  // Memory sidebar is already closed by selectConversation() calling toggleSidebar()
+  // Memory sidebar is already closed by selectMemory() calling toggleSidebar()
   // Load conversation history if a conversation is selected
-  if (memoryStore.conversationId) {
-    console.log('[DirectView] Conversation selected:', memoryStore.conversationId)
+  if (conversationStore.selectedConversationId) {
+    logger.debug('[DirectView] Conversation selected:', conversationStore.selectedConversationId)
     try {
-      await conversationHistory.loadConversationHistory(memoryStore.conversationId, true, true)
+      await conversationHistory.loadConversationHistory(
+        conversationStore.selectedConversationId,
+        true,
+        true
+      )
     } catch (error) {
-      console.error('[DirectView] Failed to load conversation history:', error)
+      logger.error('[DirectView] Failed to load conversation history:', error)
       // Error toast is already shown by loadConversationHistory
     }
   }
 }
 
 const newChat = () => {
-  memoryStore.clearSelectedConversation()
+  conversationStore.clearSelectedConversation()
   // Reset all dialog state including conversationId to start a fresh conversation
   messageDialog.reset()
 }
@@ -632,7 +643,7 @@ const newChat = () => {
  * Clear template selection and switch to config tab to show initial welcome screen
  */
 const handleLogoClick = () => {
-  console.log('[Direct] Logo clicked, resetting to initial state')
+  logger.debug('[Direct] Logo clicked, resetting to initial state')
   // Clear template selection
   templateStore.clearSelection()
   // Switch to config tab

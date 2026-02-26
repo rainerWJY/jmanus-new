@@ -173,6 +173,7 @@ import {
   type FileNode,
 } from '@/api/file-browser-api-service'
 import { useMessageFormatting } from '@/components/chat/composables/useMessageFormatting'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -262,7 +263,7 @@ const refreshFileTree = async () => {
     // Success - no need to auto refresh
   } catch (err) {
     error.value = err instanceof Error ? err.message : t('fileBrowser.loadError')
-    console.error('Failed to load file tree:', err)
+    logger.error('Failed to load file tree:', err)
 
     // Start auto refresh if it's a "directory not found" error
     const errorMessage = err instanceof Error ? err.message : ''
@@ -287,7 +288,7 @@ const handleFileSelected = async (file: FileNode) => {
     // Note: download-only files will be displayed with a download button, but won't auto-download
   } catch (err) {
     contentError.value = err instanceof Error ? err.message : t('fileBrowser.contentLoadError')
-    console.error('Failed to load file content:', err)
+    logger.error('Failed to load file content:', err)
   } finally {
     loadingContent.value = false
   }
@@ -297,7 +298,7 @@ const handleDownloadFile = async (file: FileNode) => {
   try {
     await FileBrowserApiService.downloadFile(props.planId, file.path, file.name)
   } catch (err) {
-    console.error('Failed to download file:', err)
+    logger.error('Failed to download file:', err)
     // You could show a toast message here
   }
 }

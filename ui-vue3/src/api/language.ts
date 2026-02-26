@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { logger } from '@/utils/logger'
+
 export interface LanguageResponse {
   language: 'zh' | 'en'
 }
@@ -48,7 +50,7 @@ export const getLanguage = async (): Promise<'zh' | 'en'> => {
     const data: LanguageResponse = await response.json()
     return data.language || 'zh'
   } catch (error) {
-    console.error('Failed to get language from backend:', error)
+    logger.error('Failed to get language from backend:', error)
     throw error
   }
 }
@@ -76,7 +78,7 @@ export const setLanguage = async (language: 'zh' | 'en'): Promise<SetLanguageRes
     const data: SetLanguageResponse = await response.json()
     return data
   } catch (error) {
-    console.error('Failed to set language in backend:', error)
+    logger.error('Failed to set language in backend:', error)
     throw error
   }
 }

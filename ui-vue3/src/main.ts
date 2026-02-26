@@ -20,6 +20,7 @@ import { createApp } from 'vue'
 
 import { i18n, initializeLanguage } from '@/base/i18n'
 import { useMessageDialogSingleton } from '@/composables/useMessageDialog'
+import { logger } from '@/utils/logger'
 import 'ant-design-vue/dist/reset.css'
 import App from './App.vue'
 import router from './router'
@@ -51,7 +52,7 @@ initializeLanguage()
     app.mount('#app')
   })
   .catch(error => {
-    console.error('Failed to initialize language, mounting app with default language:', error)
+    logger.error('Failed to initialize language, mounting app with default language:', error)
     app.mount('#app')
   })
 

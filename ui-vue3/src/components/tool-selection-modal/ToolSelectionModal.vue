@@ -124,8 +124,10 @@
 </template>
 
 <script setup lang="ts">
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
+import { storeToRefs } from 'pinia'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import type { Tool } from '@/types/tool'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import Modal from '../modal/index.vue'
@@ -143,13 +145,15 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-// Get available tools from singleton
-const availableToolsStore = useAvailableToolsSingleton()
-const tools = computed(() => availableToolsStore.availableTools.value as Tool[])
+// Get available tools from store
+const availableToolsStore = useAvailableToolsStore()
+const { availableTools: availableToolsRef, isLoading: availableToolsLoading } =
+  storeToRefs(availableToolsStore)
+const tools = computed(() => availableToolsRef.value as Tool[])
 
 // Load available tools on mount if not already loaded
 onMounted(() => {
-  if (tools.value.length === 0 && !availableToolsStore.isLoading.value) {
+  if (tools.value.length === 0 && !availableToolsLoading.value) {
     availableToolsStore.loadAvailableTools()
   }
 })
@@ -157,8 +161,8 @@ onMounted(() => {
 // Also load when modal opens - always refresh to get latest tools
 watch(
   () => props.modelValue,
-  isVisible => {
-    if (isVisible && !availableToolsStore.isLoading.value) {
+  (isVisible: boolean) => {
+    if (isVisible && !availableToolsLoading.value) {
       // Always refresh tools when modal opens to get newly published tools
       availableToolsStore.loadAvailableTools()
     }
@@ -305,7 +309,7 @@ const toggleToolSelection = (toolKey: string, event: Event) => {
 
   // Prevent undefined toolKey
   if (!toolKey) {
-    console.error('toolKey is undefined, cannot proceed')
+    logger.error('toolKey is undefined, cannot proceed')
     return
   }
 

@@ -38,11 +38,12 @@ defineOptions({
   name: 'SidebarPanel',
 })
 
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
-import { sidebarStore } from '@/stores/sidebar'
-import { templateStore } from '@/stores/templateStore'
+import { useAppStore } from '@/stores/new/app'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
+import { templateStore } from '@/stores/new/templateStore'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { onMounted } from 'vue'
 import TemplateList from './TemplateList.vue'
@@ -53,36 +54,35 @@ const props = defineProps<{
 }>()
 
 // Available tools management
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
 
 // Template config management
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
 
 // Right panel management for tab switching
 const rightPanel = useRightPanelSingleton()
+const appStore = useAppStore()
 
 // Handle create new template
 const handleCreateNewTemplate = async () => {
-  // Use default plan type or get from templateConfig
-  const planType = templateConfig.getPlanType() || 'dynamic_agent'
+  const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
   await templateStore.createNewTemplate(planType)
 
-  // Load template config for new template
-  const newTemplate = templateConfig.selectedTemplate.value
+  const newTemplate = planTemplateConfigStore.selectedTemplate
   if (newTemplate) {
-    templateConfig.reset()
-    templateConfig.setPlanType(newTemplate.planType || 'dynamic_agent')
+    planTemplateConfigStore.reset()
+    planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
     if (newTemplate.planTemplateId) {
-      templateConfig.setPlanTemplateId(newTemplate.planTemplateId)
+      planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
     }
-    templateConfig.setTitle(newTemplate.title || '')
+    planTemplateConfigStore.setTitle(newTemplate.title || '')
   }
 
   // Switch to 'config' tab to show Func-Agent configuration
   rightPanel.setActiveTab('config')
 
   // Reload available tools to ensure fresh tool list
-  console.log('[Sidebar] 🔄 Reloading available tools for new template')
+  logger.debug('[Sidebar] 🔄 Reloading available tools for new template')
   await availableToolsStore.loadAvailableTools()
 }
 
@@ -95,7 +95,7 @@ onMounted(async () => {
 // Expose methods for parent component to call
 defineExpose({
   loadPlanTemplateList: templateStore.loadPlanTemplateList,
-  toggleSidebar: sidebarStore.toggleSidebar,
+  toggleSidebar: appStore.toggleSidebar,
 })
 </script>
 

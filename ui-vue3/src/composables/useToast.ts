@@ -1,5 +1,6 @@
-import { reactive } from 'vue'
 import type { Message, MessageType } from '@/types/mcp'
+import { logger } from '@/utils/logger'
+import { reactive } from 'vue'
 
 export function useToast() {
   const toast = reactive<Message>({
@@ -9,7 +10,7 @@ export function useToast() {
   })
 
   const showToast = (text: string, type: MessageType = 'success') => {
-    console.log(`Showing toast: ${text}, Type: ${type}`)
+    logger.debug(`Showing toast: ${text}, Type: ${type}`)
 
     toast.text = text
     toast.type = type
@@ -18,11 +19,11 @@ export function useToast() {
     // Set different display times based on message type
     const displayTime = type === 'error' ? 5000 : 3000 // Error messages display for 5 seconds, others for 3 seconds
 
-    console.log(`Toast will be automatically hidden after ${displayTime}ms`)
+    logger.debug(`Toast will be automatically hidden after ${displayTime}ms`)
 
     setTimeout(() => {
       toast.show = false
-      console.log('Toast hidden')
+      logger.debug('Toast hidden')
     }, displayTime)
   }
 

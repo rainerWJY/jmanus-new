@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+export { logger } from './logger'
 export function notEmpty(value: unknown): boolean {
   if (value == null) return false
 

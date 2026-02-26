@@ -144,9 +144,10 @@
 </template>
 
 <script setup lang="ts">
-import { PlanActApiService } from '@/api/plan-act-api-service'
+import { PlanTemplateApiService } from '@/api/plan-template-service'
 import type { CronConfig } from '@/types/cron-task'
 import type { PlanTemplate } from '@/types/plan-template'
+import { logger } from '@/utils/logger'
 import { CronTaskUtils } from '@/utils/cron-task-utils'
 import { Icon } from '@iconify/vue'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -181,7 +182,7 @@ const formData = ref<CronConfig>({
  */
 const fetchTemplates = async () => {
   try {
-    const response = (await PlanActApiService.getAllPlanTemplates()) as Record<string, unknown>
+    const response = (await PlanTemplateApiService.getAllPlanTemplates()) as Record<string, unknown>
     if (response?.templates) {
       templates.value = (response.templates as PlanTemplate[]).map((template: PlanTemplate) => ({
         id: template.id,
@@ -189,7 +190,7 @@ const fetchTemplates = async () => {
       }))
     }
   } catch (error) {
-    console.error('Failed to get template list:', error)
+    logger.error('Failed to get template list:', error)
   }
 }
 

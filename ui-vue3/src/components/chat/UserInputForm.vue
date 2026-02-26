@@ -187,9 +187,10 @@
 </template>
 
 <script setup lang="ts">
-import { CommonApiService } from '@/api/common-api-service'
+import { DirectApiService } from '@/api/lynxe-service'
 import { useMessageFormatting } from '@/components/chat/composables/useMessageFormatting'
 import type { UserInputWaitState } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -300,19 +301,19 @@ const handleUserInputSubmit = async () => {
       inputData.genericInput = genericInput.value
     }
 
-    console.log('[UserInputForm] Submitting user input:', inputData, 'for planId:', props.planId)
+    logger.debug('[UserInputForm] Submitting user input:', inputData, 'for planId:', props.planId)
 
     // Submit user input to backend API
     if (props.planId) {
-      await CommonApiService.submitFormInput(props.planId, inputData)
-      console.log('[UserInputForm] User input submitted successfully')
+      await DirectApiService.submitFormInput(props.planId, inputData)
+      logger.debug('[UserInputForm] User input submitted successfully')
     } else {
-      console.error('[UserInputForm] No planId available for user input submission')
+      logger.error('[UserInputForm] No planId available for user input submission')
     }
 
     emit('user-input-submitted', inputData)
   } catch (error: unknown) {
-    console.error('[UserInputForm] User input submission failed:', error)
+    logger.error('[UserInputForm] User input submission failed:', error)
   }
 }
 

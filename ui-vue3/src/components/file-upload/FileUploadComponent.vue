@@ -60,6 +60,7 @@ import {
   type FileUploadResult,
 } from '@/api/file-upload-api-service'
 import { useFileUploadSingleton } from '@/composables/useFileUpload'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -101,7 +102,7 @@ const uploadedFiles = computed(() => Array.from(fileUpload.uploadedFiles))
 
 // Function to reset session when starting a new conversation session
 const resetSession = () => {
-  console.log('[FileUpload] Resetting session and clearing uploadKey')
+  logger.debug('[FileUpload] Resetting session and clearing uploadKey')
   fileUpload.clearFiles()
   emit('upload-key-changed', null)
 }
@@ -136,7 +137,7 @@ const handleFileChange = async (event: Event) => {
 
   // Convert FileList to Array and add to pending files (for batch upload)
   const fileArray = Array.from(files)
-  console.log(
+  logger.debug(
     '[FileUpload] Selected files for upload:',
     fileArray.map(f => f.name)
   )
@@ -163,18 +164,18 @@ const uploadFiles = async (files: File[]) => {
       const currentKey = fileUpload.uploadKey.value
       if (!currentKey && result.uploadKey) {
         // New upload session - replace entire array
-        console.log('[FileUpload] New upload session, setting uploadKey:', result.uploadKey)
+        logger.debug('[FileUpload] New upload session, setting uploadKey:', result.uploadKey)
         fileUpload.setUploadedFiles(result.uploadedFiles, result.uploadKey)
       } else if (currentKey) {
         // Existing upload session - append to existing files
-        console.log('[FileUpload] Using existing uploadKey:', currentKey)
+        logger.debug('[FileUpload] Using existing uploadKey:', currentKey)
         fileUpload.addUploadedFiles(result.uploadedFiles)
         // Update uploadKey if it changed
         if (result.uploadKey && result.uploadKey !== currentKey) {
           fileUpload.setUploadedFiles(Array.from(fileUpload.uploadedFiles), result.uploadKey)
         }
       } else {
-        console.warn('[FileUpload] No uploadKey returned from upload')
+        logger.warn('[FileUpload] No uploadKey returned from upload')
         // Fallback - replace entire array
         fileUpload.setUploadedFiles(result.uploadedFiles, null)
       }
@@ -182,7 +183,12 @@ const uploadFiles = async (files: File[]) => {
       // Emit events for parent components
       const finalFiles = Array.from(fileUpload.uploadedFiles)
       const finalKey = fileUpload.uploadKey.value
-      console.log('[FileUpload] Updated shared state - files:', finalFiles.length, 'key:', finalKey)
+      logger.debug(
+        '[FileUpload] Updated shared state - files:',
+        finalFiles.length,
+        'key:',
+        finalKey
+      )
 
       if (finalKey) {
         emit('upload-key-changed', finalKey)
@@ -191,10 +197,10 @@ const uploadFiles = async (files: File[]) => {
     }
 
     // Show success message or update UI as needed
-    console.log('Files uploaded successfully:', result)
+    logger.debug('Files uploaded successfully:', result)
     emit('upload-completed')
   } catch (error) {
-    console.error('File upload error:', error)
+    logger.error('File upload error:', error)
     emit('upload-error', error)
   } finally {
     isUploading.value = false
@@ -205,7 +211,7 @@ const uploadFiles = async (files: File[]) => {
 const removeFile = async (fileToRemove: FileInfo) => {
   try {
     const currentKey = fileUpload.uploadKey.value
-    console.log('🗑️ Removing file:', fileToRemove.originalName, 'from uploadKey:', currentKey)
+    logger.debug('🗑️ Removing file:', fileToRemove.originalName, 'from uploadKey:', currentKey)
 
     // Call backend API to delete the file from the server
     if (currentKey) {
@@ -214,9 +220,9 @@ const removeFile = async (fileToRemove: FileInfo) => {
         fileToRemove.originalName
       )
       if (result.success) {
-        console.log('✅ File deleted from server successfully')
+        logger.debug('✅ File deleted from server successfully')
       } else {
-        console.error('❌ Failed to delete file from server:', result.error)
+        logger.error('❌ Failed to delete file from server:', result.error)
       }
     }
 
@@ -227,14 +233,14 @@ const removeFile = async (fileToRemove: FileInfo) => {
     const remainingFiles = Array.from(fileUpload.uploadedFiles)
 
     if (remainingFiles.length === 0) {
-      console.log('[FileUpload] 🧹 All files removed, clearing uploadKey')
+      logger.debug('[FileUpload] 🧹 All files removed, clearing uploadKey')
       emit('upload-key-changed', null)
     }
 
     emit('files-removed', remainingFiles)
-    console.log('🎉 File removal completed, remaining files:', remainingFiles.length)
+    logger.debug('🎉 File removal completed, remaining files:', remainingFiles.length)
   } catch (error) {
-    console.error('❌ Error removing file:', error)
+    logger.error('❌ Error removing file:', error)
     emit('upload-error', error)
   }
 }

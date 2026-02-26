@@ -72,6 +72,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import { localeConfig, changeLanguage } from '@/base/i18n'
+import { logger } from '@/utils/logger'
 
 const { locale } = useI18n()
 
@@ -100,7 +101,7 @@ const selectLanguage = async (lang: string) => {
     await changeLanguage(lang)
     showDropdown.value = false
   } catch (error) {
-    console.error('Failed to change language:', error)
+    logger.error('Failed to change language:', error)
     // Close dropdown even if failed
     showDropdown.value = false
   } finally {

@@ -1,0 +1,19 @@
+description: |
+  通过点击某元素（例如「选择文件」或拖放区域）触发文件选择器，然后设置选中的文件。用于会打开文件选择器的拖放或自定义上传界面。filePath 相对于根计划目录。此工具执行后，若页面需要，可再调用 click-browser 点击上传按钮（例如「上传拖放的文件」）。
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "triggerIndex": {
+              "type": "integer",
+              "description": "点击后会打开文件选择器的按钮或区域的元素索引（例如「选择文件」或拖放区域）。对应 ARIA 快照中显示的 idx 值。"
+          },
+          "filePath": {
+              "type": "string",
+              "description": "相对于根计划目录的文件路径（例如 \"myfile.pdf\"、\"uploads/doc.pdf\"）。"
+          }
+      },
+      "required": ["triggerIndex", "filePath"],
+      "additionalProperties": false
+  }

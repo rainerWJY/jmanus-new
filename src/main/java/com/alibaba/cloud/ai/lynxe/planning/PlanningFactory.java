@@ -61,6 +61,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
 import com.alibaba.cloud.ai.lynxe.subplan.service.SubplanToolService;
 import com.alibaba.cloud.ai.lynxe.tool.DebugTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
+import com.alibaba.cloud.ai.lynxe.tool.message.SendAssistantMessageTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
@@ -75,6 +76,10 @@ import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NavigateBrowserT
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.NewTabBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.ScreenshotBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.SwitchTabBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileInputBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileInputExternalLinkBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileViaChooserBrowserTool;
+import com.alibaba.cloud.ai.lynxe.tool.browser.browserOperators.UploadFileViaChooserExternalLinkBrowserTool;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.BrowserUseCommonService;
 import com.alibaba.cloud.ai.lynxe.tool.browser.service.ChromeDriverService;
 import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
@@ -305,6 +310,14 @@ public class PlanningFactory {
 				.add(new GetWebContentBrowserTool(browserUseCommonService, textFileService, toolI18nService));
 			toolDefinitions
 				.add(new DownloadBrowserTool(browserUseCommonService, unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileInputBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileInputExternalLinkBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileViaChooserBrowserTool(browserUseCommonService, textFileService,
+					unifiedDirectoryManager, toolI18nService));
+			toolDefinitions.add(new UploadFileViaChooserExternalLinkBrowserTool(browserUseCommonService,
+					textFileService, unifiedDirectoryManager, toolI18nService));
 			// toolDefinitions.add(BrowserUseTool.getInstance(chromeDriverService,
 			// innerStorageService, objectMapper,
 			// shortUrlService, textFileService, toolI18nService,
@@ -325,6 +338,7 @@ public class PlanningFactory {
 			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
+			toolDefinitions.add(new SendAssistantMessageTool(toolI18nService, llmService, lynxeProperties));
 			toolDefinitions.add(new ThinkTool());
 			toolDefinitions.add(new Bash(unifiedDirectoryManager, objectMapper, toolI18nService, innerStorageService));
 			// toolDefinitions.add(new DocLoaderTool());

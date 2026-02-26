@@ -15,6 +15,7 @@
  */
 
 import type { CronConfig } from '@/types/cron-task'
+import { logger } from '@/utils/logger'
 
 export class CronApiService {
   private static readonly BASE_URL = '/api/cron-tasks'
@@ -28,7 +29,7 @@ export class CronApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get cron tasks:', error)
+      logger.error('Failed to get cron tasks:', error)
       throw error
     }
   }
@@ -42,7 +43,7 @@ export class CronApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get cron task by id:', error)
+      logger.error('Failed to get cron task by id:', error)
       throw error
     }
   }
@@ -62,7 +63,7 @@ export class CronApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to create cron task:', error)
+      logger.error('Failed to create cron task:', error)
       throw error
     }
   }
@@ -82,7 +83,7 @@ export class CronApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to update cron task:', error)
+      logger.error('Failed to update cron task:', error)
       throw error
     }
   }
@@ -97,7 +98,7 @@ export class CronApiService {
       })
       await this.handleResponse(response)
     } catch (error) {
-      console.error('Failed to update task status:', error)
+      logger.error('Failed to update task status:', error)
       throw error
     }
   }
@@ -112,7 +113,7 @@ export class CronApiService {
       })
       await this.handleResponse(response)
     } catch (error) {
-      console.error('Failed to delete cron task:', error)
+      logger.error('Failed to delete cron task:', error)
       throw error
     }
   }

@@ -1,0 +1,19 @@
+description: |
+  Upload file via chooser using an external link file path (linked_external directory). Trigger the file chooser by clicking an element (e.g. "Select File" or drop zone), then set the selected file(s) from the external linked folder. Use when the file lives in the configured external folder. After this tool runs, you can call click-browser on the upload button (e.g. "Upload Dragged/Dropped File") if the page requires it. The filePath is relative to the external linked folder.
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {
+          "triggerIndex": {
+              "type": "integer",
+              "description": "Element index of the button or zone that opens the file chooser when clicked (e.g. \"Select File\" or the drop zone). This corresponds to the idx value shown in the ARIA snapshot."
+          },
+          "filePath": {
+              "type": "string",
+              "description": "File path relative to the external linked folder. Can include or omit the \"linked_external/\" prefix."
+          }
+      },
+      "required": ["triggerIndex", "filePath"],
+      "additionalProperties": false
+  }

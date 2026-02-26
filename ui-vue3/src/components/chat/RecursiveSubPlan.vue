@@ -121,6 +121,7 @@
 
 <script setup lang="ts">
 import type { AgentExecutionRecord, PlanExecutionRecord } from '@/types/plan-execution-record'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -256,7 +257,7 @@ const formatToolParameters = (parameters?: string): string => {
 
 // Event handlers
 const handleSubPlanClick = (event?: Event) => {
-  console.log('[RecursiveSubPlan] handleSubPlanClick called', {
+  logger.debug('[RecursiveSubPlan] handleSubPlanClick called', {
     subPlanIndex: props.subPlanIndex,
     subPlanId: props.subPlan.currentPlanId,
     eventTarget: event?.target,

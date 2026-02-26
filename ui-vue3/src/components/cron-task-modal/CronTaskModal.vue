@@ -230,8 +230,9 @@
 <script setup lang="ts">
 import { CronApiService } from '@/api/cron-api-service'
 import { useToast } from '@/plugins/useToast'
-import { useTaskStore } from '@/stores/task'
+import { useTaskStore } from '@/stores/new/task'
 import type { CronConfig } from '@/types/cron-task'
+import { logger } from '@/utils/logger'
 import { CronTaskUtils } from '@/utils/cron-task-utils'
 import { Icon } from '@iconify/vue'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -281,7 +282,7 @@ const loadCronTasks = async () => {
   try {
     cronTasks.value = await CronApiService.getAllCronTasks()
   } catch (error) {
-    console.error('Failed to load cron tasks:', error)
+    logger.error('Failed to load cron tasks:', error)
     toast.error(`Failed to load tasks: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     loading.value = false
@@ -298,7 +299,7 @@ const executeTask = async (taskId: string | number) => {
     // Find task
     const task = cronTasks.value.find(t => t.id === taskId)
     if (!task) {
-      console.error('Task not found:', taskId)
+      logger.error('Task not found:', taskId)
       return
     }
 
@@ -329,7 +330,7 @@ const executeTask = async (taskId: string | number) => {
       taskStore.setTask(executionData.taskContent)
     }
   } catch (error) {
-    console.error('Failed to execute task:', error)
+    logger.error('Failed to execute task:', error)
     toast.error(`Execution failed: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     executing.value = null
@@ -357,7 +358,7 @@ const handleSaveTask = async (updatedTask: CronConfig) => {
     showDetail.value = false
     toast.success('Task saved successfully')
   } catch (error) {
-    console.error('Failed to save task:', error)
+    logger.error('Failed to save task:', error)
     toast.error(`Save failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
@@ -385,7 +386,7 @@ const handleDeleteTask = async () => {
     taskToDelete.value = null
     toast.success('Task deleted successfully')
   } catch (error) {
-    console.error('Failed to delete task:', error)
+    logger.error('Failed to delete task:', error)
     toast.error(`Delete failed: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     deleting.value = null
@@ -422,7 +423,7 @@ const toggleTaskStatus = async (task: CronConfig) => {
     activeDropdown.value = null // Close dropdown menu
     toast.success(`Task ${task.status === 0 ? 'disabled' : 'enabled'} successfully`)
   } catch (error) {
-    console.error('Failed to toggle task status:', error)
+    logger.error('Failed to toggle task status:', error)
     toast.error(`Status toggle failed: ${error instanceof Error ? error.message : String(error)}`)
   } finally {
     toggling.value = null
@@ -470,7 +471,7 @@ const createWithLynxe = () => {
       params: { id: chatId },
     })
   } catch (error) {
-    console.error('Error in createWithLynxe:', error)
+    logger.error('Error in createWithLynxe:', error)
     toast.error(`Creation failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 }

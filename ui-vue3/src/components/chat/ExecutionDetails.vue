@@ -191,6 +191,7 @@
 
 <script setup lang="ts">
 import type { CompatiblePlanExecutionRecord } from '@/types/message-dialog'
+import { logger } from '@/utils/logger'
 import type {
   AgentExecutionRecord,
   ExecutionStatus,
@@ -243,7 +244,7 @@ const handleAgentClick = (agentExecution: AgentExecutionRecord) => {
   if (agentExecution.stepId) {
     emit('step-selected', agentExecution.stepId)
   } else {
-    console.warn('[ExecutionDetails] Agent execution has no stepId:', agentExecution)
+    logger.warn('[ExecutionDetails] Agent execution has no stepId:', agentExecution)
   }
 }
 

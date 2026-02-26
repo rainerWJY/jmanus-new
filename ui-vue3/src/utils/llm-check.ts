@@ -14,38 +14,24 @@
  * limitations under the License.
  */
 
+import { useAppStore } from '@/stores/new/app'
+import { logger } from '@/utils/logger'
+
 /**
  * LLM configuration check utility class
- * Check if model is configured before performing LLM-related operations
+ * Check if model is configured before performing LLM-related operations.
+ * Delegates to app store for init status (single source of truth).
  */
 export class LlmCheckService {
-  private static cachedStatus: { initialized: boolean; lastCheck: number } | null = null
-  private static readonly CACHE_DURATION = 30000 // 30 seconds cache
-
   /**
-   * Check if LLM is configured
+   * Check if LLM is configured (uses app store init status)
    */
   public static async checkLlmConfiguration(): Promise<{ initialized: boolean; message?: string }> {
-    // Check cache
-    const now = Date.now()
-    if (this.cachedStatus && now - this.cachedStatus.lastCheck < this.CACHE_DURATION) {
-      return { initialized: this.cachedStatus.initialized }
-    }
-
     try {
-      const response = await fetch('/api/init/status')
-      if (!response.ok) {
-        throw new Error(`Check failed: ${response.status}`)
-      }
-
-      const result = await response.json()
-      const initialized = result.success && result.initialized
-
-      // Update cache
-      this.cachedStatus = {
-        initialized,
-        lastCheck: now,
-      }
+      const appStore = useAppStore()
+      await appStore.ensureInitStatusChecked()
+      const status = appStore.initStatus
+      const initialized = !!(status?.success && status.initialized)
 
       if (!initialized) {
         return {
@@ -57,7 +43,7 @@ export class LlmCheckService {
 
       return { initialized: true }
     } catch (error) {
-      console.error('[LlmCheckService] Failed to check LLM configuration:', error)
+      logger.error('[LlmCheckService] Failed to check LLM configuration:', error)
       return {
         initialized: false,
         message:
@@ -96,10 +82,10 @@ export class LlmCheckService {
   }
 
   /**
-   * Clear cache status
+   * Clear init status cache so next check refetches (delegates to app store)
    */
   public static clearCache(): void {
-    this.cachedStatus = null
+    useAppStore().clearInitStatusCache()
   }
 
   /**

@@ -50,18 +50,16 @@
     <div class="preview-content">
       <!-- Func-Agent Config -->
       <div v-if="activeTab === 'config'" class="config-tab-content">
-        <div v-if="templateConfig.selectedTemplate.value" class="config-container">
+        <div v-if="selectedTemplate" class="config-container">
           <!-- Template Info Header -->
           <div class="template-info-header">
             <div class="template-info">
               <h3>
-                {{ templateConfig.selectedTemplate.value.title || t('sidebar.unnamedPlan') }}
+                {{ selectedTemplate.title || t('sidebar.unnamedPlan') }}
               </h3>
-              <span class="template-id"
-                >ID: {{ templateConfig.selectedTemplate.value.planTemplateId }}</span
-              >
+              <span class="template-id">ID: {{ selectedTemplate.planTemplateId }}</span>
             </div>
-            <button class="back-to-list-btn" @click="sidebarStore.switchToTab('list')">
+            <button class="back-to-list-btn" @click="appStore.switchSidebarTab('list')">
               <Icon icon="carbon:arrow-left" width="16" />
             </button>
           </div>
@@ -412,14 +410,16 @@
 import FileBrowser from '@/components/file-browser/index.vue'
 import ExecutionController from '@/components/sidebar/ExecutionController.vue'
 import JsonEditorV2 from '@/components/sidebar/JsonEditorV2.vue'
-import { useAvailableToolsSingleton } from '@/composables/useAvailableTools'
-import { usePlanTemplateConfigSingleton } from '@/composables/usePlanTemplateConfig'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
-import { sidebarStore } from '@/stores/sidebar'
-import { templateStore } from '@/stores/templateStore'
+import { useAppStore } from '@/stores/new/app'
+import { useAvailableToolsStore } from '@/stores/new/availableTools'
+import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
+import { templateStore } from '@/stores/new/templateStore'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
+import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -457,7 +457,7 @@ const copyToClipboard = async (text: string | null | undefined) => {
     await navigator.clipboard.writeText(text)
     toast.success(t('rightPanel.copySuccess') || 'Copied to clipboard')
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+    logger.error('Failed to copy to clipboard:', error)
     toast.error(t('rightPanel.copyFailed') || 'Failed to copy')
   }
 }
@@ -466,10 +466,13 @@ const copyToClipboard = async (text: string | null | undefined) => {
 const rightPanel = useRightPanelSingleton()
 
 // Template config for Func-Agent Config tab
-const templateConfig = usePlanTemplateConfigSingleton()
+const planTemplateConfigStore = usePlanTemplateConfigStore()
+const { selectedTemplate } = storeToRefs(planTemplateConfigStore)
 
 // Available tools management
-const availableToolsStore = useAvailableToolsSingleton()
+const availableToolsStore = useAvailableToolsStore()
+
+const appStore = useAppStore()
 
 // Plan template import composable
 const { handleImport: handleImportPlanTemplate } = usePlanTemplateImport()
@@ -504,26 +507,24 @@ const stepStatusText = computed(() => {
  */
 const handleCreateNewPlan = async () => {
   try {
-    // Use default plan type or get from templateConfig
-    const planType = templateConfig.getPlanType() || 'dynamic_agent'
+    const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
     await templateStore.createNewTemplate(planType)
 
-    // Load template config for new template
-    const newTemplate = templateConfig.selectedTemplate.value
+    const newTemplate = selectedTemplate.value
     if (newTemplate) {
-      templateConfig.reset()
-      templateConfig.setPlanType(newTemplate.planType || 'dynamic_agent')
+      planTemplateConfigStore.reset()
+      planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
       if (newTemplate.planTemplateId) {
-        templateConfig.setPlanTemplateId(newTemplate.planTemplateId)
+        planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
       }
-      templateConfig.setTitle(newTemplate.title || '')
+      planTemplateConfigStore.setTitle(newTemplate.title || '')
     }
 
     // Reload available tools to ensure fresh tool list
-    console.log('[RightPanel] 🔄 Reloading available tools for new template')
+    logger.debug('[RightPanel] 🔄 Reloading available tools for new template')
     await availableToolsStore.loadAvailableTools()
   } catch (error) {
-    console.error('[RightPanel] Failed to create new plan:', error)
+    logger.error('[RightPanel] Failed to create new plan:', error)
     const message = error instanceof Error ? error.message : t('rightPanel.createPlanFailed')
     toast.error(message)
   }
@@ -555,8 +556,8 @@ const handleImportExistingPlan = async (event: Event) => {
     onSingleTemplateImported: async template => {
       // If only one template was imported, select it
       if (template.planTemplateId) {
-        templateConfig.setPlanTemplateId(template.planTemplateId)
-        await templateConfig.load(template.planTemplateId)
+        planTemplateConfigStore.setPlanTemplateId(template.planTemplateId)
+        await planTemplateConfigStore.load(template.planTemplateId)
       }
     },
   })
@@ -651,7 +652,7 @@ const autoScrollToBottomIfNeeded = () => {
   nextTick(() => {
     if (scrollContainer.value) {
       scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
-      console.log('[RightPanel] Auto scroll to bottom')
+      logger.debug('[RightPanel] Auto scroll to bottom')
     }
   })
 }
@@ -674,7 +675,7 @@ const initScrollListener = () => {
   const setupScrollListener = () => {
     const element = scrollContainer.value
     if (!element) {
-      console.log('[RightPanel] Scroll container not found, retrying...')
+      logger.debug('[RightPanel] Scroll container not found, retrying...')
       return false
     }
 
@@ -685,7 +686,7 @@ const initScrollListener = () => {
     // Initial state check
     shouldAutoScrollToBottom.value = true // Reset to auto scroll state
     checkScrollState()
-    console.log('[RightPanel] Scroll listener initialized successfully')
+    logger.debug('[RightPanel] Scroll listener initialized successfully')
     return true
   }
 
@@ -705,7 +706,7 @@ const initScrollListener = () => {
 
 // Lifecycle - initialization on mount
 onMounted(() => {
-  console.log('[RightPanel] Component mounted')
+  logger.debug('[RightPanel] Component mounted')
   // Use nextTick to ensure DOM is rendered
   nextTick(() => {
     initScrollListener()
@@ -714,7 +715,7 @@ onMounted(() => {
 
 // Lifecycle - cleanup on unmount
 onUnmounted(() => {
-  console.log('[RightPanel] Component unmounting, cleaning up...')
+  logger.debug('[RightPanel] Component unmounting, cleaning up...')
   cleanup()
 })
 

@@ -401,6 +401,7 @@ import CustomSelect from '@/components/select/index.vue'
 import { Icon } from '@iconify/vue'
 import { useI18n } from 'vue-i18n'
 import ConfigPanel from './components/configPanel.vue'
+import { logger } from '@/utils/logger'
 
 // Internationalization
 const { t } = useI18n()
@@ -528,7 +529,7 @@ const loadData = async () => {
     }
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
-    console.error('Failed to load data:', errorMessage)
+    logger.error('Failed to load data:', errorMessage)
     showMessage(t('config.modelConfig.loadDataFailed') + ': ' + errorMessage, 'error')
   } finally {
     loading.value = false
@@ -549,7 +550,7 @@ const selectModel = async (model: Model) => {
     validating.value = false
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)
-    console.error('Failed to load Model details:', errorMessage)
+    logger.error('Failed to load Model details:', errorMessage)
     showMessage(t('config.modelConfig.loadDetailsFailed') + ': ' + errorMessage, 'error')
     // Use basic information as a fallback
     selectedModel.value = {

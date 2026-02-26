@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div class="app-container" v-if="memoryStore.isCollapsed">
+      <div class="app-container" v-if="appStore.memorySidebarCollapsed">
         <div class="app-content">
           <div class="header">
             <div class="relative">
@@ -17,7 +17,7 @@
                 v-if="showTitleEdit"
               ></div>
             </div>
-            <button class="close-btn" @click="memoryStore.toggleSidebar()">
+            <button class="close-btn" @click="appStore.toggleMemorySidebar()">
               <Icon icon="carbon:close" />
             </button>
           </div>
@@ -201,13 +201,35 @@ interface MemoryWithExpanded extends Memory {
   expanded: boolean
 }
 import { Icon } from '@iconify/vue'
-import { memoryStore } from '@/stores/memory'
-import type { MemoryEmits } from '@/stores/memory'
+import { useAppStore } from '@/stores/new/app'
+import { useConversationStore } from '@/stores/new/conversation'
+import { logger } from '@/utils/logger'
+import { computed } from 'vue'
 
+const appStore = useAppStore()
+const conversationStore = useConversationStore()
 const showTitleEdit = ref(false)
 const searchQuery = ref('')
-const messages = ref<MemoryWithExpanded[]>([])
-const filteredMessages = ref<MemoryWithExpanded[]>([])
+const expandedMap = ref(new Map<string, boolean>())
+const messages = computed(() =>
+  conversationStore.conversations.map(
+    (m): MemoryWithExpanded => ({
+      ...m,
+      expanded: expandedMap.value.get(m.conversation_id) ?? false,
+    })
+  )
+)
+const filteredMessages = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim()
+  if (!query) return [...messages.value]
+  return messages.value.filter(msg => {
+    const matchesName = msg.memory_name.toLowerCase().includes(query)
+    const matchesId = msg.conversation_id.toLowerCase().includes(query)
+    const matchesContent =
+      msg.messages?.some(bubble => bubble.text.toLowerCase().includes(query)) ?? false
+    return matchesName || matchesId || matchesContent
+  })
+})
 
 const showNameModal = ref(false)
 const currentEditMessageId = ref<string | null>(null)
@@ -215,8 +237,7 @@ const nameInput = ref('')
 
 const showDeleteModal = ref(false)
 const currentDeleteId = ref<string | null>(null)
-const expandedMap = new Map()
-const emit = defineEmits<MemoryEmits>()
+const emit = defineEmits<{ 'memory-selected': [] }>()
 
 // Handle ESC key to close modals
 const handleEscKey = (e: KeyboardEvent) => {
@@ -230,7 +251,7 @@ const handleEscKey = (e: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  memoryStore.setLoadMessages(loadMessages)
+  appStore.setMemorySidebarLoadMessages(loadMessages)
   document.addEventListener('keydown', handleEscKey)
 })
 
@@ -240,27 +261,16 @@ onUnmounted(() => {
 
 const loadMessages = async () => {
   try {
-    const mes = await MemoryApiService.getMemories()
-    messages.value = mes.map(
-      (mesMsg: Memory): MemoryWithExpanded => ({
-        ...mesMsg,
-        expanded: expandedMap.has(mesMsg.conversation_id)
-          ? expandedMap.get(mesMsg.conversation_id)
-          : false,
-      })
-    )
-    filteredMessages.value = [...messages.value]
-    handleSearch()
+    await conversationStore.loadConversations()
   } catch (e) {
-    console.error('error:', e)
-    messages.value = []
-
-    filteredMessages.value = []
+    logger.error('error:', e)
+    conversationStore.setConversations([])
   }
 }
 
 const selectMemory = (conversationId: string) => {
-  memoryStore.selectConversation(conversationId)
+  conversationStore.setSelectedConversationId(conversationId)
+  appStore.toggleMemorySidebar()
   emit('memory-selected')
 }
 
@@ -285,20 +295,7 @@ const formatTimestamp = (timestamp: number | string): string => {
 }
 
 const handleSearch = () => {
-  const query = searchQuery.value.toLowerCase().trim()
-
-  if (!query) {
-    filteredMessages.value = [...messages.value]
-    return
-  }
-
-  filteredMessages.value = messages.value.filter(message => {
-    const matchesName = message.memory_name.toLowerCase().includes(query)
-    const matchesId = message.conversation_id.toLowerCase().includes(query)
-    const matchesContent =
-      message.messages?.some(bubble => bubble.text.toLowerCase().includes(query)) ?? false
-    return matchesName || matchesId || matchesContent
-  })
+  // filteredMessages is computed from searchQuery; no-op kept for @input if needed
 }
 const closeNameModal = () => {
   showNameModal.value = false
@@ -308,11 +305,10 @@ const closeNameModal = () => {
 const saveName = async () => {
   if (!currentEditMessageId.value) return
   const newName = nameInput.value.trim() || 'unknow name'
-  const messageIndex = messages.value.findIndex(
+  const currentMessage = messages.value.find(
     msg => msg.conversation_id === currentEditMessageId.value
   )
-  if (messageIndex !== -1) {
-    const currentMessage = messages.value[messageIndex]
+  if (currentMessage) {
     try {
       const returnMemory = await MemoryApiService.updateMemory(
         currentMessage.conversation_id,
@@ -321,14 +317,14 @@ const saveName = async () => {
       if (!returnMemory.messages) {
         returnMemory.messages = []
       }
-      messages.value[messageIndex] = {
-        ...returnMemory,
-        expanded: currentMessage.expanded,
-      } as MemoryWithExpanded
-      handleSearch()
+      conversationStore.setConversations(
+        conversationStore.conversations.map(msg =>
+          msg.conversation_id === currentEditMessageId.value ? returnMemory : msg
+        )
+      )
       showNameModal.value = false
     } catch (error) {
-      console.error('error:', error)
+      logger.error('error:', error)
     }
   }
 }
@@ -336,12 +332,9 @@ const saveName = async () => {
 const toggleMessage = (id: string) => {
   const message = messages.value.find(msg => msg.conversation_id === id)
   if (message) {
-    message.expanded = !message.expanded
-    expandedMap.set(id, message.expanded)
-    const filteredIndex = filteredMessages.value.findIndex(msg => msg.conversation_id === id)
-    if (filteredIndex !== -1) {
-      filteredMessages.value[filteredIndex] = { ...message }
-    }
+    const next = new Map(expandedMap.value)
+    next.set(id, !message.expanded)
+    expandedMap.value = next
   }
 }
 
@@ -360,20 +353,20 @@ const confirmDelete = async () => {
 
   try {
     await MemoryApiService.deleteMemory(currentDeleteId.value)
-    messages.value = messages.value.filter(msg => msg.conversation_id !== currentDeleteId.value)
-    handleSearch()
-    // Clear selected conversation if the deleted one was selected
-    if (memoryStore.conversationId === currentDeleteId.value) {
-      memoryStore.clearSelectedConversation()
+    const newList = conversationStore.conversations.filter(
+      msg => msg.conversation_id !== currentDeleteId.value
+    )
+    conversationStore.setConversations(newList)
+    if (conversationStore.selectedConversationId === currentDeleteId.value) {
+      conversationStore.clearSelectedConversation()
     }
-    // If no messages left, clear selection
-    if (messages.value.length === 0) {
-      memoryStore.clearSelectedConversation()
+    if (newList.length === 0) {
+      conversationStore.clearSelectedConversation()
     }
     showDeleteModal.value = false
     currentDeleteId.value = null
   } catch (error) {
-    console.error('error:', error)
+    logger.error('error:', error)
   }
 }
 </script>

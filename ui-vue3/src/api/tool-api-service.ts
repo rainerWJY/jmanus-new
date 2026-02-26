@@ -15,6 +15,7 @@
  */
 
 import type { Tool } from '@/types/tool'
+import { logger } from '@/utils/logger'
 
 /**
  * Tool API service class
@@ -45,7 +46,7 @@ export class ToolApiService {
       const result = await this.handleResponse(response)
       return await result.json()
     } catch (error) {
-      console.error('Failed to get available tools:', error)
+      logger.error('Failed to get available tools:', error)
       throw error
     }
   }

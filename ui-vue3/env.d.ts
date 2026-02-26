@@ -16,6 +16,16 @@
 
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_LOG_LEVEL?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'silent'
+}
+
+declare global {
+  interface Window {
+    __logger?: import('loglevel').Logger
+  }
+}
+
 // Vue module declarations for TypeScript
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'

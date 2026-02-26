@@ -291,7 +291,8 @@
 
 <script setup lang="ts">
 import { LOCAL_STORAGE_LOCALE, changeLanguageWithAgentReset } from '@/base/i18n'
-import { LlmCheckService } from '@/utils/llm-check'
+import { useAppStore } from '@/stores/new/app'
+import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -304,6 +305,7 @@ defineOptions({
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const appStore = useAppStore()
 
 // Step management
 const currentStep = ref(1)
@@ -353,7 +355,7 @@ const goToNextStep = async () => {
       currentStep.value = 2
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err)
-      console.warn('Failed to switch language:', errorMessage)
+      logger.warn('Failed to switch language:', errorMessage)
       // Continue to next step even if language switch fails, don't block user flow
       currentStep.value = 2
     } finally {
@@ -438,8 +440,8 @@ const handleSubmit = async () => {
       localStorage.setItem('hasInitialized', 'true')
       localStorage.setItem('hasVisitedHome', 'true')
 
-      // Clear LLM check cache to make configuration take effect immediately
-      LlmCheckService.clearCache()
+      // Clear init status cache so next guard or LLM check refetches
+      appStore.clearInitStatusCache()
 
       if (result.requiresRestart) {
         // If restart is required, show restart prompt
@@ -462,26 +464,19 @@ const handleSubmit = async () => {
       error.value = result.error || t('init.saveFailed')
     }
   } catch (err) {
-    console.error('Save config failed:', err)
+    logger.error('Save config failed:', err)
     error.value = t('init.networkError')
   } finally {
     loading.value = false
   }
 }
 
-// Check if already initialized
+// Check if already initialized (uses app store)
 const checkInitStatus = async () => {
-  try {
-    const response = await fetch('/api/init/status')
-    const result = await response.json()
-
-    if (result.success && result.initialized) {
-      // If already initialized, navigate to direct page
-      localStorage.setItem('hasInitialized', 'true')
-      router.push('/direct')
-    }
-  } catch (err) {
-    console.error('Check init status failed:', err)
+  await appStore.ensureInitStatusChecked()
+  if (appStore.initStatus?.success && appStore.initStatus?.initialized) {
+    localStorage.setItem('hasInitialized', 'true')
+    router.push('/direct')
   }
 }
 

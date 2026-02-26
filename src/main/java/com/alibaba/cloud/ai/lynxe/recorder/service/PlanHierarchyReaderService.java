@@ -36,6 +36,7 @@ import com.alibaba.cloud.ai.lynxe.recorder.entity.vo.ActToolInfo;
 import com.alibaba.cloud.ai.lynxe.recorder.entity.vo.AgentExecutionRecord;
 import com.alibaba.cloud.ai.lynxe.recorder.entity.vo.ExecutionStatus;
 import com.alibaba.cloud.ai.lynxe.recorder.entity.vo.PlanExecutionRecord;
+import com.alibaba.cloud.ai.lynxe.recorder.entity.vo.ThinkActRecord;
 import com.alibaba.cloud.ai.lynxe.recorder.repository.ActToolInfoRepository;
 import com.alibaba.cloud.ai.lynxe.recorder.repository.AgentExecutionRecordRepository;
 import com.alibaba.cloud.ai.lynxe.recorder.repository.PlanExecutionRecordRepository;
@@ -293,9 +294,9 @@ public class PlanHierarchyReaderService {
 			vo.setErrorMessage(null);
 		}
 
-		// Compute latest tool info and round number from ThinkActRecords
+		// Fetch ThinkActRecords and set thinkActSteps (including actToolInfoList) on
+		// AgentExecutionRecord
 		try {
-			// Fetch ThinkActRecords for this agent execution
 			List<ThinkActRecordEntity> thinkActEntities = thinkActRecordRepository
 				.findByParentExecutionIdWithActToolInfo(entity.getId());
 
@@ -312,6 +313,13 @@ public class PlanHierarchyReaderService {
 					vo.setLatestMethodArgs(latestTool.getParameters()); // Already JSON
 																		// string
 				}
+				// Convert and set full thinkActSteps so details API includes
+				// actToolInfoList (e.g. for send-assistant-message tool results)
+				List<ThinkActRecord> thinkActRecords = new ArrayList<>();
+				for (ThinkActRecordEntity thinkActEntity : thinkActEntities) {
+					thinkActRecords.add(convertToThinkActRecord(thinkActEntity));
+				}
+				vo.setThinkActSteps(thinkActRecords);
 			}
 		}
 		catch (Exception e) {
@@ -474,6 +482,32 @@ public class PlanHierarchyReaderService {
 				Comparator.nullsLast(Comparator.naturalOrder())));
 
 		return matchingSubPlans;
+	}
+
+	/**
+	 * Convert ThinkActRecordEntity to ThinkActRecord VO object, including
+	 * actToolInfoList.
+	 * @param entity The PO entity to convert
+	 * @return Converted VO object
+	 */
+	private ThinkActRecord convertToThinkActRecord(ThinkActRecordEntity entity) {
+		ThinkActRecord vo = new ThinkActRecord(entity.getParentExecutionId());
+		vo.setId(entity.getId());
+		vo.setThinkInput(entity.getThinkInput());
+		vo.setThinkOutput(entity.getThinkOutput());
+		vo.setErrorMessage(entity.getErrorMessage());
+		vo.setInputCharCount(entity.getInputCharCount());
+		vo.setOutputCharCount(entity.getOutputCharCount());
+		vo.setModelContextLimit(entity.getModelContextLimit());
+		if (entity.getActToolInfoList() != null && !entity.getActToolInfoList().isEmpty()) {
+			List<ActToolInfo> actToolInfoList = new ArrayList<>();
+			for (ActToolInfoEntity toolInfoEntity : entity.getActToolInfoList()) {
+				actToolInfoList.add(convertToActToolInfo(toolInfoEntity));
+			}
+			vo.setActToolInfoList(actToolInfoList);
+			vo.setActionNeeded(true);
+		}
+		return vo;
 	}
 
 	/**
