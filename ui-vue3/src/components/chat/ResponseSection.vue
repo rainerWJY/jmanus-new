@@ -53,6 +53,14 @@
             >
               <Icon icon="carbon:copy" />
             </button>
+            <button
+              class="action-btn task-files-btn"
+              @click="openFileBrowser"
+              :title="$t('fileBrowser.viewTaskFiles')"
+            >
+              <Icon icon="carbon:folder" />
+              <span>{{ $t('fileBrowser.viewTaskFiles') }}</span>
+            </button>
           </div>
         </div>
       </template>
@@ -69,6 +77,14 @@
             :title="$t('chat.copyResponse')"
           >
             <Icon icon="carbon:copy" />
+          </button>
+          <button
+            class="action-btn task-files-btn"
+            @click="openFileBrowser"
+            :title="$t('fileBrowser.viewTaskFiles')"
+          >
+            <Icon icon="carbon:folder" />
+            <span>{{ $t('fileBrowser.viewTaskFiles') }}</span>
           </button>
         </div>
       </div>
@@ -104,6 +120,7 @@
 
 <script setup lang="ts">
 import type { UserInputWaitState } from '@/types/plan-execution-record'
+import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import UserInputForm from './UserInputForm.vue'
@@ -133,8 +150,13 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const { formatResponseText, formatTimestamp } = useMessageFormatting()
+const rightPanel = useRightPanelSingleton()
 
 // Methods
+const openFileBrowser = () => {
+  rightPanel.openFileBrowserForPlan(props.planId ?? null)
+}
+
 const copyToClipboard = async () => {
   if (!props.content) return
 
@@ -416,8 +438,6 @@ const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
         display: flex;
         gap: 8px;
         margin-top: 8px;
-        opacity: 0;
-        transition: opacity 0.2s ease;
 
         .action-btn {
           display: flex;
@@ -440,11 +460,24 @@ const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
           svg {
             font-size: 14px;
           }
-        }
-      }
 
-      &:hover .response-actions {
-        opacity: 1;
+          &.task-files-btn {
+            width: auto;
+            height: 28px;
+            padding: 0 10px;
+            gap: 6px;
+
+            span {
+              font-size: 12px;
+              white-space: nowrap;
+            }
+
+            svg {
+              font-size: 14px;
+              flex-shrink: 0;
+            }
+          }
+        }
       }
     }
 
@@ -583,6 +616,20 @@ const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
 
             svg {
               font-size: 12px;
+            }
+
+            &.task-files-btn {
+              width: auto;
+              height: 26px;
+              padding: 0 8px;
+
+              span {
+                font-size: 11px;
+              }
+
+              svg {
+                font-size: 12px;
+              }
             }
           }
         }
