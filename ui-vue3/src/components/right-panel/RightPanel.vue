@@ -72,7 +72,7 @@
         </div>
         <div v-else class="no-template-selected">
           <div class="action-buttons">
-            <button class="new-task-btn" @click="handleCreateNewPlan">
+            <button class="new-task-btn" :disabled="isCreatingNew" @click="handleCreateNewPlan">
               <Icon icon="carbon:add" width="16" />
               {{ t('rightPanel.newFuncAgentPlan') }}
             </button>
@@ -505,28 +505,23 @@ const stepStatusText = computed(() => {
 /**
  * Handle creating a new Func-Agent plan
  */
+const isCreatingNew = ref(false)
+
 const handleCreateNewPlan = async () => {
+  if (isCreatingNew.value) return
+  isCreatingNew.value = true
   try {
     const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
     await templateStore.createNewTemplate(planType)
 
-    const newTemplate = selectedTemplate.value
-    if (newTemplate) {
-      planTemplateConfigStore.reset()
-      planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
-      if (newTemplate.planTemplateId) {
-        planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
-      }
-      planTemplateConfigStore.setTitle(newTemplate.title || '')
-    }
-
-    // Reload available tools to ensure fresh tool list
     logger.debug('[RightPanel] 🔄 Reloading available tools for new template')
     await availableToolsStore.loadAvailableTools()
   } catch (error) {
     logger.error('[RightPanel] Failed to create new plan:', error)
     const message = error instanceof Error ? error.message : t('rightPanel.createPlanFailed')
     toast.error(message)
+  } finally {
+    isCreatingNew.value = false
   }
 }
 

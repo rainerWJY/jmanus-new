@@ -178,8 +178,13 @@ export class TemplateStore {
         createTime: new Date().toISOString(),
         updateTime: new Date().toISOString(),
       }
+      // Reset config first so when currentPlanTemplateId watch runs, config is already empty (fix: 动态智能体计划 showing old value)
+      planTemplateConfigStore.reset()
       planTemplateConfigStore.setSelectedTemplate(emptyTemplate)
-      planTemplateConfigStore.setCurrentPlanTemplateId(null)
+      planTemplateConfigStore.setPlanType(emptyTemplate.planType || 'dynamic_agent')
+      planTemplateConfigStore.setPlanTemplateId(emptyTemplate.planTemplateId || '')
+      planTemplateConfigStore.setTitle(emptyTemplate.title || '')
+      planTemplateConfigStore.setCurrentPlanTemplateId(emptyTemplate.planTemplateId ?? null)
       this.hasTaskRequirementModified = false
 
       logger.debug('[TemplateStore] Created new empty plan template')
@@ -194,8 +199,12 @@ export class TemplateStore {
         createTime: new Date().toISOString(),
         updateTime: new Date().toISOString(),
       }
+      planTemplateConfigStore.reset()
       planTemplateConfigStore.setSelectedTemplate(emptyTemplate)
-      planTemplateConfigStore.setCurrentPlanTemplateId(null)
+      planTemplateConfigStore.setPlanType(emptyTemplate.planType || 'dynamic_agent')
+      planTemplateConfigStore.setPlanTemplateId(emptyTemplate.planTemplateId || '')
+      planTemplateConfigStore.setTitle(emptyTemplate.title || '')
+      planTemplateConfigStore.setCurrentPlanTemplateId(emptyTemplate.planTemplateId ?? null)
       this.hasTaskRequirementModified = false
     }
   }
