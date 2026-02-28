@@ -341,7 +341,7 @@ public class DynamicAgent extends ReActAgent {
 				// Add historyMem (agent memory) in every round
 				messages.addAll(historyMem);
 				messages.addAll(Collections.singletonList(systemMessage));
-			
+
 				log.debug("Added {} history messages from agent memory for round {}", historyMem.size(),
 						getCurrentStep());
 
