@@ -178,7 +178,7 @@ export class TemplateStore {
         createTime: new Date().toISOString(),
         updateTime: new Date().toISOString(),
       }
-      // Reset config first so when currentPlanTemplateId watch runs, config is already empty (fix: 动态智能体计划 showing old value)
+      // Reset config first so when currentPlanTemplateId watch runs, config is already empty
       planTemplateConfigStore.reset()
       planTemplateConfigStore.setSelectedTemplate(emptyTemplate)
       planTemplateConfigStore.setPlanType(emptyTemplate.planType || 'dynamic_agent')
