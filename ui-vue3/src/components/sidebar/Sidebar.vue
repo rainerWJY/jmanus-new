@@ -18,7 +18,7 @@
     <div class="sidebar-content">
       <div class="sidebar-content-header">
         <div class="sidebar-content-title">{{ $t('sidebar.title') }}</div>
-        <button class="new-task-btn" @click="handleCreateNewTemplate">
+        <button class="new-task-btn" :disabled="isCreatingNew" @click="handleCreateNewTemplate">
           <Icon icon="carbon:add" width="16" />
           {{ $t('sidebar.newPlan') }}
         </button>
@@ -45,7 +45,7 @@ import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
 import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import TemplateList from './TemplateList.vue'
 
 // Props
@@ -63,27 +63,26 @@ const planTemplateConfigStore = usePlanTemplateConfigStore()
 const rightPanel = useRightPanelSingleton()
 const appStore = useAppStore()
 
+// Guard to prevent double-click creating multiple new plans
+const isCreatingNew = ref(false)
+
 // Handle create new template
 const handleCreateNewTemplate = async () => {
-  const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
-  await templateStore.createNewTemplate(planType)
+  if (isCreatingNew.value) return
+  isCreatingNew.value = true
+  try {
+    const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
+    await templateStore.createNewTemplate(planType)
 
-  const newTemplate = planTemplateConfigStore.selectedTemplate
-  if (newTemplate) {
-    planTemplateConfigStore.reset()
-    planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
-    if (newTemplate.planTemplateId) {
-      planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
-    }
-    planTemplateConfigStore.setTitle(newTemplate.title || '')
+    // Switch to 'config' tab to show Func-Agent configuration
+    rightPanel.setActiveTab('config')
+
+    // Reload available tools to ensure fresh tool list
+    logger.debug('[Sidebar] 🔄 Reloading available tools for new template')
+    await availableToolsStore.loadAvailableTools()
+  } finally {
+    isCreatingNew.value = false
   }
-
-  // Switch to 'config' tab to show Func-Agent configuration
-  rightPanel.setActiveTab('config')
-
-  // Reload available tools to ensure fresh tool list
-  logger.debug('[Sidebar] 🔄 Reloading available tools for new template')
-  await availableToolsStore.loadAvailableTools()
 }
 
 // Lifecycle

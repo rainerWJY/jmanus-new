@@ -72,7 +72,7 @@
         </div>
         <div v-else class="no-template-selected">
           <div class="action-buttons">
-            <button class="new-task-btn" @click="handleCreateNewPlan">
+            <button class="new-task-btn" :disabled="isCreatingNew" @click="handleCreateNewPlan">
               <Icon icon="carbon:add" width="16" />
               {{ t('rightPanel.newFuncAgentPlan') }}
             </button>
@@ -505,28 +505,23 @@ const stepStatusText = computed(() => {
 /**
  * Handle creating a new Func-Agent plan
  */
+const isCreatingNew = ref(false)
+
 const handleCreateNewPlan = async () => {
+  if (isCreatingNew.value) return
+  isCreatingNew.value = true
   try {
     const planType = planTemplateConfigStore.getPlanType() || 'dynamic_agent'
     await templateStore.createNewTemplate(planType)
 
-    const newTemplate = selectedTemplate.value
-    if (newTemplate) {
-      planTemplateConfigStore.reset()
-      planTemplateConfigStore.setPlanType(newTemplate.planType || 'dynamic_agent')
-      if (newTemplate.planTemplateId) {
-        planTemplateConfigStore.setPlanTemplateId(newTemplate.planTemplateId)
-      }
-      planTemplateConfigStore.setTitle(newTemplate.title || '')
-    }
-
-    // Reload available tools to ensure fresh tool list
     logger.debug('[RightPanel] 🔄 Reloading available tools for new template')
     await availableToolsStore.loadAvailableTools()
   } catch (error) {
     logger.error('[RightPanel] Failed to create new plan:', error)
     const message = error instanceof Error ? error.message : t('rightPanel.createPlanFailed')
     toast.error(message)
+  } finally {
+    isCreatingNew.value = false
   }
 }
 
@@ -1187,6 +1182,35 @@ defineExpose({
 
         &:active {
           transform: scale(0.95);
+        }
+      }
+
+      .open-files-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 4px 8px;
+        color: rgba(255, 255, 255, 0.7);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 12px;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.5);
+          border-color: rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        &:active {
+          transform: scale(0.95);
+        }
+
+        .iconify {
+          font-size: 14px;
+          flex-shrink: 0;
         }
       }
 

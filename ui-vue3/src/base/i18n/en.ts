@@ -99,6 +99,7 @@ const words: I18nType = {
   // File Browser
   fileBrowser: {
     title: 'File Browser',
+    viewTaskFiles: 'Task files',
     refresh: 'Refresh',
     loading: 'Loading file tree...',
     retry: 'Retry',

@@ -279,6 +279,17 @@ export function useRightPanel() {
   }
 
   /**
+   * Open the file browser tab and set which plan's files to show.
+   * Use this when opening file browser from a response so the correct plan-id is used.
+   * @param planId - Root plan ID whose files to show; if null, file browser uses currentRootPlanId
+   */
+  const openFileBrowserForPlan = (planId: string | null): void => {
+    selectedRootPlanId.value = planId
+    activeTab.value = 'files'
+    logger.debug('[useRightPanel] Open file browser for plan:', planId)
+  }
+
+  /**
    * Update displayed plan progress
    * This method is kept for backward compatibility but no longer needed
    * since currentRootPlanId is now reactively derived from useMessageDialog
@@ -369,6 +380,7 @@ export function useRightPanel() {
     handleStepSelected,
     refreshCurrentStep,
     setActiveTab,
+    openFileBrowserForPlan,
     updateDisplayedPlanProgress,
     clearSelectedStep,
     formatJson,

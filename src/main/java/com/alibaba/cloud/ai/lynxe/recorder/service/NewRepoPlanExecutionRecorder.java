@@ -421,10 +421,10 @@ public class NewRepoPlanExecutionRecorder implements PlanExecutionRecorder {
 
 			// Convert ActToolParam to ActToolInfoEntity and set the list
 			if (params.getActToolInfoList() != null && !params.getActToolInfoList().isEmpty()) {
-				List<ActToolInfoEntity> actToolInfoEntities = params.getActToolInfoList()
-					.stream()
-					.map(this::convertToActToolInfoEntity)
-					.collect(java.util.stream.Collectors.toList());
+				List<ActToolInfoEntity> actToolInfoEntities = new ArrayList<>(params.getActToolInfoList().size());
+				for (ActToolParam p : params.getActToolInfoList()) {
+					actToolInfoEntities.add(convertToActToolInfoEntity(p));
+				}
 				thinkActRecord.setActToolInfoList(actToolInfoEntities);
 			}
 

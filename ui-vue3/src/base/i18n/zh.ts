@@ -97,6 +97,7 @@ const words: I18nType = {
   // 文件浏览器
   fileBrowser: {
     title: '文件浏览器',
+    viewTaskFiles: '任务文件',
     refresh: '刷新',
     loading: '正在加载文件树...',
     retry: '重试',
