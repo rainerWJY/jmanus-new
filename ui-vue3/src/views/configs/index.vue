@@ -75,6 +75,7 @@ import {
   DeleteOutlined,
   FileTextOutlined,
   FolderOutlined,
+  SearchOutlined,
   SettingOutlined,
   ToolOutlined,
 } from '@ant-design/icons-vue'
@@ -89,6 +90,7 @@ import DatabaseConfig from './databaseConfig.vue'
 import McpConfig from './mcpConfig.vue'
 import ModelConfig from './modelConfig.vue'
 import NamespaceConfig from './namespaceConfig.vue'
+import PlanExecutionQueryConfig from './planExecutionQueryConfig.vue'
 import PlanTemplateConfig from './planTemplateConfig.vue'
 
 // Define component name for Vue linting rules
@@ -103,6 +105,7 @@ type ConfigComponent =
   | typeof DatabaseConfig
   | typeof DatabaseCleanupConfig
   | typeof NamespaceConfig
+  | typeof PlanExecutionQueryConfig
   | typeof PlanTemplateConfig
 
 interface CategoryMap {
@@ -113,6 +116,7 @@ interface CategoryMap {
   database: typeof DatabaseConfig
   databaseCleanup: typeof DatabaseCleanupConfig
   namespace: typeof NamespaceConfig
+  planExecutionQuery: typeof PlanExecutionQueryConfig
   planTemplate: typeof PlanTemplateConfig
 }
 
@@ -130,6 +134,7 @@ const categoryMap: CategoryMap = {
   database: DatabaseConfig,
   databaseCleanup: DatabaseCleanupConfig,
   namespace: NamespaceConfig,
+  planExecutionQuery: PlanExecutionQueryConfig,
   planTemplate: PlanTemplateConfig,
 }
 
@@ -154,6 +159,12 @@ const categories = computed(() => [
     label: t('config.categories.namespace'),
     disabled: false,
     icon: 'carbon:batch-job',
+  },
+  {
+    key: 'planExecutionQuery',
+    label: t('config.categories.planExecutionQuery'),
+    disabled: false,
+    icon: 'carbon:search',
   },
   {
     key: 'planTemplate',
@@ -191,6 +202,7 @@ const getAntIcon = (key: string) => {
     database: DatabaseOutlined,
     databaseCleanup: DeleteOutlined,
     namespace: FolderOutlined,
+    planExecutionQuery: SearchOutlined,
     planTemplate: FileTextOutlined,
   }
   return antIcons[key] || SettingOutlined
