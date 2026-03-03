@@ -31,7 +31,9 @@
           :disabled="loading || !planIdInput.trim()"
           @click="handleLoad"
         >
-          {{ loading ? t('config.planExecutionQuery.loading') : t('config.planExecutionQuery.load') }}
+          {{
+            loading ? t('config.planExecutionQuery.loading') : t('config.planExecutionQuery.load')
+          }}
         </button>
       </div>
       <p v-if="loadError" class="error-message">{{ loadError }}</p>
@@ -160,7 +162,9 @@
                             >
                               <Icon icon="carbon:copy" />
                             </button>
-                            <span class="char-count-badge">{{ tas.outputCharCount ?? 0 }} tokens</span>
+                            <span class="char-count-badge"
+                              >{{ tas.outputCharCount ?? 0 }} tokens</span
+                            >
                           </div>
                         </div>
                         <div class="pre-container">
@@ -209,12 +213,11 @@
                         <div class="sub-plan-header">
                           <div class="sub-plan-info">
                             <span class="label">{{ t('rightPanel.subPlanId') }}:</span>
-                            <span class="value">{{ tas.subPlanExecutionRecord.currentPlanId }}</span>
+                            <span class="value">{{
+                              tas.subPlanExecutionRecord.currentPlanId
+                            }}</span>
                           </div>
-                          <div
-                            class="sub-plan-info"
-                            v-if="tas.subPlanExecutionRecord.title"
-                          >
+                          <div class="sub-plan-info" v-if="tas.subPlanExecutionRecord.title">
                             <span class="label">{{ t('rightPanel.title') }}:</span>
                             <span class="value">{{ tas.subPlanExecutionRecord.title }}</span>
                           </div>
@@ -224,11 +227,7 @@
                               v-if="tas.subPlanExecutionRecord.completed"
                               class="status-icon success"
                             />
-                            <Icon
-                              icon="carbon:in-progress"
-                              v-else
-                              class="status-icon progress"
-                            />
+                            <Icon icon="carbon:in-progress" v-else class="status-icon progress" />
                             <span class="status-text">
                               {{
                                 tas.subPlanExecutionRecord.completed
@@ -262,12 +261,12 @@
 </template>
 
 <script setup lang="ts">
-import ExecutionDetails from '@/components/chat/ExecutionDetails.vue'
 import { DirectApiService } from '@/api/lynxe-service'
-import type { CompatiblePlanExecutionRecord } from '@/types/message-dialog'
-import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
-import type { PlanExecutionRecord } from '@/types/plan-execution-record'
+import ExecutionDetails from '@/components/chat/ExecutionDetails.vue'
 import { useToast } from '@/plugins/useToast'
+import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
+import type { CompatiblePlanExecutionRecord } from '@/types/message-dialog'
+import type { PlanExecutionRecord } from '@/types/plan-execution-record'
 import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { ref } from 'vue'
