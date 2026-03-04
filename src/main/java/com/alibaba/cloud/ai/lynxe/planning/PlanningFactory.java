@@ -60,8 +60,8 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
 import com.alibaba.cloud.ai.lynxe.subplan.service.SubplanToolService;
 import com.alibaba.cloud.ai.lynxe.tool.DebugTool;
+import com.alibaba.cloud.ai.lynxe.tool.ExecutionSnapshotTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
-import com.alibaba.cloud.ai.lynxe.tool.message.SendAssistantMessageTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
@@ -115,9 +115,8 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingE
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartAsyncExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.message.SendAssistantMessageTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
-import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
-import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountExternalLinkFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteExternalLinkFileOperator;
@@ -132,6 +131,8 @@ import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitExternalL
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -390,6 +391,7 @@ public class PlanningFactory {
 			// toolDefinitions.add(new GoogleSearch());
 			// toolDefinitions.add(new PythonExecute());
 			toolDefinitions.add(new FormInputTool(objectMapper, toolI18nService));
+			toolDefinitions.add(new ExecutionSnapshotTool(objectMapper, toolI18nService));
 			// Refactored parallel execution operators (split from ParallelExecutionTool)
 			toolDefinitions.add(new RegisterBatchExecutionTool(objectMapper, planIdDispatcher, functionRegistryService,
 					toolI18nService));

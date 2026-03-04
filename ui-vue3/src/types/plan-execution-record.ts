@@ -202,11 +202,24 @@ export interface UserInputWaitState {
   /** Whether the plan is currently waiting for user input */
   waiting?: boolean
 
+  /** "form" = form input wait, "snapshot" = execution snapshot hold (review + simulate) */
+  waitType?: 'form' | 'snapshot'
+
+  /** When waitType is "snapshot", the stepId to load agent execution detail for think-act steps */
+  snapshotStepId?: string
+
   /** Form description */
   formDescription?: string
 
   /** Form input fields as map list (matching Java structure) */
   formInputs?: Array<Record<string, string>>
+}
+
+/** Result of simulate-next-step API (think output + tool calls, not executed) */
+export interface SimulateResult {
+  thinkOutput?: string
+  toolCalls?: Array<{ name: string; arguments: string }>
+  simulated?: boolean
 }
 
 /**

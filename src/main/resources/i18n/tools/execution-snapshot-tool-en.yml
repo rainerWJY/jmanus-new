@@ -1,0 +1,8 @@
+description: |
+  Pause the current execution. The user can review execution history, modify the execution prompt, run a simulated next step, or resume from the left step execution panel. Use when you want the user to inspect or adjust the flow before continuing. No parameters required.
+
+parameters: |
+  {
+      "type": "object",
+      "properties": {}
+  }
