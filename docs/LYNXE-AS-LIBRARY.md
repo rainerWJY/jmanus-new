@@ -254,11 +254,16 @@ Override in your app when you need different upload limits, paths, or proxy sett
 
 ### Logging
 
-Lynxe sets:
+Lynxe does **not** ship `logback-spring.xml` or `logback.xml` in its JAR, so your application’s logging configuration is never overridden. When you run Lynxe as the main app (fat JAR), it explicitly loads `logback-lynxe-standalone.xml`; when Lynxe is a dependency, your app’s `logback-spring.xml` or `application.yml` controls logging.
+
+Lynxe’s default config (used in standalone) sets:
 
 - `logging.file.name`: `./logs/info.log`
 - `logging.level.root`: `INFO`
 - Several `com.alibaba.cloud.ai.*` loggers to `DEBUG` or `INFO`
+- Optional appenders: `LLM_REQUEST_LOGGER`, `STREAMING_PROGRESS_LOGGER`
+
+To reuse Lynxe’s logger names or file appenders (e.g. LLM request logs), copy the relevant parts from the `logback-lynxe-standalone.xml` file in the Lynxe JAR (or repo) into your own `logback-spring.xml`.
 
 Override in your app to point logs elsewhere or change levels, e.g.:
 

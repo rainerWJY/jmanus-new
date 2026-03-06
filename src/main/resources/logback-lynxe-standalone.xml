@@ -168,7 +168,7 @@
 
     <!-- Block logs from specific classes -->
     <logger name="org.docx4j.convert.in.xhtml.XHTMLImporterImp" level="OFF" additivity="false"/>
-    
+
     <!-- Suppress netty DNS native library warning - fallback to system defaults works fine -->
     <logger name="io.netty.resolver.dns.DnsServerAddressStreamProviders" level="INFO" additivity="false"/>
 
