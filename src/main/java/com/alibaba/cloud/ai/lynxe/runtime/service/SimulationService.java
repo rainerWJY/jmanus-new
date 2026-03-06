@@ -66,8 +66,11 @@ public class SimulationService {
 	 * Result of a simulated next step: think output and tool calls (not executed).
 	 */
 	public static class SimulateResult {
+
 		private String thinkOutput;
+
 		private List<SimulatedToolCall> toolCalls;
+
 		private boolean simulated = true;
 
 		public String getThinkOutput() {
@@ -89,10 +92,13 @@ public class SimulationService {
 		public boolean isSimulated() {
 			return simulated;
 		}
+
 	}
 
 	public static class SimulatedToolCall {
+
 		private String name;
+
 		private String arguments;
 
 		public SimulatedToolCall(String name, String arguments) {
@@ -107,6 +113,7 @@ public class SimulationService {
 		public String getArguments() {
 			return arguments;
 		}
+
 	}
 
 	/**
@@ -136,8 +143,10 @@ public class SimulationService {
 		}
 		messages.add(envMessage);
 
-		// If snapshot includes the assistant message (tool call), append it and a synthetic
-		// tool result so the LLM continues after the snapshot tool instead of repeating it.
+		// If snapshot includes the assistant message (tool call), append it and a
+		// synthetic
+		// tool result so the LLM continues after the snapshot tool instead of repeating
+		// it.
 		Message assistantMessage = snapshot.getAssistantMessageWithToolCalls();
 		if (assistantMessage instanceof AssistantMessage am && am.getToolCalls() != null
 				&& !am.getToolCalls().isEmpty()) {
@@ -146,8 +155,7 @@ public class SimulationService {
 			for (AssistantMessage.ToolCall tc : am.getToolCalls()) {
 				String content = ExecutionSnapshotTool.name.equals(tc.name())
 						|| tc.name() != null && tc.name().contains(ExecutionSnapshotTool.name)
-								? "Execution paused for review."
-								: "Not executed (simulation).";
+								? "Execution paused for review." : "Not executed (simulation).";
 				toolResponses.add(new ToolResponseMessage.ToolResponse(tc.id(), tc.name(), content));
 			}
 			messages.add(ToolResponseMessage.builder().responses(toolResponses).build());
@@ -194,4 +202,5 @@ public class SimulationService {
 				result.getToolCalls() != null ? result.getToolCalls().size() : 0);
 		return result;
 	}
+
 }

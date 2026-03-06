@@ -623,7 +623,6 @@ async function resumeSnapshot() {
   resumeLoading.value = true
   try {
     await DirectApiService.resumeSnapshot(planId)
-    toast.success(t('rightPanel.resumeSuccess') ?? 'Execution resumed')
     simulatedStep.value = null
     modifiedPrompt.value = ''
   } catch (e) {

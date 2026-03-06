@@ -39,12 +39,16 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 	private final ToolI18nService toolI18nService;
 
 	public enum InputState {
+
 		AWAITING_USER_INPUT, INPUT_RECEIVED, INPUT_TIMEOUT
+
 	}
 
 	private InputState inputState = InputState.INPUT_RECEIVED;
 
-	/** Set by agent before run() so result contains the correct stepId for the frontend. */
+	/**
+	 * Set by agent before run() so result contains the correct stepId for the frontend.
+	 */
 	private String currentStepId;
 
 	public ExecutionSnapshotTool(ObjectMapper objectMapper, ToolI18nService toolI18nService) {
@@ -66,14 +70,18 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 
 	@Override
 	public ToolExecuteResult run(ExecutionSnapshotInput input) {
-		log.info("ExecutionSnapshotTool invoked, holding thread for stepId/planId (agent stores snapshot before calling)");
+		log.info(
+				"ExecutionSnapshotTool invoked, holding thread for stepId/planId (agent stores snapshot before calling)");
 		setInputState(InputState.AWAITING_USER_INPUT);
-		// Result carries stepId/rootPlanId for frontend (agent sets currentStepId before run)
+		// Result carries stepId/rootPlanId for frontend (agent sets currentStepId before
+		// run)
 		try {
 			SnapshotResult result = new SnapshotResult();
-			result.setStepId(currentStepId != null ? currentStepId : (getCurrentPlanId() != null ? getCurrentPlanId() : ""));
+			result.setStepId(
+					currentStepId != null ? currentStepId : (getCurrentPlanId() != null ? getCurrentPlanId() : ""));
 			result.setRootPlanId(getRootPlanId() != null ? getRootPlanId() : "");
-			result.setMessage(input != null && input.getMessage() != null ? input.getMessage() : "Execution paused for review and optional simulated run.");
+			result.setMessage(input != null && input.getMessage() != null ? input.getMessage()
+					: "Execution paused for review and optional simulated run.");
 			return new ToolExecuteResult(objectMapper.writeValueAsString(result));
 		}
 		catch (Exception e) {
@@ -138,6 +146,7 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 	}
 
 	public static class ExecutionSnapshotInput {
+
 		private String message;
 
 		public String getMessage() {
@@ -147,11 +156,15 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 		public void setMessage(String message) {
 			this.message = message;
 		}
+
 	}
 
 	public static class SnapshotResult {
+
 		private String stepId;
+
 		private String rootPlanId;
+
 		private String message;
 
 		public String getStepId() {
@@ -177,5 +190,7 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 		public void setMessage(String message) {
 			this.message = message;
 		}
+
 	}
+
 }

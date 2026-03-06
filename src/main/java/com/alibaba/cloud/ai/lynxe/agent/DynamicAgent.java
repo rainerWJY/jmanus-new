@@ -66,10 +66,10 @@ import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ThinkAc
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionStep;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.AbstractPlanExecutor;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
+import com.alibaba.cloud.ai.lynxe.runtime.service.ExecutionSnapshotService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionCheckerService;
-import com.alibaba.cloud.ai.lynxe.runtime.service.ExecutionSnapshotService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
 import com.alibaba.cloud.ai.lynxe.subplan.model.vo.SubplanToolWrapper;
 import com.alibaba.cloud.ai.lynxe.tool.ErrorReportTool;
@@ -245,7 +245,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Backward-compatible constructor without ExecutionSnapshotService (snapshot feature disabled).
+	 * Backward-compatible constructor without ExecutionSnapshotService (snapshot feature
+	 * disabled).
 	 */
 	public DynamicAgent(LlmService llmService, PlanExecutionRecorder planExecutionRecorder,
 			LynxeProperties lynxeProperties, String name, String description, String nextStepPrompt,
@@ -1100,7 +1101,8 @@ public class DynamicAgent extends ReActAgent {
 	}
 
 	/**
-	 * Execute ExecutionSnapshotTool: store snapshot, run tool, wait for user resume or timeout.
+	 * Execute ExecutionSnapshotTool: store snapshot, run tool, wait for user resume or
+	 * timeout.
 	 */
 	private CompletableFuture<Map<String, Object>> executeExecutionSnapshotToolAsync(ExecutionTask task) {
 		ExecutionSnapshotTool snapshotTool = (ExecutionSnapshotTool) task.toolCallBackContext.getFunctionInstance();
@@ -1120,8 +1122,7 @@ public class DynamicAgent extends ReActAgent {
 
 			if (executionSnapshotService != null) {
 				AssistantMessage assistantMessage = (agentStreamingResult != null
-						&& agentStreamingResult.hasToolCalls())
-								? agentStreamingResult.createAssistantMessage() : null;
+						&& agentStreamingResult.hasToolCalls()) ? agentStreamingResult.createAssistantMessage() : null;
 				executionSnapshotService.storeSnapshot(stepId, rootPlanId, currentPlanId, agentMessages,
 						lastSystemMessageForSnapshot, lastCurrentStepEnvMessageForSnapshot, snapshotTool,
 						assistantMessage);
@@ -1182,7 +1183,8 @@ public class DynamicAgent extends ReActAgent {
 					TimeUnit.MILLISECONDS.sleep(500);
 				}
 				catch (InterruptedException e) {
-					log.warn("Interrupted while waiting for execution snapshot resume for planId: {}", getCurrentPlanId());
+					log.warn("Interrupted while waiting for execution snapshot resume for planId: {}",
+							getCurrentPlanId());
 					Thread.currentThread().interrupt();
 					snapshotTool.handleInputTimeout();
 					break;

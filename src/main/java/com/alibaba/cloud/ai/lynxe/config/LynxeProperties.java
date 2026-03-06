@@ -174,7 +174,7 @@ public class LynxeProperties {
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "userInputTimeout",
 			path = "lynxe.agent.userInputTimeout", description = "lynxe.agent.userInputTimeout.description",
-			defaultValue = "300", inputType = ConfigInputType.NUMBER)
+			defaultValue = "600", inputType = ConfigInputType.NUMBER)
 	private volatile Integer userInputTimeout;
 
 	public Integer getUserInputTimeout() {
@@ -183,12 +183,10 @@ public class LynxeProperties {
 		if (value != null) {
 			userInputTimeout = Integer.valueOf(value);
 		}
-		// Ensure a default value if not configured and not set
+		// Ensure a default value if not configured and not set (10 minutes for execution
+		// snapshot / form input wait)
 		if (userInputTimeout == null) {
-			// Attempt to parse the default value specified in the annotation,
-			// or use a hardcoded default if parsing fails or is complex to retrieve here.
-			// For simplicity, directly using the intended default.
-			userInputTimeout = 300;
+			userInputTimeout = 600;
 		}
 		return userInputTimeout;
 	}

@@ -444,7 +444,8 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 				waitState.setWaitType("snapshot");
 				waitState.setSnapshotStepId(snapshotStepId);
 				planRecord.setUserInputWaitState(waitState);
-				logger.info("Root plan {} is in execution snapshot hold. snapshotStepId={}", rootPlanId, snapshotStepId);
+				logger.info("Root plan {} is in execution snapshot hold. snapshotStepId={}", rootPlanId,
+						snapshotStepId);
 			}
 			else {
 				planRecord.setUserInputWaitState(null);

@@ -508,6 +508,7 @@
                     <executable>false</executable>
                     <layout>ZIP</layout>
                     <mainClass>com.alibaba.cloud.ai.lynxe.OpenLynxeSpringBootApplication</mainClass>
+                    <classifier>exec-fat-jar</classifier>
                 </configuration>
                 <executions>
                     <execution>

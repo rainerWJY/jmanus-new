@@ -46,13 +46,22 @@ public class ExecutionSnapshotService {
 	private final Map<String, String> stepIdByRootPlanId = new ConcurrentHashMap<>();
 
 	public static class SnapshotData {
+
 		private String stepId;
+
 		private String rootPlanId;
+
 		private String currentPlanId;
+
 		private List<Message> agentMessages;
+
 		private Message systemMessage;
+
 		private Message currentStepEnvMessage;
-		/** Assistant message that contains the ExecutionSnapshotTool call (for simulate). */
+
+		/**
+		 * Assistant message that contains the ExecutionSnapshotTool call (for simulate).
+		 */
 		private Message assistantMessageWithToolCalls;
 
 		public String getStepId() {
@@ -110,6 +119,7 @@ public class ExecutionSnapshotService {
 		public void setAssistantMessageWithToolCalls(Message assistantMessageWithToolCalls) {
 			this.assistantMessageWithToolCalls = assistantMessageWithToolCalls;
 		}
+
 	}
 
 	/**
@@ -179,4 +189,5 @@ public class ExecutionSnapshotService {
 			stepIdByRootPlanId.remove(data.getRootPlanId());
 		}
 	}
+
 }

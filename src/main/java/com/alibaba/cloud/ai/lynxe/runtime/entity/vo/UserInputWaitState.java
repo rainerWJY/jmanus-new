@@ -27,10 +27,15 @@ public class UserInputWaitState implements Serializable {
 
 	private boolean waiting;
 
-	/** "form" = form input wait, "snapshot" = execution snapshot hold (review + simulate) */
+	/**
+	 * "form" = form input wait, "snapshot" = execution snapshot hold (review + simulate)
+	 */
 	private String waitType;
 
-	/** When waitType is "snapshot", the stepId to load agent execution detail for think-act steps. */
+	/**
+	 * When waitType is "snapshot", the stepId to load agent execution detail for
+	 * think-act steps.
+	 */
 	private String snapshotStepId;
 
 	private String formDescription;
