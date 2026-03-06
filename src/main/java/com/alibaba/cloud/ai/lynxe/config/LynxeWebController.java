@@ -29,4 +29,5 @@ public class LynxeWebController {
 	public String lynxeIndex() {
 		return "forward:/lynxe/index.html";
 	}
+
 }
