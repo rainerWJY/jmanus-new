@@ -73,7 +73,7 @@ export class LlmCheckService {
       if (redirectToInit) {
         // Clear initialization status, force redirect to initialization page
         localStorage.removeItem('hasInitialized')
-        window.location.href = '/ui/#/init'
+        window.location.href = '/lynxe/#/init'
         throw new Error('Redirecting to initialization page')
       }
 

@@ -35,7 +35,7 @@ public class AppStartupListener implements ApplicationListener<ApplicationReadyE
 	private static final Logger logger = LoggerFactory.getLogger(AppStartupListener.class);
 
 	/** Default init path when not configured. Kept for backward compatibility. */
-	public static final String INIT_WEB_PATH_DEFAULT = "/ui/index.html";
+	public static final String INIT_WEB_PATH_DEFAULT = "/lynxe";
 
 	@Value("${server.port:18080}")
 	// Using Spring's original here to keep consistent with configuration file.

@@ -222,7 +222,7 @@ To avoid **ambiguous mapping** on `GET /`, either let your app own `/` or let Ly
 | Property | Lynxe default | In your app |
 |----------|----------------|-------------|
 | `lynxe.web.root-redirect-enabled` | `true` | Set to **`false`** when embedding Lynxe so your app can map `"/"` (e.g. your own home or console). When `true`, Lynxe maps `GET /` to the init path. |
-| `lynxe.web.init-path` | `/ui/index.html` | Path Lynxe redirects `/` to (and uses in startup log). Override if your UI is at a different path. |
+| `lynxe.web.init-path` | `/lynxe` | Path Lynxe redirects `/` to (and uses in startup log). UI is served at `/lynxe`. Override if your UI is at a different path. |
 
 **Example: use Lynxe as a library and own `/` in your app**
 
@@ -241,7 +241,7 @@ Lynxe uses these under `lynxe`:
 | Property | Lynxe default | Notes |
 |----------|----------------|-------|
 | `lynxe.web.root-redirect-enabled` | `true` | See [Root redirect and init path](#root-redirect-and-init-path-when-embedding-lynxe) above. |
-| `lynxe.web.init-path` | `/ui/index.html` | Redirect target for `/` and URL in startup log. |
+| `lynxe.web.init-path` | `/lynxe` | Redirect target for `/` and URL in startup log. UI is served at `/lynxe`. |
 | `lynxe.file-upload.max-file-size` | `1073741824` | Max size per file (bytes). |
 | `lynxe.file-upload.max-files-per-upload` | `10` | Max files per request. |
 | `lynxe.file-upload.upload-directory` | `uploaded_files` | Directory name for uploads. |

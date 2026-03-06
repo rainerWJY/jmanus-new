@@ -21,9 +21,9 @@ import { defineConfig } from 'vite'
 import checker from 'vite-plugin-checker'
 
 export default defineConfig({
-  base: '/ui',
+  base: '/lynxe',
   build: {
-    outDir: './ui',
+    outDir: './lynxe',
     sourcemap: true, // Enable source maps for production builds
   },
   css: {

@@ -720,9 +720,9 @@ public class LynxeProperties {
 		private boolean rootRedirectEnabled = true;
 
 		/**
-		 * Path to redirect "/" to (e.g. guided setup / UI). Default "/ui/index.html".
+		 * Path to redirect "/" to (e.g. guided setup / UI). Default "/lynxe".
 		 */
-		private String initPath = "/ui/index.html";
+		private String initPath = "/lynxe";
 
 		public boolean isRootRedirectEnabled() {
 			return rootRedirectEnabled;
@@ -733,7 +733,7 @@ public class LynxeProperties {
 		}
 
 		public String getInitPath() {
-			return initPath != null && !initPath.isEmpty() ? initPath : "/ui/index.html";
+			return initPath != null && !initPath.isEmpty() ? initPath : "/lynxe";
 		}
 
 		public void setInitPath(String initPath) {
