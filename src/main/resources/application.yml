@@ -74,7 +74,7 @@ agent:
 lynxe:
   # Root redirect: when true (default), GET "/" redirects to web.init-path. Set to false when embedding Lynxe so the host app can own "/".
   web:
-    root-redirect-enabled: true
+    root-redirect-enabled: false
     init-path: /ui/index.html
   file-upload:
     # 最大文件大小（字节）1GB
