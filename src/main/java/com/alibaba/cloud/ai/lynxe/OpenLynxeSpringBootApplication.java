@@ -41,7 +41,8 @@ public class OpenLynxeSpringBootApplication {
 		}
 		else {
 			// Use Lynxe logback config only when running as the main app (fat JAR).
-			// When Lynxe is a dependency, the host app's logback-spring.xml / application.yml controls logging.
+			// When Lynxe is a dependency, the host app's logback-spring.xml /
+			// application.yml controls logging.
 			if (System.getProperty("logging.config") == null) {
 				System.setProperty("logging.config", "classpath:logback-lynxe-standalone.xml");
 			}
