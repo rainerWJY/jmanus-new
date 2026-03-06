@@ -739,6 +739,7 @@ public class LynxeProperties {
 		public void setInitPath(String initPath) {
 			this.initPath = initPath;
 		}
+
 	}
 
 	public Web getWeb() {
