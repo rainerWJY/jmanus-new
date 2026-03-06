@@ -706,4 +706,50 @@ public class LynxeProperties {
 	// Image Generation Settings
 	// End----------------------------------------------------------------------------------------------
 
+	// Web (root redirect and init path) - for standalone vs library embedding
+	// Begin----------------------------------------------------------------------------------------------
+
+	private Web web = new Web();
+
+	public static class Web {
+
+		/**
+		 * When true (default), map GET "/" to redirect to init-path. Set to false when
+		 * embedding Lynxe so the host app can own "/".
+		 */
+		private boolean rootRedirectEnabled = true;
+
+		/**
+		 * Path to redirect "/" to (e.g. guided setup / UI). Default "/ui/index.html".
+		 */
+		private String initPath = "/ui/index.html";
+
+		public boolean isRootRedirectEnabled() {
+			return rootRedirectEnabled;
+		}
+
+		public void setRootRedirectEnabled(boolean rootRedirectEnabled) {
+			this.rootRedirectEnabled = rootRedirectEnabled;
+		}
+
+		public String getInitPath() {
+			return initPath != null && !initPath.isEmpty() ? initPath : "/ui/index.html";
+		}
+
+		public void setInitPath(String initPath) {
+			this.initPath = initPath;
+		}
+	}
+
+	public Web getWeb() {
+		return web;
+	}
+
+	public void setWeb(Web web) {
+		this.web = web != null ? web : new Web();
+	}
+
+	// Web Settings
+	// End----------------------------------------------------------------------------------------------
+
 }
