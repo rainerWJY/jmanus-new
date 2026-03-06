@@ -43,8 +43,8 @@ ui-lint: ## Lint the UI code
 ui-deploy: ## Build UI and deploy to static directory
 	@$(LOG_TARGET)
 	@bash -c "if [ -s \"$$HOME/.nvm/nvm.sh\" ]; then export NVM_DIR=\"$$HOME/.nvm\" && [ -s \"$$NVM_DIR/nvm.sh\" ] && \. \"$$NVM_DIR/nvm.sh\" && nvm use 22 > /dev/null 2>&1 || true; fi; cd ui-vue3 && pnpm install && pnpm run build"
-	@echo "Removing existing static UI directory..."
-	rm -rf src/main/resources/static/ui
+	@echo "Removing existing static lynxe directory..."
+	rm -rf src/main/resources/static/lynxe
 	@echo "Copying built UI to static directory..."
-	cp -r ui-vue3/ui src/main/resources/static/
+	cp -r ui-vue3/lynxe src/main/resources/static/
 	@echo "UI deployment completed successfully!"
