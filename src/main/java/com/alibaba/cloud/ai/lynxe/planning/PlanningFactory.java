@@ -22,9 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-
 import org.apache.hc.client5.http.classic.HttpClient;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -39,11 +36,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.event.EventListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -140,6 +137,8 @@ import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
 import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 /**
  * @author yuluo
@@ -521,9 +520,9 @@ public class PlanningFactory {
 			synchronized (this) {
 				if (toolCallbackMapCache == null) {
 					toolCallbackMapCache = CacheBuilder.newBuilder()
-							.expireAfterWrite(toolsCacheTtlMinutes, TimeUnit.MINUTES)
-							.maximumSize(500)
-							.build();
+						.expireAfterWrite(toolsCacheTtlMinutes, TimeUnit.MINUTES)
+						.maximumSize(500)
+						.build();
 				}
 			}
 		}

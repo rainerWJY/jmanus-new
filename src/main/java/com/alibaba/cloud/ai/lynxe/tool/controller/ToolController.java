@@ -50,9 +50,9 @@ public class ToolController {
 	private McpService mcpService;
 
 	/**
-	 * Get all available tools.
-	 * On success returns 200 with list of tools; on error returns 500 with JSON
-	 * body {@code { "error": "...", "message": "..." }} so the frontend can show the cause.
+	 * Get all available tools. On success returns 200 with list of tools; on error
+	 * returns 500 with JSON body {@code { "error": "...", "message": "..." }} so the
+	 * frontend can show the cause.
 	 * @return List of available tools, or error map on 500
 	 */
 	@GetMapping
@@ -95,7 +95,7 @@ public class ToolController {
 			log.error("Error getting available tools: {}", e.getMessage(), e);
 			String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
 			return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Map.of("error", message, "message", message));
+				.body(Map.of("error", message, "message", message));
 		}
 		finally {
 			try {
@@ -108,9 +108,9 @@ public class ToolController {
 	}
 
 	/**
-	 * Invalidate the tool callback map cache so the next request rebuilds the
-	 * registry (e.g. after new coordinator or MCP tools are created). Call this when
-	 * tools are added or updated outside the normal save path.
+	 * Invalidate the tool callback map cache so the next request rebuilds the registry
+	 * (e.g. after new coordinator or MCP tools are created). Call this when tools are
+	 * added or updated outside the normal save path.
 	 */
 	@PostMapping("/refresh-cache")
 	public ResponseEntity<Void> refreshToolCache() {

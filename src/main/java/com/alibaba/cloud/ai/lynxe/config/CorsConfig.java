@@ -38,12 +38,8 @@ public class CorsConfig implements WebMvcConfigurer {
 		// When allowCredentials is true, allowedOrigins cannot be "*". Use explicit
 		// origin patterns so merged CORS config (e.g. with @CrossOrigin or Security)
 		// does not trigger "allowedOrigins cannot contain '*'".
-		String[] originPatterns = new String[] {
-			"http://localhost:*",
-			"http://127.0.0.1:*",
-			"https://localhost:*",
-			"https://127.0.0.1:*"
-		};
+		String[] originPatterns = new String[] { "http://localhost:*", "http://127.0.0.1:*", "https://localhost:*",
+				"https://127.0.0.1:*" };
 		registry.addMapping("/api/**")
 			.allowedOriginPatterns(originPatterns)
 			.allowedMethods("*")
