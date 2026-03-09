@@ -24,8 +24,8 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * Step summary tool: allows the LLM to output a message and return it directly at the
- * end of each step (what was done, next plan, why). Keeps the execution trace clear.
+ * Step summary tool: allows the LLM to output a message and return it directly at the end
+ * of each step (what was done, next plan, why). Keeps the execution trace clear.
  */
 public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 
