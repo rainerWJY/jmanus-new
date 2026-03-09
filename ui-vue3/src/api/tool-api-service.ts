@@ -23,28 +23,49 @@ import { logger } from '@/utils/logger'
  */
 export class ToolApiService {
   /**
-   * Handle HTTP response
+   * Handle HTTP response. Uses text() for error bodies to avoid SyntaxError when
+   * the body is empty or non-JSON (e.g. 404/500 with no body or HTML).
    */
   private static async handleResponse(response: Response) {
     if (!response.ok) {
-      try {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `API request failed: ${response.status}`)
-      } catch {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      const text = await response.text()
+      if (text) {
+        try {
+          const errorData = JSON.parse(text) as { error?: string; message?: string }
+          const msg =
+            errorData.error || errorData.message || `API request failed: ${response.status}`
+          throw new Error(msg)
+        } catch (err) {
+          if (err instanceof Error) {
+            throw err
+          }
+        }
       }
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
     }
     return response
   }
 
   /**
-   * Get available tools from backend API
+   * Get available tools from backend API.
+   * Returns [] when the response body is empty or invalid (e.g. client disconnected / broken pipe)
+   * so the sidebar and tool list do not crash.
    */
   static async getAvailableTools(): Promise<Tool[]> {
     try {
       const response = await fetch('/api/tools')
       const result = await this.handleResponse(response)
-      return await result.json()
+      const text = await result.text()
+      if (!text || !text.trim()) {
+        logger.warn('Get available tools: empty response body, returning empty list')
+        return []
+      }
+      try {
+        return JSON.parse(text) as Tool[]
+      } catch {
+        logger.warn('Get available tools: invalid JSON in response, returning empty list')
+        return []
+      }
     } catch (error) {
       logger.error('Failed to get available tools:', error)
       throw error

@@ -52,20 +52,24 @@ Lynxe 也提供了 http 的服务调用能力，适合被集成到既有的项�
 
 ### 方式一：使用 GitHub Release (推荐)
 
-#### 📦 下载并运行 JAR 文件
+Release 提供的是 **Fat JAR**（单文件、包含全部依赖的可执行 JAR）。使用 Java 17+ 下载后直接运行即可。
+
+#### 📦 下载并运行 Fat JAR
 
 ```bash
-# 下载最新版本的 JAR 文件
+# 下载最新 Fat JAR（如 lynxe-4.10.10.jar）
 wget https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
-# 或者使用 curl
+# 或使用 curl
 curl -L -o lynxe.jar https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
-# 运行 JAR 文件
+# 运行 Fat JAR（需 Java 17+）
 java -jar lynxe.jar
 ```
 
-> 💡 **手动下载**: 您也可以直接访问 [Lynxe Releases 页面](https://github.com/spring-ai-alibaba/Lynxe/releases) 手动下载最新版本的 JAR 文件。
+Fat JAR 即主制品，使用 `java -jar` 即可运行，无需配置 classpath 或额外依赖。
+
+> 💡 **手动下载**: 请访问 [Lynxe Releases 页面](https://github.com/spring-ai-alibaba/Lynxe/releases) 下载最新的 `lynxe-<version>.jar`（Fat JAR）。若需将 Lynxe 作为库嵌入项目，可下载 Thin JAR（`lynxe-<version>-thin-jar.jar`），详见 [将 Lynxe 作为库使用](./docs/LYNXE-AS-LIBRARY.md)。
 
 #### 🌐 访问应用
 
@@ -149,12 +153,23 @@ docker rm lynxe
 
 ### 方式三：从源码运行 (次选方案)
 
-#### 1. 克隆并导航
+#### 1. 克隆并构建
 
 ```bash
 git clone https://github.com/spring-ai-alibaba/Lynxe.git
 cd Lynxe
+
+# 构建项目（在 target/ 下生成 Fat JAR 与 Thin JAR）
+mvn clean package -DskipTests
 ```
+
+可执行的 **Fat JAR** 位于 `target/lynxe-<version>.jar`。运行方式：
+
+```bash
+java -jar target/lynxe-4.10.10.jar
+```
+
+（请将版本号替换为您 `pom.xml` 中的实际版本。）
 
 #### 2. 数据库配置（可选）
 

@@ -17,7 +17,6 @@ package com.alibaba.cloud.ai.lynxe.cron.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,7 +34,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/cron-tasks")
-@CrossOrigin(origins = "*") // Add cross-origin support
 public class CronController {
 
 	@Autowired

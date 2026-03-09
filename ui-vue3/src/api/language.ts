@@ -43,11 +43,23 @@ export const getLanguage = async (): Promise<'zh' | 'en'> => {
       },
     })
 
+    const text = await response.text()
     if (!response.ok) {
-      throw new Error(`Failed to get language: ${response.statusText}`)
+      let msg = `Failed to get language: ${response.statusText}`
+      if (text) {
+        try {
+          const err = JSON.parse(text) as { error?: string; message?: string }
+          msg = err.error || err.message || msg
+        } catch {
+          msg = text || msg
+        }
+      }
+      throw new Error(msg)
     }
-
-    const data: LanguageResponse = await response.json()
+    if (!text || !text.trim()) {
+      return 'zh'
+    }
+    const data: LanguageResponse = JSON.parse(text)
     return data.language || 'zh'
   } catch (error) {
     logger.error('Failed to get language from backend:', error)

@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/models")
-@CrossOrigin(origins = "*") // Add cross-origin support
 public class ModelController {
 
 	@Autowired

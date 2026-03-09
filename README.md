@@ -59,20 +59,24 @@ Get Lynxe up and running in under 5 minutes:
 
 ### Method 1: Using GitHub Release (Recommended)
 
-#### 📦 Download and Run JAR File
+The release provides a **fat JAR** (single runnable JAR with all dependencies). Download and run it with Java 17+.
+
+#### 📦 Download and Run the Fat JAR
 
 ```bash
-# Download the latest JAR file
+# Download the latest fat JAR (e.g. lynxe-4.10.10.jar)
 wget https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
 # Or using curl
 curl -L -o lynxe.jar https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
-# Run the JAR file
+# Run the fat JAR (Java 17+ required)
 java -jar lynxe.jar
 ```
 
-> 💡 **Manual Download**: You can also visit the [Lynxe Releases page](https://github.com/spring-ai-alibaba/Lynxe/releases) to manually download the latest JAR file.
+The fat JAR is the main artifact: run it directly with `java -jar`. No extra classpath or dependency setup is needed.
+
+> 💡 **Manual Download**: Visit the [Lynxe Releases page](https://github.com/spring-ai-alibaba/Lynxe/releases) to download the latest `lynxe-<version>.jar` (fat JAR). A thin JAR (`lynxe-<version>-thin-jar.jar`) is also available for embedding Lynxe as a library; see [Using Lynxe as a library](./docs/LYNXE-AS-LIBRARY.md).
 
 #### 🌐 Access Application
 
@@ -156,12 +160,23 @@ docker rm lynxe
 
 ### Method 3: Running from Source Code (Alternative)
 
-#### 1. Clone and Navigate
+#### 1. Clone and Build
 
 ```bash
 git clone https://github.com/spring-ai-alibaba/Lynxe.git
 cd Lynxe
+
+# Build the project (produces fat JAR and thin JAR in target/)
+mvn clean package -DskipTests
 ```
+
+The runnable **fat JAR** is generated as `target/lynxe-<version>.jar`. Run it with:
+
+```bash
+java -jar target/lynxe-4.10.10.jar
+```
+
+(Replace the version with the one in your `pom.xml`.)
 
 #### 2. Database Configuration (Optional)
 

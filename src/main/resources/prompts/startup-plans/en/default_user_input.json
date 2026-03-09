@@ -1,5 +1,5 @@
 {
-  "title": "Default User Input Processing",
+  "title": "Default-User-Input-Processing",
   "steps": [
     {
       "stepRequirement": "<<userRequirement>>",
@@ -13,7 +13,7 @@
   "accessLevel": "readOnly",
   "serviceGroup": "default",
   "toolConfig": {
-    "toolName": "Default User Input Processing",
+    "toolName": "Default-User-Input-Processing",
     "toolDescription": "This is a default user input plan, do not delete this plan",
     "enableInternalToolcall": true,
     "enableHttpService": false,
