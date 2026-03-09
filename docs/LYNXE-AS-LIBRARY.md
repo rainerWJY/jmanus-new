@@ -8,7 +8,7 @@ This guide shows how to create a new Spring Boot project that depends on Lynxe a
 
 - **Java 17**
 - **Maven 3.6+**
-- Lynxe built with the **thin JAR** as the main artifact (default) and the runnable app as `lynxe-<version>-exec-fat-jar.jar`
+- Lynxe built so the **main artifact** is the runnable fat JAR (`lynxe-<version>.jar`) and the library thin JAR is `lynxe-<version>-thin-jar.jar`
 
 ---
 
@@ -29,10 +29,10 @@ mvn install -DskipTests -Dspring-javaformat.skip=true
 
 This installs:
 
-- **`lynxe-4.10.10.jar`** (thin, library) → used as a dependency
-- **`lynxe-4.10.10-exec-fat-jar.jar`** (fat, executable) → for running Lynxe standalone
+- **`lynxe-4.10.10.jar`** (fat, executable) → for running Lynxe standalone
+- **`lynxe-4.10.10-thin-jar.jar`** (thin, library) → used as a dependency
 
-Other projects will depend on the **thin** JAR via `com.lynxe:lynxe:4.10.10`.
+Other projects depend on the **thin** JAR via `com.lynxe:lynxe:4.10.10` (Maven resolves the main artifact; to use the thin JAR as a dependency you may need to depend on the `thin-jar` classifier or your repo’s convention).
 
 ---
 
@@ -84,11 +84,12 @@ Create `pom.xml`:
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Lynxe as a thin JAR (must be installed locally or in your repo) -->
+        <!-- Lynxe as a thin JAR (classifier required: main artifact is the fat JAR) -->
         <dependency>
             <groupId>com.lynxe</groupId>
             <artifactId>lynxe</artifactId>
             <version>4.10.10</version>
+            <classifier>thin-jar</classifier>
         </dependency>
     </dependencies>
 

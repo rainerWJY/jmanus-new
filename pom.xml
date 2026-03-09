@@ -498,6 +498,25 @@
                 <version>${maven-deploy-plugin.version}</version>
                 <!-- 集团：SNAPSHOT 可本地 deploy，release 走 Aone；如需本地禁用 deploy 可设 skip=true -->
             </plugin>
+            <!-- Attach thin jar as lynxe-thin-jar.jar (main jar is replaced by fat below) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <executions>
+                    <execution>
+                        <id>thin-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>thin-jar</classifier>
+                            <attach>true</attach>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -507,9 +526,7 @@
                     <executable>false</executable>
                     <layout>ZIP</layout>
                     <mainClass>com.alibaba.cloud.ai.lynxe.OpenLynxeSpringBootApplication</mainClass>
-                    <classifier>exec-fat-jar</classifier>
-                    <!-- 二方库只发布 thin jar：fat jar 不 attach，不参与 install/deploy -->
-                    <attach>false</attach>
+                    <!-- No classifier: repackaged jar becomes main artifact lynxe.jar (fat) -->
                 </configuration>
                 <executions>
                     <execution>
