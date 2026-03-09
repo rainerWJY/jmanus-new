@@ -43,8 +43,10 @@ jobs:
           path-to-document: "https://github.com/spring-ai-alibaba/Lynxe/blob/main/CLA.md"
           branch: "main"
           allowlist: "bot*,dependabot*,*[bot],EvoltoStart,HunterPorter"
-          remote-organization-name: "spring-ai-alibaba"
-          remote-repository-name: "cla"
+          # Store signatures in this repo so GITHUB_TOKEN can write (no PAT needed).
+          # To use remote repo spring-ai-alibaba/cla instead, set CLA_REPO_ACCESS_TOKEN secret and uncomment below.
+          # remote-organization-name: "spring-ai-alibaba"
+          # remote-repository-name: "cla"
           lock-pullrequest-aftermerge: false
 
           # create-file-commit-message: 'Creating file for storing CLA Signatures'
