@@ -1,0 +1,14 @@
+description: |
+  Output a step summary. Use this tool at the end of each step to report what the current step did, what the next step plans to do, and why. This keeps the execution trace clear for the user.
+
+parameters: |
+  {
+    "type": "object",
+    "properties": {
+      "message": {
+        "type": "string",
+        "description": "The step summary to output and return, format example:\n# Next Step Plan\nvalue\n# What Has Been Done\nvalue\n# Why This Plan Was Made\nvalue\n# What Requirements This Plan Is Based On\nvalue"
+      }
+    },
+    "required": ["message"]
+  }

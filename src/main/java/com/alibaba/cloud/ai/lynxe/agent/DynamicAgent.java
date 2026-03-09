@@ -342,7 +342,7 @@ public class DynamicAgent extends ReActAgent {
 					log.info("Added explicit tool call requirement to retry message (no tool selected count: {})",
 							noToolSelectedCount);
 				}
-				// Store for execution-snapshot tool (so simulate API can rebuild prompt)
+				// Store for pause-and-replay-execution tool (so simulate API can rebuild prompt)
 				lastSystemMessageForSnapshot = systemMessage;
 				lastCurrentStepEnvMessageForSnapshot = currentStepEnvMessage;
 				// Record think message

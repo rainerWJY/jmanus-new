@@ -32,7 +32,7 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 
 	private static final Logger log = LoggerFactory.getLogger(ExecutionSnapshotTool.class);
 
-	public static final String name = "execution-snapshot";
+	public static final String name = "pause-and-replay-execution";
 
 	private final ObjectMapper objectMapper;
 
@@ -106,12 +106,12 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("execution-snapshot-tool");
+		return toolI18nService.getDescription("pause-and-replay-execution-tool");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("execution-snapshot-tool");
+		return toolI18nService.getParameters("pause-and-replay-execution-tool");
 	}
 
 	@Override
@@ -136,7 +136,7 @@ public class ExecutionSnapshotTool extends AbstractBaseTool<ExecutionSnapshotToo
 
 	@Override
 	public ToolStateInfo getCurrentToolStateString() {
-		String state = String.format("ExecutionSnapshotTool Status: %s", inputState.toString());
+		String state = String.format("Pause-and-replay-execution tool status: %s", inputState.toString());
 		return new ToolStateInfo(null, state);
 	}
 
