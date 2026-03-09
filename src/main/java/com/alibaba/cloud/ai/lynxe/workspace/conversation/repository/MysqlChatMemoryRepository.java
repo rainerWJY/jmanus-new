@@ -59,12 +59,11 @@ public class MysqlChatMemoryRepository extends JdbcChatMemoryRepository {
 
 	@Override
 	protected String createTableSql(String tableName) {
-		return String.format(
-				"CREATE TABLE %s (id BIGINT AUTO_INCREMENT PRIMARY KEY, "
-						+ "conversation_id VARCHAR(256) NOT NULL, content LONGTEXT NOT NULL, "
-						+ "type VARCHAR(100) NOT NULL, timestamp TIMESTAMP NOT NULL, "
-						+ "CONSTRAINT chk_message_type CHECK (type IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL')))",
-				tableName);
+		return String.format("CREATE TABLE %s (id BIGINT AUTO_INCREMENT PRIMARY KEY, "
+				+ "conversation_id VARCHAR(256) NOT NULL, content LONGTEXT NOT NULL, "
+				+ "type VARCHAR(100) NOT NULL, timestamp TIMESTAMP NOT NULL, "
+				+ "CONSTRAINT chk_message_type CHECK (type IN ('USER', 'ASSISTANT', 'SYSTEM', 'TOOL'))) "
+				+ "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", tableName);
 	}
 
 	@Override

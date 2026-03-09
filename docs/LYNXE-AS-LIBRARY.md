@@ -151,6 +151,10 @@ server:
 spring:
   profiles:
     active: h2
+
+lynxe:
+  cors:
+    enabled: false
 ```
 
 For full control or different environments, see the [Configuration guide](#configuration-guide) below.

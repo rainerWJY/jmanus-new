@@ -16,27 +16,30 @@
 
 package com.alibaba.cloud.ai.lynxe.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * CORS configuration for Lynxe API endpoints
+ * CORS configuration for Lynxe API endpoints. Only active when
+ * {@code lynxe.cors.enabled=true} (default). When embedding Lynxe as a library, set
+ * {@code lynxe.cors.enabled=false} so only your app's CORS config applies and you avoid
+ * "allowedOrigins(*) + allowCredentials" merge issues with Spring Security.
  *
  * @author Lynxe Team
  */
 @Configuration
+@ConditionalOnProperty(name = "lynxe.cors.enabled", havingValue = "true", matchIfMissing = true)
 public class CorsConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
 		registry.addMapping("/api/**")
-			.allowedOriginPatterns("*") // Allow all origins; patterns allow credentials
-										// if app enables them
+			.allowedOriginPatterns("*")
 			.allowedMethods("*")
 			.allowedHeaders("*")
-			.allowCredentials(true); // Safe with allowedOriginPatterns (not with
-										// allowedOrigins("*"))
+			.allowCredentials(true);
 	}
 
 }
