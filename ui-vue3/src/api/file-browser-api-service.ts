@@ -24,6 +24,8 @@ export interface FileNode {
   size: number
   lastModified: string
   children?: FileNode[]
+  /** true if this node is a symbolic link (e.g. linked_external) */
+  symlink?: boolean
 }
 
 export interface FileContent {
