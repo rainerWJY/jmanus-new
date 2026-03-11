@@ -415,8 +415,8 @@ public class FileBrowserController {
 	}
 
 	/**
-	 * Build file tree recursively with symbolic link cycle detection.
-	 * Uses a shared visited-real-paths set to detect and skip circular symlinks.
+	 * Build file tree recursively with symbolic link cycle detection. Uses a shared
+	 * visited-real-paths set to detect and skip circular symlinks.
 	 */
 	private FileNode buildFileTree(Path directory, String planId) throws IOException {
 		Set<Path> visitedRealPaths = new HashSet<>();
@@ -431,8 +431,8 @@ public class FileBrowserController {
 	}
 
 	/**
-	 * Internal recursive implementation that carries a visited-real-paths set
-	 * to prevent infinite loops caused by circular symbolic links.
+	 * Internal recursive implementation that carries a visited-real-paths set to prevent
+	 * infinite loops caused by circular symbolic links.
 	 */
 	private FileNode buildFileTreeInternal(Path directory, String planId, Set<Path> visitedRealPaths)
 			throws IOException {
@@ -467,7 +467,8 @@ public class FileBrowserController {
 				return a.getFileName().toString().compareToIgnoreCase(b.getFileName().toString());
 			}).forEach(child -> {
 				try {
-					// Check if child still exists (may have been deleted during traversal)
+					// Check if child still exists (may have been deleted during
+					// traversal)
 					if (!Files.exists(child)) {
 						logger.debug("Skipping deleted file/directory: {}", child);
 						return;
@@ -486,7 +487,8 @@ public class FileBrowserController {
 						String fileName = child.getFileName().toString();
 
 						if ("linked_external".equals(fileName)) {
-							// Traverse linked_external but guard against circular references
+							// Traverse linked_external but guard against circular
+							// references
 							// using the visited real-path set.
 							try {
 								Path realTarget = child.toRealPath();
@@ -506,7 +508,8 @@ public class FileBrowserController {
 								String childRelativePath = planDir.relativize(child).toString();
 								FileNode symlinkNode = buildFileTreeInternal(child, planId, visitedRealPaths);
 								symlinkNode.setSymlink(true);
-								// Override the node path so it reflects the logical symlink path
+								// Override the node path so it reflects the logical
+								// symlink path
 								symlinkNode.setPath(childRelativePath);
 								symlinkNode.setName(fileName);
 								node.getChildren().add(symlinkNode);
