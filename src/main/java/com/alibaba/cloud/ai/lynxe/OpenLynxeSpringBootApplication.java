@@ -25,6 +25,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.IOException;
+import java.net.URL;
 
 @SpringBootApplication
 @EnableScheduling
@@ -44,7 +45,11 @@ public class OpenLynxeSpringBootApplication {
 			// When Lynxe is a dependency, the host app's logback-spring.xml /
 			// application.yml controls logging.
 			if (System.getProperty("logging.config") == null) {
-				System.setProperty("logging.config", "classpath:logback-lynxe-standalone.xml");
+				ClassLoader cl = OpenLynxeSpringBootApplication.class.getClassLoader();
+				URL logback = cl != null ? cl.getResource("logback-lynxe-standalone.xml") : null;
+				if (logback != null) {
+					System.setProperty("logging.config", "classpath:logback-lynxe-standalone.xml");
+				}
 			}
 			SpringApplication.run(OpenLynxeSpringBootApplication.class, args);
 		}

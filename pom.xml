@@ -505,7 +505,8 @@
                 <configuration>
                     <addResources>false</addResources>
                     <executable>false</executable>
-                    <layout>ZIP</layout>
+                    <!-- Default JAR layout uses JarLauncher; ZIP uses PropertiesLauncher and can fail to
+                         resolve classpath:logback-lynxe-standalone.xml during early logging init. -->
                     <mainClass>com.alibaba.cloud.ai.lynxe.OpenLynxeSpringBootApplication</mainClass>
                     <classifier>exec-fat-jar</classifier>
                     <!-- 二方库只发布 thin jar：fat jar 不 attach，不参与 install/deploy -->
