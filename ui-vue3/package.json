@@ -69,6 +69,7 @@
     "eslint-plugin-unused-imports": "^4.1.4",
     "eslint-plugin-vue": "^9.32.0",
     "globals": "^15.14.0",
+    "is-what": "^4.1.16",
     "jsdom": "^23.0.1",
     "less": "^4.3.0",
     "npm-run-all2": "^6.1.1",
