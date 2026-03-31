@@ -104,7 +104,7 @@
 
       <!-- Step Execution Details -->
       <div v-if="activeTab === 'details'" class="step-details">
-        <!-- Snapshot hold: show 模拟/继续 whenever execution is paused, even without selected step -->
+        <!-- Snapshot hold: show Simulate/Continue whenever execution is paused, even without selected step -->
         <div v-if="snapshotWaitState" class="snapshot-hold-section">
           <h4>{{ t('rightPanel.snapshotHoldTitle') }}</h4>
           <div class="snapshot-prompt-row">
@@ -649,7 +649,7 @@ watch(
   }
 )
 
-// When execution pauses for snapshot review, switch to step execution details tab so 模拟/继续 are visible
+// When execution pauses for snapshot review, switch to step execution details tab so Simulate/Continue are visible
 watch(
   () => snapshotWaitState.value,
   wait => {

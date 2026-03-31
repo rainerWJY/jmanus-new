@@ -234,7 +234,7 @@ export class PlanTemplateApiService {
   /**
    * Get parameter requirements for a plan template.
    * Returns empty requirements when the template does not exist yet (404), has no plan version,
-   * or when the response body is empty/invalid (e.g. 404 with no body), so "新建func-agent计划" works.
+   * or when the response body is empty/invalid (e.g. 404 with no body), so creating a new Func-Agent plan works.
    */
   static async getParameterRequirements(planTemplateId: string): Promise<ParameterRequirements> {
     const emptyRequirements: ParameterRequirements = {
