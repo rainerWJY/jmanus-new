@@ -284,8 +284,7 @@ public class McpCacheManager {
 		// Connection doesn't exist, trigger background creation (non-blocking)
 		McpConfigEntity config = configCache.get(serverName);
 		if (config == null) {
-			logger.info(
-					"getConnection: server='{}' - no connection entry and no config in configCache, returning null",
+			logger.info("getConnection: server='{}' - no connection entry and no config in configCache, returning null",
 					serverName);
 			return null;
 		}

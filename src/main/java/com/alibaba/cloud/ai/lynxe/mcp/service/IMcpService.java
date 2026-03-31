@@ -78,8 +78,8 @@ public interface IMcpService {
 	List<McpServiceEntity> getFunctionCallbacks(String planId);
 
 	/**
-	 * Rebuilds all MCP connections (global invalidation; {@code planId} reserved). Not for
-	 * use after read-only listing.
+	 * Rebuilds all MCP connections (global invalidation; {@code planId} reserved). Not
+	 * for use after read-only listing.
 	 * @param planId reserved
 	 */
 	void close(String planId);
