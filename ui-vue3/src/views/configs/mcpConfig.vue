@@ -355,7 +355,7 @@ const getServerConfigValue = (
       case 'command':
         return config.command || ''
       case 'url':
-        return config.url || ''
+        return config.url || config.baseUrl || ''
       case 'args':
         if (config.args && Array.isArray(config.args)) {
           return config.args.join('\n')

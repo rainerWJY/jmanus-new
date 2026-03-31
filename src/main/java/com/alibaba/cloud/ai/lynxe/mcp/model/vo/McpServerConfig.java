@@ -21,6 +21,7 @@ import java.util.Map;
 
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigStatus;
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigType;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,7 +49,30 @@ public class McpServerConfig {
 		this.objectMapper = objectMapper;
 	}
 
+	/**
+	 * MCP endpoint URL. Alias {@code baseUrl} matches Cursor / Aliyun-style exports.
+	 */
+	@JsonProperty("url")
+	@JsonAlias("baseUrl")
 	private String url;
+
+	/**
+	 * Transport hint from external configs, e.g. {@code streamableHttp}, {@code sse}.
+	 */
+	@JsonProperty("type")
+	private String transportType;
+
+	@JsonProperty("isActive")
+	private Boolean isActive;
+
+	@JsonProperty("description")
+	private String description;
+
+	/**
+	 * Optional display name from provider exports (e.g. Aliyun {@code name}).
+	 */
+	@JsonProperty("name")
+	private String providerName;
 
 	@JsonProperty("command")
 	private String command;
@@ -71,6 +95,38 @@ public class McpServerConfig {
 
 	public void setUrl(String url) {
 		this.url = url;
+	}
+
+	public String getTransportType() {
+		return transportType;
+	}
+
+	public void setTransportType(String transportType) {
+		this.transportType = transportType;
+	}
+
+	public Boolean getIsActive() {
+		return isActive;
+	}
+
+	public void setIsActive(Boolean isActive) {
+		this.isActive = isActive;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public String getProviderName() {
+		return providerName;
+	}
+
+	public void setProviderName(String providerName) {
+		this.providerName = providerName;
 	}
 
 	public String getCommand() {
@@ -123,22 +179,30 @@ public class McpServerConfig {
 	}
 
 	/**
-	 * Get connection type. Logic: 1. If has command field → STUDIO 2. If URL suffix is
-	 * sse → SSE 3. Other cases → STREAMING
+	 * Get connection type. Logic: 1. If has command field → STUDIO 2. If {@code type} is
+	 * streamableHttp → STREAMING; if sse → SSE 3. If URL path suggests SSE → SSE 4.
+	 * Otherwise → STREAMING
 	 * @return Connection type
 	 */
 	public McpConfigType getConnectionType() {
-		// 1. Check if has command field
-		if (command != null && !command.isEmpty()) {
+		if (command != null && !command.trim().isEmpty()) {
 			return McpConfigType.STUDIO;
 		}
 
-		// 2. Check if URL suffix is sse
+		if (transportType != null && !transportType.trim().isEmpty()) {
+			String t = transportType.trim().toLowerCase();
+			if ("streamablehttp".equals(t)) {
+				return McpConfigType.STREAMING;
+			}
+			if ("sse".equals(t)) {
+				return McpConfigType.SSE;
+			}
+		}
+
 		if (url != null && !url.isEmpty() && isSSEUrl(url)) {
 			return McpConfigType.SSE;
 		}
 
-		// 3. Other cases default to STREAMING
 		return McpConfigType.STREAMING;
 	}
 

@@ -40,7 +40,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.context.event.EventListener;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -53,7 +52,6 @@ import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServiceEntity;
 import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpTool;
 import com.alibaba.cloud.ai.lynxe.mcp.service.McpService;
 import com.alibaba.cloud.ai.lynxe.model.repository.DynamicModelRepository;
-import com.alibaba.cloud.ai.lynxe.planning.event.ToolRegistryChangedEvent;
 import com.alibaba.cloud.ai.lynxe.planning.service.PlanFinalizer;
 import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.ImageRecognitionExecutorPool;
@@ -137,8 +135,6 @@ import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
 import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 
 /**
  * @author yuluo
@@ -195,12 +191,7 @@ public class PlanningFactory {
 	@Value("${agent.init}")
 	private Boolean agentInit = true;
 
-	@Value("${lynxe.tools.cache-ttl-minutes:10}")
-	private int toolsCacheTtlMinutes = 10;
-
 	public static final String TOOLS_LISTING_CACHE_KEY = "__listing__";
-
-	private volatile Cache<String, Map<String, ToolCallBackContext>> toolCallbackMapCache;
 
 	@SuppressWarnings("unused")
 	@Autowired
@@ -297,18 +288,10 @@ public class PlanningFactory {
 	public Map<String, ToolCallBackContext> toolCallbackMap(String planId, String rootPlanId,
 			String expectedReturnInfo) {
 
-		String cacheKey = (expectedReturnInfo == null && planId != null && planId.equals(rootPlanId))
-				? TOOLS_LISTING_CACHE_KEY
-				: (planId + "|" + rootPlanId + "|" + (expectedReturnInfo != null ? expectedReturnInfo : ""));
-		ensureToolCallbackMapCache();
-		Map<String, ToolCallBackContext> cached = toolCallbackMapCache.getIfPresent(cacheKey);
-		if (cached != null) {
-			return cached;
-		}
-
-		String buildPlanId = TOOLS_LISTING_CACHE_KEY.equals(cacheKey) ? TOOLS_LISTING_CACHE_KEY : planId;
-		String buildRootPlanId = TOOLS_LISTING_CACHE_KEY.equals(cacheKey) ? TOOLS_LISTING_CACHE_KEY : rootPlanId;
-		String buildExpectedReturnInfo = TOOLS_LISTING_CACHE_KEY.equals(cacheKey) ? null : expectedReturnInfo;
+		boolean listingMode = expectedReturnInfo == null && planId != null && planId.equals(rootPlanId);
+		String buildPlanId = listingMode ? TOOLS_LISTING_CACHE_KEY : planId;
+		String buildRootPlanId = listingMode ? TOOLS_LISTING_CACHE_KEY : rootPlanId;
+		String buildExpectedReturnInfo = listingMode ? null : expectedReturnInfo;
 
 		Map<String, ToolCallBackContext> toolCallbackMap = new HashMap<>();
 		List<ToolCallBiFunctionDef<?>> toolDefinitions = new ArrayList<>();
@@ -511,38 +494,14 @@ public class PlanningFactory {
 			}
 		}
 
-		toolCallbackMapCache.put(cacheKey, toolCallbackMap);
 		return toolCallbackMap;
 	}
 
-	private void ensureToolCallbackMapCache() {
-		if (toolCallbackMapCache == null) {
-			synchronized (this) {
-				if (toolCallbackMapCache == null) {
-					toolCallbackMapCache = CacheBuilder.newBuilder()
-						.expireAfterWrite(toolsCacheTtlMinutes, TimeUnit.MINUTES)
-						.maximumSize(500)
-						.build();
-				}
-			}
-		}
-	}
-
 	/**
-	 * Invalidates the tool callback map cache so the next request rebuilds the registry
-	 * (e.g. after new coordinator tools are created). Call this or publish
-	 * {@link ToolRegistryChangedEvent} when the tool set changes.
+	 * No-op retained for API compatibility. The tool callback map is built on each
+	 * {@link #toolCallbackMap} call; there is no longer an internal cache to invalidate.
 	 */
 	public void invalidateToolCallbackMapCache() {
-		if (toolCallbackMapCache != null) {
-			toolCallbackMapCache.invalidateAll();
-			log.debug("Tool callback map cache invalidated");
-		}
-	}
-
-	@EventListener
-	public void onToolRegistryChanged(ToolRegistryChangedEvent event) {
-		invalidateToolCallbackMapCache();
 	}
 
 	@SuppressWarnings("deprecation")

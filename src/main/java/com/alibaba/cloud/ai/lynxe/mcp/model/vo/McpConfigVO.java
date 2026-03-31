@@ -15,6 +15,10 @@
  */
 package com.alibaba.cloud.ai.lynxe.mcp.model.vo;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigEntity;
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigStatus;
 import com.alibaba.cloud.ai.lynxe.mcp.model.po.McpConfigType;
@@ -22,10 +26,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * VO object for frontend display of McpConfig
@@ -52,6 +52,8 @@ public class McpConfigVO {
 	private List<String> args;
 
 	private Map<String, String> env;
+
+	private Map<String, String> headers;
 
 	private McpConfigStatus status;
 
@@ -104,9 +106,12 @@ public class McpConfigVO {
 				this.command = configNode.get("command").asText();
 			}
 
-			// Parse url
-			if (configNode.has("url")) {
+			// Parse url (prefer url; fall back to baseUrl for legacy stored configs)
+			if (configNode.has("url") && !configNode.get("url").asText().isEmpty()) {
 				this.url = configNode.get("url").asText();
+			}
+			else if (configNode.has("baseUrl")) {
+				this.url = configNode.get("baseUrl").asText();
 			}
 
 			// Parse args
@@ -118,6 +123,12 @@ public class McpConfigVO {
 			// Parse env
 			if (configNode.has("env")) {
 				this.env = objectMapper.readValue(configNode.get("env").toString(),
+						objectMapper.getTypeFactory().constructMapType(Map.class, String.class, String.class));
+			}
+
+			// Parse headers (remote / streamable HTTP)
+			if (configNode.has("headers")) {
+				this.headers = objectMapper.readValue(configNode.get("headers").toString(),
 						objectMapper.getTypeFactory().constructMapType(Map.class, String.class, String.class));
 			}
 
@@ -213,6 +224,14 @@ public class McpConfigVO {
 		this.env = env;
 	}
 
+	public Map<String, String> getHeaders() {
+		return headers;
+	}
+
+	public void setHeaders(Map<String, String> headers) {
+		this.headers = headers;
+	}
+
 	public McpConfigStatus getStatus() {
 		return status;
 	}
@@ -242,8 +261,8 @@ public class McpConfigVO {
 		return "McpConfigVO{" + "id=" + id + ", mcpServerName='" + mcpServerName + '\'' + ", connectionType="
 				+ connectionType + ", connectionConfig='" + connectionConfig + '\'' + ", toolNames=" + toolNames
 				+ ", command='" + command + '\'' + ", url='" + url + '\'' + ", args='" + args + '\'' + ", env='" + env
-				+ '\'' + ", status=" + status + ", connectionStatus=" + connectionStatus + ", connectionErrorMessage='"
-				+ connectionErrorMessage + '\'' + '}';
+				+ '\'' + ", headers=" + headers + ", status=" + status + ", connectionStatus=" + connectionStatus
+				+ ", connectionErrorMessage='" + connectionErrorMessage + '\'' + '}';
 	}
 
 }

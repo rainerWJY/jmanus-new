@@ -18,7 +18,6 @@ package com.alibaba.cloud.ai.lynxe.mcp.service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -32,7 +31,6 @@ import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServerConfig;
 import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServerRequestVO;
 import com.alibaba.cloud.ai.lynxe.mcp.model.vo.McpServiceEntity;
 import com.alibaba.cloud.ai.lynxe.mcp.repository.McpConfigRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -83,15 +81,12 @@ public class McpService implements IMcpService {
 			throw new IllegalArgumentException("'mcpServers' must be an object");
 		}
 
-		// Parse directly as Map<String, McpServerConfig>
-		Map<String, McpServerConfig> mcpServers = objectMapper.convertValue(mcpServersNode,
-				new TypeReference<Map<String, McpServerConfig>>() {
-				});
-
-		// Iterate through each MCP server configuration
-		for (Map.Entry<String, McpServerConfig> entry : mcpServers.entrySet()) {
-			String serverName = entry.getKey();
-			McpServerConfig serverConfig = entry.getValue();
+		var fieldIterator = mcpServersNode.fields();
+		while (fieldIterator.hasNext()) {
+			var field = fieldIterator.next();
+			String serverName = field.getKey();
+			JsonNode serverNode = field.getValue();
+			McpServerConfig serverConfig = objectMapper.convertValue(serverNode, McpServerConfig.class);
 
 			// Validate server configuration
 			configValidator.validateServerConfig(serverConfig, serverName);
@@ -105,28 +100,19 @@ public class McpService implements IMcpService {
 
 			// Find or create entity
 			McpConfigEntity mcpConfigEntity = mcpConfigRepository.findByMcpServerName(serverName);
+			McpConfigStatus resolvedStatus = resolveImportedServerStatus(serverNode, serverConfig, mcpConfigEntity);
+
 			if (mcpConfigEntity == null) {
 				mcpConfigEntity = new McpConfigEntity();
 				mcpConfigEntity.setConnectionConfig(serverConfigJson);
 				mcpConfigEntity.setMcpServerName(serverName);
 				mcpConfigEntity.setConnectionType(connectionType);
-				// Set status, use from serverConfig if available, otherwise use default
-				// value
-				if (serverConfig.getStatus() != null) {
-					mcpConfigEntity.setStatus(serverConfig.getStatus());
-				}
-				else {
-					mcpConfigEntity.setStatus(McpConfigStatus.ENABLE);
-				}
+				mcpConfigEntity.setStatus(resolvedStatus);
 			}
 			else {
 				mcpConfigEntity.setConnectionConfig(serverConfigJson);
 				mcpConfigEntity.setConnectionType(connectionType);
-				// Update status, use from serverConfig if available, otherwise keep
-				// original value
-				if (serverConfig.getStatus() != null) {
-					mcpConfigEntity.setStatus(serverConfig.getStatus());
-				}
+				mcpConfigEntity.setStatus(resolvedStatus);
 			}
 
 			McpConfigEntity entity = mcpConfigRepository.save(mcpConfigEntity);
@@ -138,6 +124,26 @@ public class McpService implements IMcpService {
 		// Clear cache to reload services
 		cacheManager.invalidateAllCache();
 		return entityList;
+	}
+
+	/**
+	 * Resolve entity status from batch-import JSON. Precedence: explicit {@code status}
+	 * field; then {@code isActive}; then on update keep existing status when both are
+	 * absent; otherwise {@link McpConfigStatus#ENABLE}.
+	 */
+	private McpConfigStatus resolveImportedServerStatus(JsonNode serverNode, McpServerConfig serverConfig,
+			McpConfigEntity existingEntity) {
+		if (serverNode.has("status") && !serverNode.get("status").isNull()) {
+			String raw = serverNode.get("status").asText().trim();
+			return McpConfigStatus.valueOf(raw.toUpperCase());
+		}
+		if (serverConfig.getIsActive() != null) {
+			return Boolean.TRUE.equals(serverConfig.getIsActive()) ? McpConfigStatus.ENABLE : McpConfigStatus.DISABLE;
+		}
+		if (existingEntity != null && existingEntity.getStatus() != null) {
+			return existingEntity.getStatus();
+		}
+		return McpConfigStatus.ENABLE;
 	}
 
 	/**
@@ -287,8 +293,11 @@ public class McpService implements IMcpService {
 	}
 
 	/**
-	 * Close MCP service for specified plan
-	 * @param planId Plan ID
+	 * Triggers a rebuild of all MCP server connections. The {@code planId} argument is
+	 * currently ignored; {@link McpCacheManager#invalidateCache} applies to every server.
+	 * Do not call this after read-only operations (e.g. listing tools); use only when
+	 * connections must be recycled.
+	 * @param planId reserved for future per-plan scope (unused)
 	 */
 	@Override
 	public void close(String planId) {

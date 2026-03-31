@@ -49,6 +49,7 @@ logging:
     name: ./logs/info.log
   level:
     root: INFO
+    com.alibaba.cloud.ai.lynxe.mcp: INFO
     com.alibaba.cloud.ai.example.lynxe.inhouse.registry.McpToolRegistry: INFO
     com.alibaba.cloud.ai.example.lynxe.tool: DEBUG
     com.alibaba.cloud.ai.example.lynxe.inhouse.tool: DEBUG

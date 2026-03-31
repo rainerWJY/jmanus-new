@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.alibaba.cloud.ai.lynxe.agent.model.Tool;
-import com.alibaba.cloud.ai.lynxe.mcp.service.McpService;
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory;
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory.ToolCallBackContext;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
@@ -45,9 +44,6 @@ public class ToolController {
 
 	@Autowired
 	private PlanningFactory planningFactory;
-
-	@Autowired
-	private McpService mcpService;
 
 	/**
 	 * Get all available tools. On success returns 200 with list of tools; on error
@@ -97,25 +93,16 @@ public class ToolController {
 			return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(Map.of("error", message, "message", message));
 		}
-		finally {
-			try {
-				mcpService.close(PlanningFactory.TOOLS_LISTING_CACHE_KEY);
-			}
-			catch (Exception e) {
-				log.warn("Error closing MCP service: {}", e.getMessage());
-			}
-		}
 	}
 
 	/**
-	 * Invalidate the tool callback map cache so the next request rebuilds the registry
-	 * (e.g. after new coordinator or MCP tools are created). Call this when tools are
-	 * added or updated outside the normal save path.
+	 * Legacy endpoint: tool callback maps are built per request with no server-side
+	 * cache. Kept for clients that still call refresh after tool changes.
 	 */
 	@PostMapping("/refresh-cache")
 	public ResponseEntity<Void> refreshToolCache() {
 		planningFactory.invalidateToolCallbackMapCache();
-		log.info("Tool callback map cache invalidated by request");
+		log.debug("Tool refresh-cache invoked (no-op; maps are not cached)");
 		return ResponseEntity.ok().build();
 	}
 

@@ -25,11 +25,9 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.alibaba.cloud.ai.lynxe.planning.event.ToolRegistryChangedEvent;
 import com.alibaba.cloud.ai.lynxe.planning.exception.PlanTemplateConfigException;
 import com.alibaba.cloud.ai.lynxe.planning.model.enums.PlanTemplateAccessLevel;
 import com.alibaba.cloud.ai.lynxe.planning.model.po.FuncAgentToolEntity;
@@ -67,15 +65,6 @@ public class PlanTemplateConfigService {
 
 	@Autowired
 	private com.alibaba.cloud.ai.lynxe.runtime.service.VersionService versionService;
-
-	@Autowired(required = false)
-	private ApplicationEventPublisher applicationEventPublisher;
-
-	private void publishToolRegistryChanged() {
-		if (applicationEventPublisher != null) {
-			applicationEventPublisher.publishEvent(new ToolRegistryChangedEvent());
-		}
-	}
 
 	/**
 	 * Prepare PlanTemplateConfigVO with toolConfig This method ensures toolConfig is
@@ -326,7 +315,6 @@ public class PlanTemplateConfigService {
 				PlanTemplateAccessLevel accessLevel = configVO.getAccessLevel();
 				template.setAccessLevel(accessLevel != null ? accessLevel : PlanTemplateAccessLevel.EDITABLE);
 				funcAgentToolRepository.save(template);
-				publishToolRegistryChanged();
 				log.debug("Created new plan template: {}", planTemplateId);
 			}
 			else {
@@ -340,7 +328,6 @@ public class PlanTemplateConfigService {
 				}
 				template.setUpdateTime(java.time.LocalDateTime.now());
 				funcAgentToolRepository.save(template);
-				publishToolRegistryChanged();
 				log.debug("Updated existing plan template: {}", planTemplateId);
 			}
 
@@ -372,14 +359,12 @@ public class PlanTemplateConfigService {
 			if (serviceGroup != null && !serviceGroup.trim().isEmpty()) {
 				savedTemplate.setServiceGroup(serviceGroup);
 				funcAgentToolRepository.save(savedTemplate);
-				publishToolRegistryChanged();
 				log.info("Set serviceGroup '{}' on PlanTemplate with ID: {}", serviceGroup, planTemplateId);
 			}
 			else {
 				// Set default serviceGroup if not provided
 				savedTemplate.setServiceGroup("ungrouped");
 				funcAgentToolRepository.save(savedTemplate);
-				publishToolRegistryChanged();
 				log.info("Set default serviceGroup 'ungrouped' on PlanTemplate with ID: {}", planTemplateId);
 			}
 
@@ -393,7 +378,6 @@ public class PlanTemplateConfigService {
 					String inputSchemaJson = convertInputSchemaListToJson(toolConfig.getInputSchema());
 					savedTemplate.setInputSchema(inputSchemaJson);
 					funcAgentToolRepository.save(savedTemplate);
-					publishToolRegistryChanged();
 
 					// Count parameters for logging
 					int parameterCount = 0;
@@ -429,7 +413,6 @@ public class PlanTemplateConfigService {
 					String inputSchemaJson = generateInputSchemaFromPlanTemplate(planTemplateId);
 					savedTemplate.setInputSchema(inputSchemaJson);
 					funcAgentToolRepository.save(savedTemplate);
-					publishToolRegistryChanged();
 
 					// Count parameters for logging
 					int parameterCount = 0;
@@ -730,7 +713,6 @@ public class PlanTemplateConfigService {
 			log.debug("Updated version to '{}' for coordinator tool ID: {}", currentVersion, id);
 
 			FuncAgentToolEntity savedEntity = funcAgentToolRepository.save(existingEntity);
-			publishToolRegistryChanged();
 			log.info("Successfully updated FuncAgentToolEntity: {} with ID: {}", savedEntity.getToolDescription(),
 					savedEntity.getId());
 
@@ -891,7 +873,6 @@ public class PlanTemplateConfigService {
 			log.debug("Set version '{}' for new coordinator tool: {}", currentVersion, configVO.getPlanTemplateId());
 
 			FuncAgentToolEntity savedEntity = funcAgentToolRepository.save(entity);
-			publishToolRegistryChanged();
 			log.info("Successfully saved FuncAgentToolEntity: {} with ID: {}", savedEntity.getToolDescription(),
 					savedEntity.getId());
 

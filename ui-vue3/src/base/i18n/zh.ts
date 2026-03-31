@@ -322,7 +322,7 @@ const words: I18nType = {
       instructionStep1LocalDesc: '本地mcp server，目前市面上主流的是这个',
       instructionStep1Remote: '远程服务(SSE/STREAMING)',
       instructionStep1RemoteDesc:
-        'mcp.higress.ai/ 上可以找到，有SSE和STREAMING两种，目前STREAM协议更完备一些',
+        'mcp.higress.ai/ 上可以找到，有SSE和STREAMING两种；Cursor、阿里云百炼等导出的 streamableHttp + baseUrl 格式也可直接粘贴导入',
       instructionStep2: '将json配置复制到上面的输入框，本地选STUDIO，远程选STREAMING或SSE，提交',
       instructionStep3: '这样mcp tools就注册成功了。',
       instructionStep4:
@@ -351,6 +351,21 @@ const words: I18nType = {
         '请输入MCP服务器配置JSON。\n\n例如：\n{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-github"\n      ],\n      "env": {\n        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"\n      }\n    }\n  }\n}',
       sseExample:
         '请输入SSE MCP服务器配置JSON。\n\n例如：\n{\n  "mcpServers": {\n    "remote-server": {\n      "url": "https://example.com/mcp",\n      "headers": {\n        "Authorization": "Bearer <YOUR_TOKEN>"\n      }\n    }\n  }\n}',
+      streamableHttpExampleTitle: 'Streamable HTTP（Cursor / 阿里云百炼等）',
+      streamableHttpExampleJson: `{
+  "mcpServers": {
+    "WebSearch": {
+      "type": "streamableHttp",
+      "description": "实时联网检索（示例说明字段，可选）",
+      "isActive": true,
+      "name": "AliyunBailianMCP_WebSearch",
+      "baseUrl": "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp",
+      "headers": {
+        "Authorization": "Bearer \${DASHSCOPE_API_KEY}"
+      }
+    }
+  }
+}`,
       selectServerHint: '请选择左侧的MCP服务器，或点击新建MCP配置',
       jsonEditor: 'JSON编辑器',
       jsonConfigEmpty: 'JSON配置不能为空',

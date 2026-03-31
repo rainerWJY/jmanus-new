@@ -60,6 +60,8 @@
     }
   }
 }</code></pre>
+          <h4 class="example-subtitle">{{ $t('config.mcpConfig.streamableHttpExampleTitle') }}</h4>
+          <pre class="example-json"><code>{{ $t('config.mcpConfig.streamableHttpExampleJson') }}</code></pre>
         </template>
       </TabPanel>
     </div>
@@ -393,6 +395,13 @@ defineExpose({
 }
 
 /* Configuration example related styles */
+.example-subtitle {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .example-json {
   margin: 0;
   padding: 12px;

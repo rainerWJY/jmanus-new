@@ -55,7 +55,7 @@ export function useMcpConfigForm() {
       configForm.mcpServerName = server.mcpServerName || ''
       configForm.connectionType = server.connectionType
       configForm.command = config.command || ''
-      configForm.url = config.url || ''
+      configForm.url = config.url || config.baseUrl || ''
 
       // Both args and env use multi-line format for display
       if (config.args && Array.isArray(config.args)) {

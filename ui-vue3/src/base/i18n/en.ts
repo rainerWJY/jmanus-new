@@ -329,7 +329,7 @@ const words: I18nType = {
         'Available at mcp.so, requires Node.js environment and understanding of each item in the configuration JSON for proper adjustments like setting access keys',
       instructionStep1Remote: 'Remote Service (SSE/STREAMING)',
       instructionStep1RemoteDesc:
-        'Available at mcp.higress.ai/, offers SSE and STREAMING types, currently STREAM protocol is more complete',
+        'Available at mcp.higress.ai/ (SSE and STREAMING). Cursor- and Aliyun-style exports using streamableHttp and baseUrl can be pasted directly.',
       instructionStep2:
         'Copy the JSON configuration to the input box above, select STUDIO for local, STREAMING or SSE for remote, then submit',
       instructionStep3: 'This will successfully register the MCP tools.',
@@ -360,6 +360,21 @@ const words: I18nType = {
         'Please enter MCP server configuration JSON.\n\nExample:\n{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-github"\n      ],\n      "env": {\n        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"\n      }\n    }\n  }\n}',
       sseExample:
         'Please enter SSE MCP server configuration JSON.\n\nExample:\n{\n  "mcpServers": {\n    "remote-server": {\n      "url": "https://example.com/mcp",\n      "headers": {\n        "Authorization": "Bearer <YOUR_TOKEN>"\n      }\n    }\n  }\n}',
+      streamableHttpExampleTitle: 'Streamable HTTP (Cursor / Aliyun Bailian, etc.)',
+      streamableHttpExampleJson: `{
+  "mcpServers": {
+    "WebSearch": {
+      "type": "streamableHttp",
+      "description": "Optional vendor description field",
+      "isActive": true,
+      "name": "AliyunBailianMCP_WebSearch",
+      "baseUrl": "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp",
+      "headers": {
+        "Authorization": "Bearer \${DASHSCOPE_API_KEY}"
+      }
+    }
+  }
+}`,
       selectServerHint:
         'Please select an MCP server on the left or click to create a new MCP configuration',
       jsonEditor: 'JSON Editor',
