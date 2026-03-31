@@ -57,19 +57,21 @@ Release 提供的是 **Fat JAR**（单文件、包含全部依赖的可执行 JA
 #### 📦 下载并运行 Fat JAR
 
 ```bash
-# 下载最新 Fat JAR（如 lynxe-4.10.10.jar）
+# 从 Release 下载可执行 Fat JAR（资产文件名为 lynxe.jar，与本地 mvn 生成的 lynxe-exec-fat-jar.jar 同类）
 wget https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
 # 或使用 curl
 curl -L -o lynxe.jar https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
-# 运行 Fat JAR（需 Java 17+）
+# 运行（需 Java 17+）
 java -jar lynxe.jar
 ```
 
+> **文件名说明**：GitHub Release 上为便于下载，可执行包固定以 **`lynxe.jar`**（以及带版本号的 **`lynxe-<version>.jar`**）发布。本地执行 `mvn package` 时，同一可执行制品在 `target/` 下的文件名为 **`lynxe-exec-fat-jar.jar`**（由 `pom.xml` 的 `classifier` 决定）。二者内容等价，只是命名不同。
+
 Fat JAR 即主制品，使用 `java -jar` 即可运行，无需配置 classpath 或额外依赖。
 
-> 💡 **手动下载**: 请访问 [Lynxe Releases 页面](https://github.com/spring-ai-alibaba/Lynxe/releases) 下载最新的 `lynxe-<version>.jar`（Fat JAR）。若需将 Lynxe 作为库嵌入项目，可下载 Thin JAR（`lynxe-<version>-thin-jar.jar`），详见 [将 Lynxe 作为库使用](./docs/LYNXE-AS-LIBRARY.md)。
+> 💡 **手动下载**: 请访问 [Lynxe Releases 页面](https://github.com/spring-ai-alibaba/Lynxe/releases) 下载最新的可运行 JAR（Release 上常见文件名为 `lynxe.jar` 或 `lynxe-<version>.jar`）。若需将 Lynxe 作为库嵌入项目，请使用 **Thin JAR**（同一 Release 或 Maven 坐标中的普通 `lynxe-<version>.jar`，非 Spring Boot 可执行重打包产物），详见 [将 Lynxe 作为库使用](./docs/LYNXE-AS-LIBRARY.md)。
 
 #### 🌐 访问应用
 
@@ -159,17 +161,17 @@ docker rm lynxe
 git clone https://github.com/spring-ai-alibaba/Lynxe.git
 cd Lynxe
 
-# 构建项目（在 target/ 下生成 Fat JAR 与 Thin JAR）
+# 构建项目（在 target/ 下生成 Thin JAR 与可执行的 Fat JAR）
 mvn clean package -DskipTests
 ```
 
-可执行的 **Fat JAR** 位于 `target/lynxe-<version>.jar`。运行方式：
+**可执行的 Fat JAR** 由 `pom.xml` 中的 `spring-boot-maven-plugin` 配置：`finalName` 为 `lynxe`，`classifier` 为 `exec-fat-jar`。构建成功后运行：
 
 ```bash
-java -jar target/lynxe-4.10.10.jar
+java -jar target/lynxe-exec-fat-jar.jar
 ```
 
-（请将版本号替换为您 `pom.xml` 中的实际版本。）
+**Thin JAR**（`target/lynxe.jar`）为普通 Maven 依赖制品，不能单独用 `java -jar` 启动应用。
 
 #### 2. 数据库配置（可选）
 
@@ -208,16 +210,16 @@ Lynxe 支持 H2（默认）、MySQL 以及 PostgreSQL 数据库。
 
 #### 3. 启动应用
 
-**对于类 Unix 系统 (macOS, Linux):**
+在**项目根目录**（与 `pom.xml` 同级），可直接运行已打包的 Fat JAR：
 
 ```bash
-../mvnw spring-boot:run
+java -jar target/lynxe-exec-fat-jar.jar
 ```
 
-**对于 Windows 系统:**
+或使用 Maven 启动（无需先执行 `package`）：
 
 ```bash
-../mvnw.cmd spring-boot:run
+mvn spring-boot:run
 ```
 
 #### 4. 访问您的多 Agent 仪表盘
