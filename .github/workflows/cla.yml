@@ -37,11 +37,16 @@ jobs:
         uses: contributor-assistant/github-action@v2.3.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_REPO_ACCESS_TOKEN }}
+          # Empty CLA_REPO_ACCESS_TOKEN breaks the action (GitHub API 404). Same-repo storage
+          # only needs GITHUB_TOKEN; set CLA_REPO_ACCESS_TOKEN when using remote-org/repo below.
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/cla.json"
-          path-to-document: "https://github.com/spring-ai-alibaba/Lynxe/blob/main/CLA.md"
-          branch: "main"
+          # Use github.com/blob/... form (documented in contributor-assistant/github-action). Raw.githubusercontent
+          # URLs can trigger "Could not retrieve repository contents" (404) when the action parses the link.
+          path-to-document: "https://github.com/${{ github.repository }}/blob/${{ github.event.repository.default_branch || 'main' }}/CLA.md"
+          # Store signatures on the repo default branch (avoid mismatch if default is not main).
+          branch: "${{ github.event.repository.default_branch || 'main' }}"
           allowlist: "bot*,dependabot*,*[bot],EvoltoStart,HunterPorter"
           # Store signatures in this repo so GITHUB_TOKEN can write (no PAT needed).
           # To use remote repo spring-ai-alibaba/cla instead, set CLA_REPO_ACCESS_TOKEN secret and uncomment below.
