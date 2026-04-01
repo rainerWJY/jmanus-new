@@ -42,9 +42,11 @@ jobs:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/cla.json"
-          # Raw URL: blob/... URLs often cause "Could not retrieve repository contents" (404) in the action.
-          path-to-document: "https://raw.githubusercontent.com/spring-ai-alibaba/Lynxe/main/CLA.md"
-          branch: "main"
+          # Use github.com/blob/... form (documented in contributor-assistant/github-action). Raw.githubusercontent
+          # URLs can trigger "Could not retrieve repository contents" (404) when the action parses the link.
+          path-to-document: "https://github.com/${{ github.repository }}/blob/${{ github.event.repository.default_branch || 'main' }}/CLA.md"
+          # Store signatures on the repo default branch (avoid mismatch if default is not main).
+          branch: "${{ github.event.repository.default_branch || 'main' }}"
           allowlist: "bot*,dependabot*,*[bot],EvoltoStart,HunterPorter"
           # Store signatures in this repo so GITHUB_TOKEN can write (no PAT needed).
           # To use remote repo spring-ai-alibaba/cla instead, set CLA_REPO_ACCESS_TOKEN secret and uncomment below.
