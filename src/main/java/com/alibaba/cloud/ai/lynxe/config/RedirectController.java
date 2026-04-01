@@ -15,22 +15,31 @@
  */
 package com.alibaba.cloud.ai.lynxe.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import com.alibaba.cloud.ai.lynxe.config.startUp.AppStartupListener;
-
 /**
+ * Lynxe root redirect controller. When enabled (lynxe.web.root-redirect-enabled=true,
+ * default), GET "/" redirects to lynxe.web.init-path. Set root-redirect-enabled to false
+ * when embedding Lynxe so the host app can map "/" itself.
+ *
  * @author dahua
  * @time 2025/7/31
- * @desc lynxe homepage redirect controller
  */
 @Controller
+@ConditionalOnProperty(name = "lynxe.web.root-redirect-enabled", havingValue = "true", matchIfMissing = true)
 public class RedirectController {
+
+	private final LynxeProperties lynxeProperties;
+
+	public RedirectController(LynxeProperties lynxeProperties) {
+		this.lynxeProperties = lynxeProperties;
+	}
 
 	@RequestMapping("/")
 	public String redirect() {
-		return AppStartupListener.INIT_WEB_PATH;
+		return lynxeProperties.getWeb().getInitPath();
 	}
 
 }

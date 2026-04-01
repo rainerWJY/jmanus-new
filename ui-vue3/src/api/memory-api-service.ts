@@ -42,14 +42,27 @@ export interface MessageBubble {
 export class MemoryApiService {
   private static readonly BASE_URL = '/api/memories'
 
+  /**
+   * Handle HTTP response. Uses text() for error bodies to avoid SyntaxError when
+   * the body is empty or non-JSON (e.g. 500 with plain text). Surfaces backend
+   * error/message when present.
+   */
   private static async handleResponse(response: Response) {
     if (!response.ok) {
-      try {
-        const errorData = await response.json()
-        throw new Error(errorData.message || `API request failed: ${response.status}`)
-      } catch {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+      const text = await response.text()
+      if (text) {
+        try {
+          const errorData = JSON.parse(text) as { error?: string; message?: string }
+          const msg =
+            errorData.error || errorData.message || `API request failed: ${response.status}`
+          throw new Error(msg)
+        } catch (err) {
+          if (err instanceof Error) {
+            throw err
+          }
+        }
       }
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`)
     }
     return response
   }
@@ -165,8 +178,17 @@ export class MemoryApiService {
     try {
       const response = await fetch(`${this.BASE_URL}/${conversationId}/history`)
       const result = await this.handleResponse(response)
-      const data: PlanExecutionRecord[] = await result.json()
-      return data || []
+      const text = await result.text()
+      if (!text || !text.trim()) {
+        return []
+      }
+      try {
+        const data: PlanExecutionRecord[] = JSON.parse(text)
+        return data || []
+      } catch {
+        logger.warn('getConversationHistory: invalid JSON, returning empty list')
+        return []
+      }
     } catch (error) {
       logger.error('Failed to get conversation history:', error)
       throw error

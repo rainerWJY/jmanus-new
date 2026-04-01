@@ -33,29 +33,35 @@ export interface ParameterRequirements {
  */
 export class PlanTemplateApiService {
   /**
-   * Handle HTTP response
+   * Handle HTTP response.
+   * On error, throws an Error with optional `status` (for 404 etc.) and `errorCode`.
+   * Does not call response.json() when the body is empty (e.g. 404 No Content) to avoid SyntaxError.
    */
   private static async handleResponse(response: Response) {
     if (!response.ok) {
-      try {
-        const errorData = await response.json()
-        // Create error with errorCode if available
-        // Backend returns "error" field, but we use "message" for consistency
-        const errorMessage =
-          errorData.error || errorData.message || `API request failed: ${response.status}`
-        const error = new Error(errorMessage) as Error & {
-          errorCode?: string
+      const text = await response.text()
+      if (text) {
+        try {
+          const errorData = JSON.parse(text) as { error?: string; message?: string; errorCode?: string }
+          const errorMessage =
+            errorData.error || errorData.message || `API request failed: ${response.status}`
+          const error = new Error(errorMessage) as Error & { status?: number; errorCode?: string }
+          error.status = response.status
+          if (errorData.errorCode) {
+            error.errorCode = errorData.errorCode
+          }
+          throw error
+        } catch (err) {
+          if (err instanceof Error && (err as Error & { status?: number }).status !== undefined) {
+            throw err
+          }
         }
-        if (errorData.errorCode) {
-          error.errorCode = errorData.errorCode
-        }
-        throw error
-      } catch (err) {
-        if (err instanceof Error) {
-          throw err
-        }
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
       }
+      const err = new Error(`API request failed: ${response.status} ${response.statusText}`) as Error & {
+        status?: number
+      }
+      err.status = response.status
+      throw err
     }
     return response
   }
@@ -226,17 +232,48 @@ export class PlanTemplateApiService {
   }
 
   /**
-   * Get parameter requirements for a plan template
+   * Get parameter requirements for a plan template.
+   * Returns empty requirements when the template does not exist yet (404), has no plan version,
+   * or when the response body is empty/invalid (e.g. 404 with no body), so creating a new Func-Agent plan works.
    */
   static async getParameterRequirements(planTemplateId: string): Promise<ParameterRequirements> {
+    const emptyRequirements: ParameterRequirements = {
+      parameters: [],
+      hasParameters: false,
+      requirements: '',
+    }
     try {
       const response = await fetch(`/api/plan-template/${planTemplateId}/parameters`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
       const result = await this.handleResponse(response)
-      return await result.json()
+      const text = await result.text()
+      if (!text || !text.trim()) {
+        logger.debug(
+          'Parameter requirements empty response for plan template (template may be new):',
+          planTemplateId
+        )
+        return emptyRequirements
+      }
+      try {
+        return JSON.parse(text) as ParameterRequirements
+      } catch {
+        logger.debug(
+          'Parameter requirements invalid JSON for plan template (template may be new):',
+          planTemplateId
+        )
+        return emptyRequirements
+      }
     } catch (error) {
+      const err = error as Error & { status?: number }
+      if (err.status === 404) {
+        logger.debug(
+          'Parameter requirements not found for plan template (template may be new):',
+          planTemplateId
+        )
+        return emptyRequirements
+      }
       logger.error('Error getting parameter requirements:', error)
       throw error
     }

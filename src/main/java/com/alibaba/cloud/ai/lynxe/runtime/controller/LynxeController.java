@@ -81,7 +81,9 @@ import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanExecutionWrapper;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.PlanInterface;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.RequestSource;
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.UserInputWaitState;
+import com.alibaba.cloud.ai.lynxe.runtime.service.ExecutionSnapshotService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
+import com.alibaba.cloud.ai.lynxe.runtime.service.SimulationService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanningCoordinator;
 import com.alibaba.cloud.ai.lynxe.runtime.service.RootTaskManagerService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
@@ -120,6 +122,12 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 
 	@Autowired
 	private UserInputService userInputService;
+
+	@Autowired(required = false)
+	private ExecutionSnapshotService executionSnapshotService;
+
+	@Autowired(required = false)
+	private SimulationService simulationService;
 
 	@Autowired
 	private MemoryService memoryService;
@@ -422,14 +430,26 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 		String rootPlanId = planRecord.getRootPlanId() != null ? planRecord.getRootPlanId() : planId;
 		UserInputWaitState waitState = userInputService.getWaitState(rootPlanId);
 		if (waitState != null && waitState.isWaiting()) {
-			// Set the planId in the wait state to the root plan ID for proper submission
-			// This ensures frontend submits to the correct plan ID where the form is
-			// stored
 			waitState.setPlanId(rootPlanId);
+			waitState.setWaitType("form");
 			planRecord.setUserInputWaitState(waitState);
 			logger.info(
 					"Root plan {} is waiting for user input. Set waitState planId to rootPlanId for proper submission.",
 					rootPlanId);
+		}
+		else if (executionSnapshotService != null) {
+			String snapshotStepId = executionSnapshotService.getWaitingStepId(rootPlanId);
+			if (snapshotStepId != null) {
+				waitState = new UserInputWaitState(rootPlanId, "Execution paused for review", true);
+				waitState.setWaitType("snapshot");
+				waitState.setSnapshotStepId(snapshotStepId);
+				planRecord.setUserInputWaitState(waitState);
+				logger.info("Root plan {} is in execution snapshot hold. snapshotStepId={}", rootPlanId,
+						snapshotStepId);
+			}
+			else {
+				planRecord.setUserInputWaitState(null);
+			}
 		}
 		else {
 			planRecord.setUserInputWaitState(null); // Clear if not waiting
@@ -517,6 +537,64 @@ public class LynxeController implements LynxeListener<PlanExceptionEvent> {
 			logger.error("Unexpected error submitting user input for plan {}: {}", planId, e.getMessage(), e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(Map.of("error", "An unexpected error occurred.", "planId", planId));
+		}
+	}
+
+	/**
+	 * Simulate the next step (one LLM round) without executing tools. Uses snapshot for
+	 * stepId. Optional modifiedPrompt replaces the current step env message.
+	 * @param stepId Step ID (snapshot key)
+	 * @param body Optional map with "modifiedPrompt" key
+	 * @return SimulateResult with thinkOutput and toolCalls (simulated)
+	 */
+	@PostMapping("/agent-execution/{stepId}/simulate")
+	public ResponseEntity<?> simulateNextStep(@PathVariable("stepId") String stepId,
+			@RequestBody(required = false) Map<String, String> body) {
+		if (simulationService == null || executionSnapshotService == null) {
+			return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+				.body(Map.of("error", "Simulation service not available."));
+		}
+		try {
+			String modifiedPrompt = body != null ? body.get("modifiedPrompt") : null;
+			SimulationService.SimulateResult result = simulationService.simulateNextStep(stepId, modifiedPrompt);
+			return ResponseEntity.ok(result);
+		}
+		catch (IllegalArgumentException e) {
+			logger.warn("Simulate next step failed for stepId {}: {}", stepId, e.getMessage());
+			return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+		}
+		catch (Exception e) {
+			logger.error("Error simulating next step for stepId {}: {}", stepId, e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(Map.of("error", "Simulation failed: " + e.getMessage()));
+		}
+	}
+
+	/**
+	 * Resume execution after snapshot hold. Marks the snapshot tool as received so the
+	 * waiting agent continues.
+	 * @param planId Root plan ID (same as used in getExecutionDetails)
+	 * @return Success or error
+	 */
+	@PostMapping("/submit-snapshot-resume/{planId}")
+	public ResponseEntity<Map<String, Object>> submitSnapshotResume(@PathVariable("planId") String planId) {
+		if (executionSnapshotService == null) {
+			return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+				.body(Map.of("error", "Execution snapshot service not available."));
+		}
+		try {
+			boolean resumed = executionSnapshotService.markResumed(planId);
+			if (resumed) {
+				logger.info("Snapshot resumed for planId {}", planId);
+				return ResponseEntity.ok(Map.of("message", "Execution resumed.", "planId", planId));
+			}
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+				.body(Map.of("error", "No snapshot wait found for this plan.", "planId", planId));
+		}
+		catch (Exception e) {
+			logger.error("Error resuming snapshot for planId {}: {}", planId, e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(Map.of("error", "Resume failed: " + e.getMessage(), "planId", planId));
 		}
 	}
 

@@ -24,6 +24,7 @@
         'is-directory': node.type === 'directory',
         'is-file': node.type === 'file',
         'is-expanded': isExpanded,
+        'is-symlink': node.symlink,
       }"
       :style="{ paddingLeft: `${level * 16 + 12}px` }"
       @click="handleClick"
@@ -44,6 +45,11 @@
 
       <!-- Name -->
       <span class="node-name">{{ node.name }}</span>
+
+      <!-- Symlink badge -->
+      <span v-if="node.symlink" class="symlink-badge" title="Symbolic link">
+        <Icon icon="carbon:link" />
+      </span>
 
       <!-- File size for files -->
       <span v-if="node.type === 'file'" class="file-size">
@@ -188,6 +194,9 @@ const copyPath = async () => {
 
 const getNodeIcon = () => {
   if (props.node.type === 'directory') {
+    if (props.node.symlink) {
+      return isExpanded.value ? 'carbon:folder-open' : 'carbon:folder-details'
+    }
     return isExpanded.value ? 'carbon:folder-open' : 'carbon:folder'
   }
   return FileBrowserApiService.getFileIcon(props.node)
@@ -353,6 +362,30 @@ onUnmounted(() => {
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
   margin: 4px 0;
+}
+
+/* Symlink node styles */
+.node-content.is-symlink .node-name {
+  color: #a78bfa;
+}
+
+.node-content.is-symlink .node-icon {
+  color: #a78bfa;
+}
+
+.symlink-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a78bfa;
+  opacity: 0.85;
+  font-size: 12px;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.symlink-badge .iconify {
+  font-size: 12px;
 }
 
 /* Directory specific styles */

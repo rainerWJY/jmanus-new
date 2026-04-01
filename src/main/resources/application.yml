@@ -49,6 +49,7 @@ logging:
     name: ./logs/info.log
   level:
     root: INFO
+    com.alibaba.cloud.ai.lynxe.mcp: INFO
     com.alibaba.cloud.ai.example.lynxe.inhouse.registry.McpToolRegistry: INFO
     com.alibaba.cloud.ai.example.lynxe.tool: DEBUG
     com.alibaba.cloud.ai.example.lynxe.inhouse.tool: DEBUG
@@ -72,6 +73,10 @@ agent:
 # Example: HTTP_PROXY=http://proxy.example.com:8080
 # 文件上传配置
 lynxe:
+  # Root redirect: when true (default), GET "/" redirects to web.init-path. Set to false when embedding Lynxe so the host app can own "/".
+  web:
+    root-redirect-enabled: false
+    init-path: /lynxe
   file-upload:
     # 最大文件大小（字节）1GB
     max-file-size: 1073741824

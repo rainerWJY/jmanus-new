@@ -31,7 +31,6 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,7 +59,6 @@ import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
  */
 @RestController
 @RequestMapping("/api/memories")
-@CrossOrigin(origins = "*") // Add cross-origin support
 public class MemoryController {
 
 	private static final Logger logger = LoggerFactory.getLogger(MemoryController.class);
@@ -312,7 +310,9 @@ public class MemoryController {
 		}
 		catch (Exception e) {
 			logger.error("Error retrieving conversation history for conversationId: {}", conversationId, e);
-			return ResponseEntity.status(500).body("Failed to retrieve conversation history: " + e.getMessage());
+			String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+			String fullMessage = "Failed to retrieve conversation history: " + message;
+			return ResponseEntity.status(500).body(Map.of("error", fullMessage, "message", fullMessage));
 		}
 	}
 

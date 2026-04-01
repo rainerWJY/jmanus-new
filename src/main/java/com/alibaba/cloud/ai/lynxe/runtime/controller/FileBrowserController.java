@@ -22,8 +22,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -34,7 +36,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,7 +47,6 @@ import com.alibaba.cloud.ai.lynxe.tool.filesystem.UnifiedDirectoryManager;
 
 @RestController
 @RequestMapping("/api/file-browser")
-@CrossOrigin(origins = "*")
 public class FileBrowserController {
 
 	private static final Logger logger = LoggerFactory.getLogger(FileBrowserController.class);
@@ -73,6 +73,9 @@ public class FileBrowserController {
 		private String lastModified;
 
 		private List<FileNode> children;
+
+		/** true if this node represents a symbolic link (e.g. linked_external) */
+		private boolean symlink;
 
 		public FileNode() {
 		}
@@ -133,6 +136,14 @@ public class FileBrowserController {
 
 		public void setChildren(List<FileNode> children) {
 			this.children = children;
+		}
+
+		public boolean isSymlink() {
+			return symlink;
+		}
+
+		public void setSymlink(boolean symlink) {
+			this.symlink = symlink;
 		}
 
 	}
@@ -404,14 +415,41 @@ public class FileBrowserController {
 	}
 
 	/**
-	 * Build file tree recursively with symbolic link cycle detection
+	 * Build file tree recursively with symbolic link cycle detection. Uses a shared
+	 * visited-real-paths set to detect and skip circular symlinks.
 	 */
 	private FileNode buildFileTree(Path directory, String planId) throws IOException {
-		String relativePath = "";
+		Set<Path> visitedRealPaths = new HashSet<>();
+		// Seed with the plan root so any symlink pointing back to it is caught
+		try {
+			visitedRealPaths.add(directory.toRealPath());
+		}
+		catch (IOException e) {
+			logger.warn("Cannot resolve real path for plan root: {}", directory);
+		}
+		return buildFileTreeInternal(directory, planId, visitedRealPaths);
+	}
+
+	/**
+	 * Internal recursive implementation that carries a visited-real-paths set to prevent
+	 * infinite loops caused by circular symbolic links.
+	 */
+	private FileNode buildFileTreeInternal(Path directory, String planId, Set<Path> visitedRealPaths)
+			throws IOException {
 		Path planDir = directoryManager.getRootPlanDirectory(planId);
 
+		String relativePath = "";
 		if (!directory.equals(planDir)) {
-			relativePath = planDir.relativize(directory).toString();
+			// For symlinked directories the logical path may differ from real path;
+			// use the logical path so that file nodes keep correct relative paths.
+			try {
+				relativePath = planDir.relativize(directory).toString();
+			}
+			catch (IllegalArgumentException e) {
+				// directory is outside planDir (traversed through a symlink)
+				// use the real-path-based relative path as a fallback
+				relativePath = directory.getFileName() != null ? directory.getFileName().toString() : "";
+			}
 		}
 
 		FileNode node = new FileNode(directory.getFileName() != null ? directory.getFileName().toString() : planId,
@@ -442,34 +480,54 @@ public class FileBrowserController {
 						isSymlink = Files.isSymbolicLink(child);
 					}
 					catch (Exception e) {
-						// May throw SecurityException or other exceptions
 						logger.debug("Error checking if path is symbolic link: {}, treating as regular file", child);
 					}
 
 					if (isSymlink) {
-						// Special handling for linked_external: show it but don't
-						// traverse it
-						// This prevents infinite loops while still allowing users to see
-						// the link
 						String fileName = child.getFileName().toString();
+
 						if ("linked_external".equals(fileName)) {
-							// Show linked_external as a directory node but don't traverse
-							// it
-							String childRelativePath = planDir.relativize(child).toString();
-							FileNode symlinkNode = new FileNode(fileName, childRelativePath, "directory", 0,
-									Files.getLastModifiedTime(child).toString());
-							// Add a placeholder child to indicate it's a symlink
-							FileNode placeholder = new FileNode("(symbolic link - not traversed)", "", "file", 0, "");
-							symlinkNode.getChildren().add(placeholder);
-							node.getChildren().add(symlinkNode);
-							logger.debug("Added linked_external symlink node (not traversed): {}", child);
+							// Traverse linked_external but guard against circular
+							// references
+							// using the visited real-path set.
+							try {
+								Path realTarget = child.toRealPath();
+								if (visitedRealPaths.contains(realTarget)) {
+									// Circular – show the node but don't descend
+									logger.warn("Circular symlink detected for linked_external, not traversing: {}",
+											child);
+									String childRelativePath = planDir.relativize(child).toString();
+									FileNode symlinkNode = new FileNode(fileName, childRelativePath, "directory", 0,
+											Files.getLastModifiedTime(child).toString());
+									symlinkNode.setSymlink(true);
+									node.getChildren().add(symlinkNode);
+									return;
+								}
+								// Mark real target as visited before descending
+								visitedRealPaths.add(realTarget);
+								String childRelativePath = planDir.relativize(child).toString();
+								FileNode symlinkNode = buildFileTreeInternal(child, planId, visitedRealPaths);
+								symlinkNode.setSymlink(true);
+								// Override the node path so it reflects the logical
+								// symlink path
+								symlinkNode.setPath(childRelativePath);
+								symlinkNode.setName(fileName);
+								node.getChildren().add(symlinkNode);
+								logger.debug("Traversed linked_external symlink: {} -> {}", child, realTarget);
+							}
+							catch (IOException e) {
+								// Cannot resolve real path – show node without children
+								logger.warn("Cannot resolve real path for linked_external: {}", child, e);
+								String childRelativePath = planDir.relativize(child).toString();
+								FileNode symlinkNode = new FileNode(fileName, childRelativePath, "directory", 0,
+										Files.getLastModifiedTime(child).toString());
+								symlinkNode.setSymlink(true);
+								node.getChildren().add(symlinkNode);
+							}
 							return;
 						}
 
-						// Check for circular reference for other symlinks (may fail if
-						// symlink was deleted)
-						// Note: isCircularReference catches IOException internally, so we
-						// don't need to catch it here
+						// For all other symlinks: check for circular reference
 						if (symlinkDetector.isCircularReference(child, planDir)) {
 							String symlinkInfo = "unknown";
 							try {
@@ -481,8 +539,6 @@ public class FileBrowserController {
 							logger.warn("Skipping circular symlink in file tree: {}", symlinkInfo);
 							return;
 						}
-						// Log symlink info for debugging (may fail if symlink was
-						// deleted)
 						try {
 							logger.debug("Following safe symlink: {}", symlinkDetector.getSymlinkInfo(child));
 						}
@@ -498,23 +554,27 @@ public class FileBrowserController {
 						isDirectory = Files.isDirectory(child);
 					}
 					catch (Exception e) {
-						// May throw SecurityException or other exceptions
 						logger.debug("Error checking if path is directory: {}, skipping", child);
 						return;
 					}
 
 					if (isDirectory) {
-						node.getChildren().add(buildFileTree(child, planId));
+						node.getChildren().add(buildFileTreeInternal(child, planId, visitedRealPaths));
 					}
 					else {
-						String childRelativePath = planDir.relativize(child).toString();
+						String childRelativePath;
+						try {
+							childRelativePath = planDir.relativize(child).toString();
+						}
+						catch (IllegalArgumentException e) {
+							childRelativePath = child.getFileName() != null ? child.getFileName().toString() : "";
+						}
 						FileNode fileNode = new FileNode(child.getFileName().toString(), childRelativePath, "file",
 								Files.size(child), Files.getLastModifiedTime(child).toString());
 						node.getChildren().add(fileNode);
 					}
 				}
 				catch (java.nio.file.NoSuchFileException e) {
-					// File/directory was deleted during traversal, skip it
 					logger.debug("Skipping deleted file/directory during traversal: {}", child);
 				}
 				catch (IOException e) {

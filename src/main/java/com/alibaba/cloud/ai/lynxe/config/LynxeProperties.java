@@ -174,7 +174,7 @@ public class LynxeProperties {
 
 	@ConfigProperty(group = "lynxe", subGroup = "agent", key = "userInputTimeout",
 			path = "lynxe.agent.userInputTimeout", description = "lynxe.agent.userInputTimeout.description",
-			defaultValue = "300", inputType = ConfigInputType.NUMBER)
+			defaultValue = "600", inputType = ConfigInputType.NUMBER)
 	private volatile Integer userInputTimeout;
 
 	public Integer getUserInputTimeout() {
@@ -183,12 +183,10 @@ public class LynxeProperties {
 		if (value != null) {
 			userInputTimeout = Integer.valueOf(value);
 		}
-		// Ensure a default value if not configured and not set
+		// Ensure a default value if not configured and not set (10 minutes for execution
+		// snapshot / form input wait)
 		if (userInputTimeout == null) {
-			// Attempt to parse the default value specified in the annotation,
-			// or use a hardcoded default if parsing fails or is complex to retrieve here.
-			// For simplicity, directly using the intended default.
-			userInputTimeout = 300;
+			userInputTimeout = 600;
 		}
 		return userInputTimeout;
 	}
@@ -706,6 +704,53 @@ public class LynxeProperties {
 	}
 
 	// Image Generation Settings
+	// End----------------------------------------------------------------------------------------------
+
+	// Web (root redirect and init path) - for standalone vs library embedding
+	// Begin----------------------------------------------------------------------------------------------
+
+	private Web web = new Web();
+
+	public static class Web {
+
+		/**
+		 * When true (default), map GET "/" to redirect to init-path. Set to false when
+		 * embedding Lynxe so the host app can own "/".
+		 */
+		private boolean rootRedirectEnabled = true;
+
+		/**
+		 * Path to redirect "/" to (e.g. guided setup / UI). Default "/lynxe".
+		 */
+		private String initPath = "/lynxe";
+
+		public boolean isRootRedirectEnabled() {
+			return rootRedirectEnabled;
+		}
+
+		public void setRootRedirectEnabled(boolean rootRedirectEnabled) {
+			this.rootRedirectEnabled = rootRedirectEnabled;
+		}
+
+		public String getInitPath() {
+			return initPath != null && !initPath.isEmpty() ? initPath : "/lynxe";
+		}
+
+		public void setInitPath(String initPath) {
+			this.initPath = initPath;
+		}
+
+	}
+
+	public Web getWeb() {
+		return web;
+	}
+
+	public void setWeb(Web web) {
+		this.web = web != null ? web : new Web();
+	}
+
+	// Web Settings
 	// End----------------------------------------------------------------------------------------------
 
 }

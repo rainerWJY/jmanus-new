@@ -216,7 +216,7 @@ onMounted(() => {
     { deep: true }
   )
 
-  // Watch for new tracked plans to set currentRootPlanId
+  // Watch for new tracked plans to set currentRootPlanId (when dialog has no active plan yet)
   watch(
     () => planExecution.trackedPlanIds,
     trackedIds => {
@@ -228,6 +228,18 @@ onMounted(() => {
       }
     },
     { deep: true }
+  )
+
+  // Sync currentRootPlanId with the message dialog's active plan so that when the user sends
+  // a new message and a new plan is created, we treat that plan as current (events + RightPanel snapshot)
+  watch(
+    () => messageDialog.activeRootPlanId.value,
+    activePlanId => {
+      if (activePlanId && activePlanId !== currentRootPlanId.value) {
+        currentRootPlanId.value = activePlanId
+        logger.debug('[Direct] Synced currentRootPlanId from dialog:', activePlanId)
+      }
+    }
   )
 
   // Restore conversation history if conversationId exists in localStorage

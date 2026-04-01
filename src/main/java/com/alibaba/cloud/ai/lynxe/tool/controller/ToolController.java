@@ -17,20 +17,18 @@ package com.alibaba.cloud.ai.lynxe.tool.controller;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.alibaba.cloud.ai.lynxe.agent.model.Tool;
-import com.alibaba.cloud.ai.lynxe.mcp.service.McpService;
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory;
 import com.alibaba.cloud.ai.lynxe.planning.PlanningFactory.ToolCallBackContext;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
@@ -40,7 +38,6 @@ import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
  */
 @RestController
 @RequestMapping("/api/tools")
-@CrossOrigin(origins = "*")
 public class ToolController {
 
 	private static final Logger log = LoggerFactory.getLogger(ToolController.class);
@@ -48,22 +45,18 @@ public class ToolController {
 	@Autowired
 	private PlanningFactory planningFactory;
 
-	@Autowired
-	private McpService mcpService;
-
 	/**
-	 * Get all available tools
-	 * @return List of available tools
+	 * Get all available tools. On success returns 200 with list of tools; on error
+	 * returns 500 with JSON body {@code { "error": "...", "message": "..." }} so the
+	 * frontend can show the cause.
+	 * @return List of available tools, or error map on 500
 	 */
 	@GetMapping
-	public ResponseEntity<List<Tool>> getAvailableTools() {
-		String uuid = UUID.randomUUID().toString();
-		String expectedReturnInfo = null;
-
+	public ResponseEntity<?> getAvailableTools() {
 		try {
 			log.debug("Getting available tools using PlanningFactory");
-			Map<String, ToolCallBackContext> toolCallbackContext = planningFactory.toolCallbackMap(uuid, uuid,
-					expectedReturnInfo);
+			Map<String, ToolCallBackContext> toolCallbackContext = planningFactory.toolCallbackMap(
+					PlanningFactory.TOOLS_LISTING_CACHE_KEY, PlanningFactory.TOOLS_LISTING_CACHE_KEY, null);
 
 			List<Tool> tools = toolCallbackContext.entrySet().stream().map(entry -> {
 				Tool tool = new Tool();
@@ -96,17 +89,21 @@ public class ToolController {
 		}
 		catch (Exception e) {
 			log.error("Error getting available tools: {}", e.getMessage(), e);
-			return ResponseEntity.internalServerError().build();
+			String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+			return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(Map.of("error", message, "message", message));
 		}
-		finally {
-			// Clean up MCP connections
-			try {
-				mcpService.close(uuid);
-			}
-			catch (Exception e) {
-				log.warn("Error closing MCP service for UUID {}: {}", uuid, e.getMessage());
-			}
-		}
+	}
+
+	/**
+	 * Legacy endpoint: tool callback maps are built per request with no server-side
+	 * cache. Kept for clients that still call refresh after tool changes.
+	 */
+	@PostMapping("/refresh-cache")
+	public ResponseEntity<Void> refreshToolCache() {
+		planningFactory.invalidateToolCallbackMapCache();
+		log.debug("Tool refresh-cache invoked (no-op; maps are not cached)");
+		return ResponseEntity.ok().build();
 	}
 
 }

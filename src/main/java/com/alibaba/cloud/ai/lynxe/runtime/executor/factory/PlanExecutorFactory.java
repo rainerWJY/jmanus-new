@@ -33,6 +33,7 @@ import com.alibaba.cloud.ai.lynxe.runtime.executor.DynamicToolPlanExecutor;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.LevelBasedExecutorPool;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.PlanExecutorInterface;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
+import com.alibaba.cloud.ai.lynxe.runtime.service.ExecutionSnapshotService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.FileUploadService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
@@ -87,6 +88,8 @@ public class PlanExecutorFactory implements IPlanExecutorFactory {
 
 	private final UnifiedDirectoryManager unifiedDirectoryManager;
 
+	private final ExecutionSnapshotService executionSnapshotService;
+
 	public PlanExecutorFactory(LlmService llmService, PlanExecutionRecorder recorder, LynxeProperties lynxeProperties,
 			ObjectMapper objectMapper, LevelBasedExecutorPool levelBasedExecutorPool,
 			DynamicModelRepository dynamicModelRepository, FileUploadService fileUploadService,
@@ -95,7 +98,8 @@ public class PlanExecutorFactory implements IPlanExecutorFactory {
 			StreamingResponseHandler streamingResponseHandler, PlanIdDispatcher planIdDispatcher,
 			LynxeEventPublisher lynxeEventPublisher, ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
-			ServiceGroupIndexService serviceGroupIndexService, UnifiedDirectoryManager unifiedDirectoryManager) {
+			ServiceGroupIndexService serviceGroupIndexService, UnifiedDirectoryManager unifiedDirectoryManager,
+			ExecutionSnapshotService executionSnapshotService) {
 		this.llmService = llmService;
 		this.recorder = recorder;
 		this.lynxeProperties = lynxeProperties;
@@ -114,6 +118,7 @@ public class PlanExecutorFactory implements IPlanExecutorFactory {
 		this.conversationMemoryLimitService = conversationMemoryLimitService;
 		this.serviceGroupIndexService = serviceGroupIndexService;
 		this.unifiedDirectoryManager = unifiedDirectoryManager;
+		this.executionSnapshotService = executionSnapshotService;
 	}
 
 	/**
@@ -126,7 +131,7 @@ public class PlanExecutorFactory implements IPlanExecutorFactory {
 				dynamicModelRepository, fileUploadService, agentInterruptionHelper, planningFactory, toolCallingManager,
 				userInputService, streamingResponseHandler, planIdDispatcher, lynxeEventPublisher, objectMapper,
 				parallelExecutionService, conversationMemoryLimitService, serviceGroupIndexService,
-				unifiedDirectoryManager);
+				unifiedDirectoryManager, executionSnapshotService);
 	}
 
 	/**

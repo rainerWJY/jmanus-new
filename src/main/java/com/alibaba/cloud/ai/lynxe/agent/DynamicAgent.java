@@ -66,12 +66,14 @@ import com.alibaba.cloud.ai.lynxe.recorder.service.PlanExecutionRecorder.ThinkAc
 import com.alibaba.cloud.ai.lynxe.runtime.entity.vo.ExecutionStep;
 import com.alibaba.cloud.ai.lynxe.runtime.executor.AbstractPlanExecutor;
 import com.alibaba.cloud.ai.lynxe.runtime.service.AgentInterruptionHelper;
+import com.alibaba.cloud.ai.lynxe.runtime.service.ExecutionSnapshotService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.PlanIdDispatcher;
 import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionCheckerService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.UserInputService;
 import com.alibaba.cloud.ai.lynxe.subplan.model.vo.SubplanToolWrapper;
 import com.alibaba.cloud.ai.lynxe.tool.ErrorReportTool;
+import com.alibaba.cloud.ai.lynxe.tool.ExecutionSnapshotTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
 import com.alibaba.cloud.ai.lynxe.tool.SystemErrorReportTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminableTool;
@@ -139,6 +141,13 @@ public class DynamicAgent extends ReActAgent {
 
 	private ConversationMemoryLimitService conversationMemoryLimitService;
 
+	private ExecutionSnapshotService executionSnapshotService;
+
+	/** Set each round for snapshot tool so simulate API can rebuild prompt. */
+	private Message lastSystemMessageForSnapshot;
+
+	private Message lastCurrentStepEnvMessageForSnapshot;
+
 	private ServiceGroupIndexService serviceGroupIndexService;
 
 	/**
@@ -192,6 +201,12 @@ public class DynamicAgent extends ReActAgent {
 				userInputService.removeFormInputTool(rootPlanId);
 			}
 		}
+		if (executionSnapshotService != null) {
+			String rootPlanId = getRootPlanId();
+			if (rootPlanId != null) {
+				executionSnapshotService.markResumed(rootPlanId);
+			}
+		}
 	}
 
 	public DynamicAgent(LlmService llmService, PlanExecutionRecorder planExecutionRecorder,
@@ -202,7 +217,8 @@ public class DynamicAgent extends ReActAgent {
 			LynxeEventPublisher lynxeEventPublisher, AgentInterruptionHelper agentInterruptionHelper,
 			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService,
 			ConversationMemoryLimitService conversationMemoryLimitService,
-			ServiceGroupIndexService serviceGroupIndexService, List<Message> extraMessage) {
+			ServiceGroupIndexService serviceGroupIndexService, List<Message> extraMessage,
+			ExecutionSnapshotService executionSnapshotService) {
 		super(llmService, planExecutionRecorder, lynxeProperties, initialAgentSetting, step, planIdDispatcher);
 		this.objectMapper = objectMapper;
 		super.objectMapper = objectMapper; // Set parent's objectMapper as well
@@ -225,6 +241,26 @@ public class DynamicAgent extends ReActAgent {
 		this.conversationMemoryLimitService = conversationMemoryLimitService;
 		this.serviceGroupIndexService = serviceGroupIndexService;
 		this.extraMessage = extraMessage != null ? new ArrayList<>(extraMessage) : new ArrayList<>();
+		this.executionSnapshotService = executionSnapshotService;
+	}
+
+	/**
+	 * Backward-compatible constructor without ExecutionSnapshotService (snapshot feature
+	 * disabled).
+	 */
+	public DynamicAgent(LlmService llmService, PlanExecutionRecorder planExecutionRecorder,
+			LynxeProperties lynxeProperties, String name, String description, String nextStepPrompt,
+			List<String> availableToolKeys, ToolCallingManager toolCallingManager,
+			Map<String, Object> initialAgentSetting, UserInputService userInputService, String modelName,
+			StreamingResponseHandler streamingResponseHandler, ExecutionStep step, PlanIdDispatcher planIdDispatcher,
+			LynxeEventPublisher lynxeEventPublisher, AgentInterruptionHelper agentInterruptionHelper,
+			ObjectMapper objectMapper, ParallelExecutionService parallelExecutionService,
+			ConversationMemoryLimitService conversationMemoryLimitService,
+			ServiceGroupIndexService serviceGroupIndexService, List<Message> extraMessage) {
+		this(llmService, planExecutionRecorder, lynxeProperties, name, description, nextStepPrompt, availableToolKeys,
+				toolCallingManager, initialAgentSetting, userInputService, modelName, streamingResponseHandler, step,
+				planIdDispatcher, lynxeEventPublisher, agentInterruptionHelper, objectMapper, parallelExecutionService,
+				conversationMemoryLimitService, serviceGroupIndexService, extraMessage, null);
 	}
 
 	@Override
@@ -306,6 +342,10 @@ public class DynamicAgent extends ReActAgent {
 					log.info("Added explicit tool call requirement to retry message (no tool selected count: {})",
 							noToolSelectedCount);
 				}
+				// Store for pause-and-replay-execution tool (so simulate API can rebuild
+				// prompt)
+				lastSystemMessageForSnapshot = systemMessage;
+				lastCurrentStepEnvMessageForSnapshot = currentStepEnvMessage;
 				// Record think message
 				List<Message> thinkMessages = Arrays.asList(systemMessage, currentStepEnvMessage);
 				String thinkInput = thinkMessages.toString();
@@ -816,13 +856,14 @@ public class DynamicAgent extends ReActAgent {
 		// 1. Build execution task list
 		List<ExecutionTask> executionTasks = buildExecutionTasks(toolCalls);
 
-		// 2. Detect if FormInputTool is present
+		// 2. Detect if FormInputTool or ExecutionSnapshotTool is present (holds thread)
 		boolean hasFormInputTool = executionTasks.stream().anyMatch(ExecutionTask::isFormInputTool);
+		boolean hasExecutionSnapshotTool = executionTasks.stream().anyMatch(ExecutionTask::isExecutionSnapshotTool);
 
 		// 3. Unified execution - chain async execution with result processing
 		CompletableFuture<List<Map<String, Object>>> executionResultsFuture;
-		if (hasFormInputTool) {
-			// Contains FormInputTool: execute all sequentially
+		if (hasFormInputTool || hasExecutionSnapshotTool) {
+			// Contains FormInputTool or ExecutionSnapshotTool: execute all sequentially
 			executionResultsFuture = executeTasksSequentially(executionTasks);
 		}
 		else {
@@ -868,6 +909,11 @@ public class DynamicAgent extends ReActAgent {
 
 		boolean isFormInputTool() {
 			return toolCallBackContext != null && toolCallBackContext.getFunctionInstance() instanceof FormInputTool;
+		}
+
+		boolean isExecutionSnapshotTool() {
+			return toolCallBackContext != null
+					&& toolCallBackContext.getFunctionInstance() instanceof ExecutionSnapshotTool;
 		}
 
 		boolean isTerminableTool() {
@@ -936,6 +982,13 @@ public class DynamicAgent extends ReActAgent {
 				if (currentTask.isFormInputTool()) {
 					return executeFormInputToolAsync(currentTask).thenApply(formResult -> {
 						results.add(formResult);
+						return results;
+					});
+				}
+				// Special handling for ExecutionSnapshotTool
+				if (currentTask.isExecutionSnapshotTool()) {
+					return executeExecutionSnapshotToolAsync(currentTask).thenApply(snapshotResult -> {
+						results.add(snapshotResult);
 						return results;
 					});
 				}
@@ -1046,6 +1099,99 @@ public class DynamicAgent extends ReActAgent {
 			errorResult.put("error", "Error executing FormInputTool: " + e.getMessage());
 			return CompletableFuture.completedFuture(errorResult);
 		}
+	}
+
+	/**
+	 * Execute ExecutionSnapshotTool: store snapshot, run tool, wait for user resume or
+	 * timeout.
+	 */
+	private CompletableFuture<Map<String, Object>> executeExecutionSnapshotToolAsync(ExecutionTask task) {
+		ExecutionSnapshotTool snapshotTool = (ExecutionSnapshotTool) task.toolCallBackContext.getFunctionInstance();
+		try {
+			ExecutionSnapshotTool.ExecutionSnapshotInput input;
+			if (task.toolCall.arguments() != null && !task.toolCall.arguments().trim().isEmpty()) {
+				input = objectMapper.readValue(task.toolCall.arguments(),
+						ExecutionSnapshotTool.ExecutionSnapshotInput.class);
+			}
+			else {
+				input = new ExecutionSnapshotTool.ExecutionSnapshotInput();
+			}
+
+			String stepId = super.step.getStepId();
+			String rootPlanId = getRootPlanId();
+			String currentPlanId = getCurrentPlanId();
+
+			if (executionSnapshotService != null) {
+				AssistantMessage assistantMessage = (agentStreamingResult != null
+						&& agentStreamingResult.hasToolCalls()) ? agentStreamingResult.createAssistantMessage() : null;
+				executionSnapshotService.storeSnapshot(stepId, rootPlanId, currentPlanId, agentMessages,
+						lastSystemMessageForSnapshot, lastCurrentStepEnvMessageForSnapshot, snapshotTool,
+						assistantMessage);
+			}
+
+			snapshotTool.setCurrentPlanId(currentPlanId);
+			snapshotTool.setRootPlanId(rootPlanId);
+			snapshotTool.setCurrentStepId(stepId);
+			snapshotTool.run(input);
+
+			return waitForSnapshotResumeOrTimeoutAsync(snapshotTool).thenApply(v -> {
+				Map<String, Object> result = new HashMap<>();
+				result.put("index", task.index);
+				result.put("status", "SUCCESS");
+				String output = snapshotTool.getInputState() == ExecutionSnapshotTool.InputState.INPUT_RECEIVED
+						? "Execution resumed by user." : "Execution snapshot timeout or interrupted.";
+				task.param.setResult(output);
+				result.put("output", output);
+				result.put("agentState", AgentState.IN_PROGRESS.name());
+				return result;
+			});
+		}
+		catch (Exception e) {
+			log.error("Error executing ExecutionSnapshotTool: {}", e.getMessage(), e);
+			Map<String, Object> errorResult = new HashMap<>();
+			errorResult.put("index", task.index);
+			errorResult.put("status", "ERROR");
+			errorResult.put("error", "Error executing ExecutionSnapshotTool: " + e.getMessage());
+			return CompletableFuture.completedFuture(errorResult);
+		}
+	}
+
+	private CompletableFuture<Void> waitForSnapshotResumeOrTimeoutAsync(ExecutionSnapshotTool snapshotTool) {
+		return CompletableFuture.runAsync(() -> {
+			log.info("Waiting for execution snapshot resume for planId: {}...", getCurrentPlanId());
+			long startTime = System.currentTimeMillis();
+			long lastInterruptionCheck = startTime;
+			long userInputTimeoutMs = getLynxeProperties().getUserInputTimeout() * 1000L;
+			long interruptionCheckIntervalMs = 2000L;
+
+			while (snapshotTool.getInputState() == ExecutionSnapshotTool.InputState.AWAITING_USER_INPUT) {
+				long currentTime = System.currentTimeMillis();
+				if (currentTime - lastInterruptionCheck >= interruptionCheckIntervalMs) {
+					if (agentInterruptionHelper != null
+							&& !agentInterruptionHelper.checkInterruptionAndContinue(getRootPlanId())) {
+						log.info("Execution snapshot wait interrupted for rootPlanId: {}", getRootPlanId());
+						snapshotTool.handleInputTimeout();
+						break;
+					}
+					lastInterruptionCheck = currentTime;
+				}
+				if (currentTime - startTime > userInputTimeoutMs) {
+					log.warn("Timeout waiting for execution snapshot resume for planId: {}", getCurrentPlanId());
+					snapshotTool.handleInputTimeout();
+					break;
+				}
+				try {
+					TimeUnit.MILLISECONDS.sleep(500);
+				}
+				catch (InterruptedException e) {
+					log.warn("Interrupted while waiting for execution snapshot resume for planId: {}",
+							getCurrentPlanId());
+					Thread.currentThread().interrupt();
+					snapshotTool.handleInputTimeout();
+					break;
+				}
+			}
+		}, FORM_INPUT_WAIT_EXECUTOR);
 	}
 
 	/**

@@ -104,6 +104,72 @@
 
       <!-- Step Execution Details -->
       <div v-if="activeTab === 'details'" class="step-details">
+        <!-- Snapshot hold: show Simulate/Continue whenever execution is paused, even without selected step -->
+        <div v-if="snapshotWaitState" class="snapshot-hold-section">
+          <h4>{{ t('rightPanel.snapshotHoldTitle') }}</h4>
+          <div class="snapshot-prompt-row">
+            <label class="snapshot-label">{{ t('rightPanel.executionPrompt') }}:</label>
+            <textarea
+              v-model="modifiedPrompt"
+              class="snapshot-prompt-input"
+              :placeholder="lastThinkInputForPrompt || t('rightPanel.executionPromptPlaceholder')"
+              rows="4"
+            />
+          </div>
+          <div class="snapshot-actions">
+            <button
+              type="button"
+              class="snapshot-btn simulate-btn"
+              :disabled="simulateLoading"
+              @click="runSimulate"
+            >
+              <Icon icon="carbon:play" />
+              {{ simulateLoading ? t('rightPanel.simulating') : t('rightPanel.runSimulated') }}
+            </button>
+            <button
+              type="button"
+              class="snapshot-btn resume-btn"
+              :disabled="resumeLoading"
+              @click="resumeSnapshot"
+            >
+              <Icon icon="carbon:play-filled" />
+              {{ resumeLoading ? t('rightPanel.resuming') : t('rightPanel.resume') }}
+            </button>
+          </div>
+          <!-- Simulated step result (display-only) -->
+          <div v-if="simulatedStep" class="simulated-step-block">
+            <h5 class="simulated-step-title">
+              <Icon icon="carbon:chemistry" />
+              {{ t('rightPanel.simulatedStep') }}
+            </h5>
+            <div class="simulated-think">
+              <span class="label">{{ t('rightPanel.output') }}:</span>
+              <pre>{{ simulatedStep.thinkOutput || '—' }}</pre>
+            </div>
+            <div v-if="simulatedStep.toolCalls?.length" class="simulated-tools">
+              <span class="label">{{ t('rightPanel.action') }}:</span>
+              <div
+                v-for="(tc, idx) in simulatedStep.toolCalls"
+                :key="idx"
+                class="tool-execution-item"
+              >
+                <div class="tool-info">
+                  <span class="label">{{ t('rightPanel.tool') }}:</span>
+                  <span class="value">{{ tc.name }}</span>
+                </div>
+                <div class="input">
+                  <span class="label">{{ t('rightPanel.toolParameters') }}:</span>
+                  <pre>{{ tc.arguments }}</pre>
+                </div>
+                <div class="output">
+                  <span class="label">{{ t('rightPanel.executionResult') }}:</span>
+                  <pre>{{ t('rightPanel.simulatedNotExecuted') }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Step basic information -->
         <div v-if="selectedStep" class="step-info">
           <h3>
@@ -407,9 +473,11 @@
 </template>
 
 <script setup lang="ts">
+import { DirectApiService } from '@/api/lynxe-service'
 import FileBrowser from '@/components/file-browser/index.vue'
 import ExecutionController from '@/components/sidebar/ExecutionController.vue'
 import JsonEditorV2 from '@/components/sidebar/JsonEditorV2.vue'
+import { usePlanExecutionSingleton } from '@/composables/usePlanExecution'
 import { usePlanTemplateImport } from '@/composables/usePlanTemplateImport'
 import { useRightPanelSingleton } from '@/composables/useRightPanel'
 import { useToast } from '@/plugins/useToast'
@@ -417,6 +485,7 @@ import { useAppStore } from '@/stores/new/app'
 import { useAvailableToolsStore } from '@/stores/new/availableTools'
 import { usePlanTemplateConfigStore } from '@/stores/new/planTemplateConfig'
 import { templateStore } from '@/stores/new/templateStore'
+import type { SimulateResult, UserInputWaitState } from '@/types/plan-execution-record'
 import { logger } from '@/utils/logger'
 import { Icon } from '@iconify/vue'
 import { storeToRefs } from 'pinia'
@@ -500,6 +569,95 @@ const stepStatusText = computed(() => {
   if (selectedStep.value.current) return t('rightPanel.status.executing')
   return t('rightPanel.status.waiting')
 })
+
+// Snapshot wait state (execution paused for review + simulated run)
+const planExecution = usePlanExecutionSingleton()
+const currentPlanRecord = computed(() => {
+  const id = props.currentRootPlanId
+  if (!id) return null
+  return planExecution.recordsByPlanId.value[id] ?? null
+})
+const snapshotWaitState = computed((): UserInputWaitState | null => {
+  const r = currentPlanRecord.value as { userInputWaitState?: UserInputWaitState } | null
+  return r?.userInputWaitState?.waitType === 'snapshot' ? r.userInputWaitState : null
+})
+const snapshotStepId = computed(() => snapshotWaitState.value?.snapshotStepId ?? null)
+const snapshotPlanId = computed(
+  () => snapshotWaitState.value?.planId ?? props.currentRootPlanId ?? null
+)
+
+const modifiedPrompt = ref('')
+const simulatedStep = ref<SimulateResult | null>(null)
+const simulateLoading = ref(false)
+const resumeLoading = ref(false)
+
+const lastThinkInputForPrompt = computed(() => {
+  const steps = selectedStep.value?.agentExecution?.thinkActSteps
+  if (!steps?.length) return ''
+  const last = steps[steps.length - 1]
+  return last?.thinkInput ?? ''
+})
+
+async function runSimulate() {
+  const stepId = snapshotStepId.value
+  if (!stepId) return
+  simulateLoading.value = true
+  simulatedStep.value = null
+  try {
+    const result = await DirectApiService.simulateNextStep(
+      stepId,
+      modifiedPrompt.value.trim() || undefined
+    )
+    simulatedStep.value = result
+  } catch (e) {
+    logger.error('Simulate next step failed', e)
+    toast.error((e as Error).message || 'Simulate failed')
+  } finally {
+    simulateLoading.value = false
+  }
+}
+
+async function resumeSnapshot() {
+  const planId = snapshotPlanId.value
+  if (!planId) return
+  resumeLoading.value = true
+  try {
+    await DirectApiService.resumeSnapshot(planId)
+    simulatedStep.value = null
+    modifiedPrompt.value = ''
+  } catch (e) {
+    logger.error('Resume snapshot failed', e)
+    toast.error((e as Error).message || 'Resume failed')
+  } finally {
+    resumeLoading.value = false
+  }
+}
+
+watch(
+  () => [snapshotWaitState.value, lastThinkInputForPrompt.value] as const,
+  ([wait, thinkInput]) => {
+    if (wait && thinkInput && !modifiedPrompt.value) modifiedPrompt.value = thinkInput
+  }
+)
+
+watch(
+  () => [snapshotWaitState.value, snapshotStepId.value, selectedStep.value?.stepId] as const,
+  ([wait, stepId, currentStepId]) => {
+    if (wait && stepId && currentStepId !== stepId) {
+      rightPanel.handleStepSelected(stepId)
+    }
+  }
+)
+
+// When execution pauses for snapshot review, switch to step execution details tab so Simulate/Continue are visible
+watch(
+  () => snapshotWaitState.value,
+  wait => {
+    if (wait) {
+      rightPanel.setActiveTab('details')
+    }
+  }
+)
 
 // Actions - Template creation and import
 /**
@@ -890,6 +1048,114 @@ defineExpose({
       color: #cccccc;
       font-weight: 500;
       font-size: 12px;
+    }
+  }
+}
+
+.snapshot-hold-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #cccccc;
+  }
+
+  .snapshot-prompt-row {
+    margin-bottom: 12px;
+
+    .snapshot-label {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+
+    .snapshot-prompt-input {
+      width: 100%;
+      min-height: 80px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      background: #2a2a2a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #e0e0e0;
+      resize: vertical;
+    }
+  }
+
+  .snapshot-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+
+    .snapshot-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      &.simulate-btn {
+        background: #3498db;
+        color: #fff;
+      }
+
+      &.resume-btn {
+        background: #27ae60;
+        color: #fff;
+      }
+    }
+  }
+
+  .simulated-step-block {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border-left: 3px solid #f39c12;
+
+    .simulated-step-title {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #f39c12;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .simulated-think pre,
+    .simulated-tools pre {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #b0b0b0;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #888;
+    }
+
+    .tool-execution-item {
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 4px;
     }
   }
 }

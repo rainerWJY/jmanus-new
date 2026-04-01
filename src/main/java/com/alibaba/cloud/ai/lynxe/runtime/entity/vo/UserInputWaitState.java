@@ -27,6 +27,17 @@ public class UserInputWaitState implements Serializable {
 
 	private boolean waiting;
 
+	/**
+	 * "form" = form input wait, "snapshot" = execution snapshot hold (review + simulate)
+	 */
+	private String waitType;
+
+	/**
+	 * When waitType is "snapshot", the stepId to load agent execution detail for
+	 * think-act steps.
+	 */
+	private String snapshotStepId;
+
 	private String formDescription;
 
 	private List<Map<String, String>> formInputs;
@@ -62,6 +73,22 @@ public class UserInputWaitState implements Serializable {
 
 	public void setWaiting(boolean waiting) {
 		this.waiting = waiting;
+	}
+
+	public String getWaitType() {
+		return waitType;
+	}
+
+	public void setWaitType(String waitType) {
+		this.waitType = waitType;
+	}
+
+	public String getSnapshotStepId() {
+		return snapshotStepId;
+	}
+
+	public void setSnapshotStepId(String snapshotStepId) {
+		this.snapshotStepId = snapshotStepId;
 	}
 
 	public String getFormDescription() {

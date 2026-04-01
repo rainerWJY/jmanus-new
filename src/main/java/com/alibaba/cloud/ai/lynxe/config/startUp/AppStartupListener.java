@@ -16,6 +16,9 @@
 
 package com.alibaba.cloud.ai.lynxe.config.startUp;
 
+import java.awt.Desktop;
+import java.net.URI;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,15 +29,13 @@ import org.springframework.stereotype.Component;
 
 import com.alibaba.cloud.ai.lynxe.config.LynxeProperties;
 
-import java.awt.*;
-import java.net.URI;
-
 @Component
 public class AppStartupListener implements ApplicationListener<ApplicationReadyEvent> {
 
 	private static final Logger logger = LoggerFactory.getLogger(AppStartupListener.class);
 
-	public static final String INIT_WEB_PATH = "/ui/index.html";
+	/** Default init path when not configured. Kept for backward compatibility. */
+	public static final String INIT_WEB_PATH_DEFAULT = "/lynxe";
 
 	@Value("${server.port:18080}")
 	// Using Spring's original here to keep consistent with configuration file.
@@ -51,7 +52,8 @@ public class AppStartupListener implements ApplicationListener<ApplicationReadyE
 			return;
 		}
 
-		String url = "http://localhost:" + serverPort + INIT_WEB_PATH;
+		String initPath = lynxeProperties.getWeb().getInitPath();
+		String url = "http://localhost:" + serverPort + initPath;
 		logger.info("Application started, attempting to open browser to access: {}", url);
 
 		// First try using Desktop API

@@ -28,9 +28,16 @@
     </div>
 
     <div class="response-content">
-      <!-- User input form -->
+      <!-- Snapshot wait: do not show form submit (use right panel to resume) -->
+      <div
+        v-if="userInputWaitState?.waiting && userInputWaitState?.waitType === 'snapshot'"
+        class="snapshot-wait-hint"
+      >
+        <p>{{ $t('chat.snapshotWaitHint') }}</p>
+      </div>
+      <!-- User input form (form wait only; snapshot wait uses right panel) -->
       <UserInputForm
-        v-if="userInputWaitState?.waiting"
+        v-else-if="userInputWaitState?.waiting"
         :user-input-wait-state="userInputWaitState"
         v-bind="planId ? { 'plan-id': planId } : {}"
         :generic-input="genericInput ?? ''"
@@ -229,6 +236,19 @@ const handleUserInputSubmitted = (inputData: Record<string, unknown>) => {
   }
 
   .response-content {
+    .snapshot-wait-hint {
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #aaaaaa;
+      font-size: 14px;
+
+      p {
+        margin: 0;
+      }
+    }
+
     .final-response {
       position: relative;
 

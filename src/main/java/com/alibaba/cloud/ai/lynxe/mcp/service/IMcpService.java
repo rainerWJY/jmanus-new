@@ -78,8 +78,9 @@ public interface IMcpService {
 	List<McpServiceEntity> getFunctionCallbacks(String planId);
 
 	/**
-	 * Close MCP services for specified plan
-	 * @param planId Plan ID
+	 * Rebuilds all MCP connections (global invalidation; {@code planId} reserved). Not
+	 * for use after read-only listing.
+	 * @param planId reserved
 	 */
 	void close(String planId);
 

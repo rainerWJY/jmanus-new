@@ -60,8 +60,8 @@ import com.alibaba.cloud.ai.lynxe.runtime.service.ServiceGroupIndexService;
 import com.alibaba.cloud.ai.lynxe.runtime.service.TaskInterruptionManager;
 import com.alibaba.cloud.ai.lynxe.subplan.service.SubplanToolService;
 import com.alibaba.cloud.ai.lynxe.tool.DebugTool;
+import com.alibaba.cloud.ai.lynxe.tool.ExecutionSnapshotTool;
 import com.alibaba.cloud.ai.lynxe.tool.FormInputTool;
-import com.alibaba.cloud.ai.lynxe.tool.message.SendAssistantMessageTool;
 import com.alibaba.cloud.ai.lynxe.tool.TerminateTool;
 import com.alibaba.cloud.ai.lynxe.tool.ThinkTool;
 import com.alibaba.cloud.ai.lynxe.tool.ToolCallBiFunctionDef;
@@ -115,9 +115,8 @@ import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.ClearPendingE
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.RegisterBatchExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartAsyncExecutionTool;
 import com.alibaba.cloud.ai.lynxe.tool.mapreduce.parallelOperators.StartParallelExecutionTool;
+import com.alibaba.cloud.ai.lynxe.tool.message.SendAssistantMessageTool;
 import com.alibaba.cloud.ai.lynxe.tool.office.MarkdownToDocxTool;
-import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
-import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountExternalLinkFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.CountFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.DeleteExternalLinkFileOperator;
@@ -132,6 +131,8 @@ import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitExternalL
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.SplitFileTool;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteExternalLinkFileOperator;
 import com.alibaba.cloud.ai.lynxe.tool.textOperator.fileOperators.WriteFileOperator;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoStorageService;
+import com.alibaba.cloud.ai.lynxe.tool.todo.TodoWriteTool;
 import com.alibaba.cloud.ai.lynxe.workspace.conversation.service.MemoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -189,6 +190,8 @@ public class PlanningFactory {
 
 	@Value("${agent.init}")
 	private Boolean agentInit = true;
+
+	public static final String TOOLS_LISTING_CACHE_KEY = "__listing__";
 
 	@SuppressWarnings("unused")
 	@Autowired
@@ -285,6 +288,11 @@ public class PlanningFactory {
 	public Map<String, ToolCallBackContext> toolCallbackMap(String planId, String rootPlanId,
 			String expectedReturnInfo) {
 
+		boolean listingMode = expectedReturnInfo == null && planId != null && planId.equals(rootPlanId);
+		String buildPlanId = listingMode ? TOOLS_LISTING_CACHE_KEY : planId;
+		String buildRootPlanId = listingMode ? TOOLS_LISTING_CACHE_KEY : rootPlanId;
+		String buildExpectedReturnInfo = listingMode ? null : expectedReturnInfo;
+
 		Map<String, ToolCallBackContext> toolCallbackMap = new HashMap<>();
 		List<ToolCallBiFunctionDef<?>> toolDefinitions = new ArrayList<>();
 		if (chromeDriverService == null) {
@@ -335,7 +343,7 @@ public class PlanningFactory {
 			toolDefinitions.add(DatabaseTableToExcelTool.getInstance(lynxeProperties, dataSourceService,
 					excelProcessingService, unifiedDirectoryManager, toolI18nService));
 			toolDefinitions.add(UuidGenerateTool.getInstance(objectMapper, toolI18nService));
-			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
+			toolDefinitions.add(new TerminateTool(buildPlanId, buildExpectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 			toolDefinitions.add(new DebugTool(toolI18nService));
 			toolDefinitions.add(new SendAssistantMessageTool(toolI18nService, llmService, lynxeProperties));
@@ -390,6 +398,7 @@ public class PlanningFactory {
 			// toolDefinitions.add(new GoogleSearch());
 			// toolDefinitions.add(new PythonExecute());
 			toolDefinitions.add(new FormInputTool(objectMapper, toolI18nService));
+			toolDefinitions.add(new ExecutionSnapshotTool(objectMapper, toolI18nService));
 			// Refactored parallel execution operators (split from ParallelExecutionTool)
 			toolDefinitions.add(new RegisterBatchExecutionTool(objectMapper, planIdDispatcher, functionRegistryService,
 					toolI18nService));
@@ -421,25 +430,24 @@ public class PlanningFactory {
 			// toolDefinitions.add(new ExcelProcessorTool(excelProcessingService));
 		}
 		else {
-			toolDefinitions.add(new TerminateTool(planId, expectedReturnInfo, objectMapper, shortUrlService,
+			toolDefinitions.add(new TerminateTool(buildPlanId, buildExpectedReturnInfo, objectMapper, shortUrlService,
 					lynxeProperties, toolI18nService));
 		}
 
-		List<McpServiceEntity> functionCallbacks = mcpService.getFunctionCallbacks(planId);
+		List<McpServiceEntity> functionCallbacks = mcpService.getFunctionCallbacks(buildPlanId);
 		for (McpServiceEntity toolCallback : functionCallbacks) {
 			String serviceGroup = toolCallback.getServiceGroup();
 			ToolCallback[] tCallbacks = toolCallback.getAsyncMcpToolCallbackProvider().getToolCallbacks();
 			for (ToolCallback tCallback : tCallbacks) {
-				// The serviceGroup is the name of the tool
-				toolDefinitions.add(new McpTool(tCallback, serviceGroup, planId, innerStorageService, objectMapper));
+				toolDefinitions
+					.add(new McpTool(tCallback, serviceGroup, buildPlanId, innerStorageService, objectMapper));
 			}
 		}
-		// Create FunctionToolCallback for each tool
 		for (ToolCallBiFunctionDef<?> toolDefinition : toolDefinitions) {
 
 			try {
-				toolDefinition.setCurrentPlanId(planId);
-				toolDefinition.setRootPlanId(rootPlanId);
+				toolDefinition.setCurrentPlanId(buildPlanId);
+				toolDefinition.setRootPlanId(buildRootPlanId);
 
 				// Use qualified key format: serviceGroup-toolName
 				String serviceGroup = toolDefinition.getServiceGroup();
@@ -476,8 +484,8 @@ public class PlanningFactory {
 		// Add subplan tool registration
 		if (subplanToolService != null) {
 			try {
-				Map<String, ToolCallBackContext> subplanToolCallbacks = subplanToolService
-					.createSubplanToolCallbacks(planId, rootPlanId, expectedReturnInfo, serviceGroupIndexService);
+				Map<String, ToolCallBackContext> subplanToolCallbacks = subplanToolService.createSubplanToolCallbacks(
+						buildPlanId, buildRootPlanId, buildExpectedReturnInfo, serviceGroupIndexService);
 				toolCallbackMap.putAll(subplanToolCallbacks);
 				log.info("Registered {} subplan tools", subplanToolCallbacks.size());
 			}
@@ -487,6 +495,13 @@ public class PlanningFactory {
 		}
 
 		return toolCallbackMap;
+	}
+
+	/**
+	 * No-op retained for API compatibility. The tool callback map is built on each
+	 * {@link #toolCallbackMap} call; there is no longer an internal cache to invalidate.
+	 */
+	public void invalidateToolCallbackMapCache() {
 	}
 
 	@SuppressWarnings("deprecation")

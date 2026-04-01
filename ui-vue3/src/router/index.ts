@@ -21,7 +21,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import { logger } from '@/utils/logger'
 
 const options = {
-  history: createWebHashHistory('/ui'),
+  history: createWebHashHistory('/lynxe'),
   routes,
 }
 const router = createRouter(options)

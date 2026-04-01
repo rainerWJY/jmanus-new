@@ -253,28 +253,46 @@ public class McpCacheManager {
 		if (wrapper != null) {
 			ConnectionState state = wrapper.getState();
 			if (state == ConnectionState.CONNECTED) {
+				if (wrapper.getServiceEntity() == null) {
+					logger.info(
+							"getConnection: server='{}' state=CONNECTED but serviceEntity is null (inconsistent), returning wrapper",
+							serverName);
+				}
 				return wrapper;
 			}
 			// If connection is closed or closing, trigger background rebuild
 			// (non-blocking)
 			if (state == ConnectionState.CLOSED || state == ConnectionState.CLOSING) {
+				logger.info(
+						"getConnection: server='{}' state={} - scheduling background rebuild, returning null (fail-fast)",
+						serverName, state);
 				triggerBackgroundRebuild(serverName);
 				return null; // Fail-fast: return immediately
 			}
 			// If reconnecting, fail-fast: return null immediately
 			if (state == ConnectionState.RECONNECTING) {
+				logger.info(
+						"getConnection: server='{}' state=RECONNECTING - creation/rebuild in progress, returning null (fail-fast)",
+						serverName);
 				return null;
 			}
+			logger.info("getConnection: server='{}' state={} - unexpected state with existing wrapper, returning null",
+					serverName, state);
+			return null;
 		}
 
 		// Connection doesn't exist, trigger background creation (non-blocking)
 		McpConfigEntity config = configCache.get(serverName);
 		if (config == null) {
-			logger.warn("MCP server configuration not found: {}", serverName);
+			logger.info("getConnection: server='{}' - no connection entry and no config in configCache, returning null",
+					serverName);
 			return null;
 		}
 
 		// Fail-fast: trigger background creation and return immediately
+		logger.info(
+				"getConnection: server='{}' - no connection entry, config present in cache, scheduling background creation, returning null (fail-fast)",
+				serverName);
 		triggerBackgroundCreation(serverName);
 		return null;
 	}

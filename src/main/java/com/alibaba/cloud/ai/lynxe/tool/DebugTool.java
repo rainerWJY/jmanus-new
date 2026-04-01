@@ -24,14 +24,14 @@ import com.alibaba.cloud.ai.lynxe.tool.code.ToolExecuteResult;
 import com.alibaba.cloud.ai.lynxe.tool.i18n.ToolI18nService;
 
 /**
- * A simple debug tool that allows LLM to output a message and return it directly. This
- * tool is useful for debugging and logging purposes.
+ * Step summary tool: allows the LLM to output a message and return it directly at the end
+ * of each step (what was done, next plan, why). Keeps the execution trace clear.
  */
 public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 
 	private static final Logger log = LoggerFactory.getLogger(DebugTool.class);
 
-	public static final String name = "debug";
+	public static final String name = "step-summary";
 
 	private final ToolI18nService toolI18nService;
 
@@ -41,7 +41,7 @@ public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 
 	@Override
 	public ToolExecuteResult run(Map<String, Object> input) {
-		log.info("Debug tool called with input: {}", input);
+		log.info("Step summary tool called with input: {}", input);
 
 		// Extract message from input
 		Object messageObj = input != null ? input.get("message") : null;
@@ -58,7 +58,7 @@ public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 			message = messageObj.toString();
 		}
 
-		log.debug("Debug message: {}", message);
+		log.debug("Step summary message: {}", message);
 
 		return new ToolExecuteResult(message);
 	}
@@ -70,12 +70,12 @@ public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 
 	@Override
 	public String getDescription() {
-		return toolI18nService.getDescription("debug-tool");
+		return toolI18nService.getDescription("step-summary-tool");
 	}
 
 	@Override
 	public String getParameters() {
-		return toolI18nService.getParameters("debug-tool");
+		return toolI18nService.getParameters("step-summary-tool");
 	}
 
 	@Override
@@ -103,7 +103,7 @@ public class DebugTool extends AbstractBaseTool<Map<String, Object>> {
 	@Override
 	public ToolStateInfo getCurrentToolStateString() {
 		String stateString = String.format("""
-				Debug Tool Status:
+				Step Summary Tool Status:
 				- Tool Name: %s
 				- Plan ID: %s
 				- Status: Active

@@ -52,13 +52,13 @@ jobs:
         id: version
         run: echo "BUILD_VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
 
-      - name: Verify JAR file exists
+      - name: Verify executable fat JAR exists
         run: |
-          if [ -f "target/lynxe.jar" ]; then
-            echo "✅ JAR file found: target/lynxe.jar"
-            ls -lh target/lynxe.jar
+          if [ -f "target/lynxe-exec-fat-jar.jar" ]; then
+            echo "✅ Executable fat JAR found: target/lynxe-exec-fat-jar.jar"
+            ls -lh target/lynxe-exec-fat-jar.jar
           else
-            echo "❌ JAR file not found: target/lynxe.jar"
+            echo "❌ JAR file not found: target/lynxe-exec-fat-jar.jar"
             echo "Files in target directory:"
             ls -la target/*.jar || echo "No JAR files found"
             exit 1

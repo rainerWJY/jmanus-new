@@ -17,7 +17,7 @@
 import { useConversationStore } from '@/stores/new/conversation'
 import type { AgentExecutionRecordDetail } from '@/types/agent-execution-detail'
 import type { InputMessage } from '@/types/message-dialog'
-import type { PlanExecutionRecordResponse } from '@/types/plan-execution-record'
+import type { PlanExecutionRecordResponse, SimulateResult } from '@/types/plan-execution-record'
 import { logger } from '@/utils/logger'
 import { LlmCheckService } from '@/utils/llm-check'
 
@@ -515,5 +515,35 @@ export class DirectApiService {
     stepId: string
   ): Promise<AgentExecutionRecordDetail | null> {
     return this.getAgentExecutionDetail(stepId)
+  }
+
+  /** Simulate next step (one LLM round) without executing tools. */
+  public static async simulateNextStep(
+    stepId: string,
+    modifiedPrompt?: string
+  ): Promise<SimulateResult> {
+    const response = await fetch(`${this.BASE_URL}/agent-execution/${stepId}/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(modifiedPrompt != null ? { modifiedPrompt } : {}),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error((err as { error?: string }).error || `Simulate failed: ${response.status}`)
+    }
+    return (await response.json()) as SimulateResult
+  }
+
+  /** Resume execution after snapshot hold. */
+  public static async resumeSnapshot(planId: string): Promise<{ message?: string; planId?: string }> {
+    const response = await fetch(`${this.BASE_URL}/submit-snapshot-resume/${planId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}))
+      throw new Error((err as { error?: string }).error || `Resume failed: ${response.status}`)
+    }
+    return (await response.json()) as { message?: string; planId?: string }
   }
 }

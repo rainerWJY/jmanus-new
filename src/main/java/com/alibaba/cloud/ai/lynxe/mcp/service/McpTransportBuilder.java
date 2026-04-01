@@ -25,8 +25,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.alibaba.cloud.ai.lynxe.mcp.config.McpProperties;
@@ -45,6 +50,7 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import io.netty.resolver.DefaultAddressResolverGroup;
 import jakarta.annotation.PreDestroy;
+import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
@@ -56,11 +62,63 @@ public class McpTransportBuilder {
 
 	private static final Logger logger = LoggerFactory.getLogger(McpTransportBuilder.class);
 
+	private static final String MCP_ACCEPT_HEADER = "application/json, text/event-stream";
+
+	/**
+	 * {@code defaultHeader(Content-Type)} applies to every method; sending
+	 * {@code Content-Type:
+	 * application/json} on GET breaks some Streamable HTTP servers (e.g. DashScope
+	 * returns 200 with empty body and no {@code Content-Type}). Strip for bodiless
+	 * methods only.
+	 */
+	private ExchangeFilterFunction stripContentTypeForBodilessHttpMethods() {
+		return (request, next) -> {
+			HttpMethod method = request.method();
+			if (method == HttpMethod.GET || method == HttpMethod.HEAD || method == HttpMethod.DELETE) {
+				ClientRequest stripped = ClientRequest.from(request)
+					.headers(headers -> headers.remove(HttpHeaders.CONTENT_TYPE))
+					.build();
+				return next.exchange(stripped);
+			}
+			return next.exchange(request);
+		};
+	}
+
+	/**
+	 * DashScope MCP returns {@code 200} with empty body and no {@code Content-Type} on
+	 * GET; the official MCP Java client treats that as an error (see
+	 * {@code WebClientStreamableHttpTransport} {@code reconnect} — only SSE, 405, or 404
+	 * are handled). A {@code 405} means "no SSE stream" and correctly falls back to
+	 * request–response mode per the SDK.
+	 */
+	private ExchangeFilterFunction mcpDashScopeEmptyGetAs405IfNeeded(String apiBaseUrl) {
+		if (apiBaseUrl == null || !apiBaseUrl.contains("dashscope.aliyuncs.com")) {
+			return (request, next) -> next.exchange(request);
+		}
+		return (request, next) -> next.exchange(request).flatMap(response -> {
+			if (request.method() != HttpMethod.GET) {
+				return Mono.just(response);
+			}
+			if (response.statusCode().value() != HttpStatus.OK.value()) {
+				return Mono.just(response);
+			}
+			if (response.headers().contentType().isPresent()) {
+				return Mono.just(response);
+			}
+			if (response.headers().contentLength().orElse(-1L) != 0L) {
+				return Mono.just(response);
+			}
+			return Mono.just(response.mutate().statusCode(HttpStatus.METHOD_NOT_ALLOWED).build());
+		});
+	}
+
 	private final McpConfigValidator configValidator;
 
 	private final McpProperties mcpProperties;
 
 	private final ObjectMapper objectMapper;
+
+	private final McpPlaceholderResolver placeholderResolver;
 
 	/**
 	 * Shared connection provider for MCP transports
@@ -78,10 +136,11 @@ public class McpTransportBuilder {
 	private final ReactorClientHttpConnector sseConnector;
 
 	public McpTransportBuilder(McpConfigValidator configValidator, McpProperties mcpProperties,
-			ObjectMapper objectMapper) {
+			ObjectMapper objectMapper, McpPlaceholderResolver placeholderResolver) {
 		this.configValidator = configValidator;
 		this.mcpProperties = mcpProperties;
 		this.objectMapper = objectMapper;
+		this.placeholderResolver = placeholderResolver;
 
 		// Create shared connection provider for MCP transports
 		this.connectionProvider = ConnectionProvider.builder("mcp-shared-pool")
@@ -142,18 +201,18 @@ public class McpTransportBuilder {
 	 */
 	public McpClientTransport buildTransport(McpConfigType configType, McpServerConfig serverConfig, String serverName)
 			throws IOException {
-		// Validate server configuration
-		configValidator.validateServerConfig(serverConfig, serverName);
+		McpServerConfig effectiveConfig = placeholderResolver.resolveForTransport(serverConfig);
+		configValidator.validateServerConfig(effectiveConfig, serverName);
 
 		switch (configType) {
 			case SSE -> {
-				return buildSseTransport(serverConfig, serverName);
+				return buildSseTransport(effectiveConfig, serverName);
 			}
 			case STUDIO -> {
-				return buildStudioTransport(serverConfig, serverName);
+				return buildStudioTransport(effectiveConfig, serverName);
 			}
 			case STREAMING -> {
-				return buildStreamingTransport(serverConfig, serverName);
+				return buildStreamingTransport(effectiveConfig, serverName);
 			}
 			default -> {
 				throw new IOException("Unsupported connection type: " + configType + " for server: " + serverName);
@@ -311,10 +370,12 @@ public class McpTransportBuilder {
 		WebClient.Builder builder = WebClient.builder()
 			.clientConnector(connector) // Use specified HttpClient connector
 			.baseUrl(baseUrl)
-			.defaultHeader("Accept", "text/event-stream")
+			.defaultHeader("Accept", MCP_ACCEPT_HEADER)
 			.defaultHeader("Content-Type", "application/json")
 			.defaultHeader("User-Agent", mcpProperties.getUserAgent())
 			.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024 * 10))
+			.filter(stripContentTypeForBodilessHttpMethods())
+			.filter(mcpDashScopeEmptyGetAs405IfNeeded(baseUrl))
 			// Add timeout to prevent hanging connections
 			.filter((request,
 					next) -> next.exchange(request).timeout(java.time.Duration.ofSeconds(30)).onErrorMap(ex -> {

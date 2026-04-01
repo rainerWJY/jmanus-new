@@ -17,3 +17,4 @@ spring:
 logging:
   level:
     root: INFO
+    com.alibaba.cloud.ai.lynxe.mcp: INFO

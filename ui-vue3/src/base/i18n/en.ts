@@ -210,7 +210,19 @@ const words: I18nType = {
       database: 'Database Configuration',
       databaseCleanup: 'History Records Statistics and Cleanup',
       namespace: 'Namespace Configuration',
+      planExecutionQuery: 'Execution Details Query',
       planTemplate: 'Plan Template Management',
+    },
+    planExecutionQuery: {
+      planIdLabel: 'Plan ID',
+      planIdPlaceholder: 'Enter plan-id',
+      load: 'Load',
+      loading: 'Loading...',
+      noPlanLoaded: 'Enter a Plan ID and click Load to view execution details',
+      planNotFound: 'No execution record found for this plan',
+      agentSummary: 'Agent execution list',
+      executionDetails: 'Execution details',
+      selectAgentHint: 'Click an agent in the list to view its execution details',
     },
     subGroupDisplayNames: {
       agent: 'Agent',
@@ -317,7 +329,7 @@ const words: I18nType = {
         'Available at mcp.so, requires Node.js environment and understanding of each item in the configuration JSON for proper adjustments like setting access keys',
       instructionStep1Remote: 'Remote Service (SSE/STREAMING)',
       instructionStep1RemoteDesc:
-        'Available at mcp.higress.ai/, offers SSE and STREAMING types, currently STREAM protocol is more complete',
+        'Available at mcp.higress.ai/ (SSE and STREAMING). Cursor- and Aliyun-style exports using streamableHttp and baseUrl can be pasted directly.',
       instructionStep2:
         'Copy the JSON configuration to the input box above, select STUDIO for local, STREAMING or SSE for remote, then submit',
       instructionStep3: 'This will successfully register the MCP tools.',
@@ -348,6 +360,21 @@ const words: I18nType = {
         'Please enter MCP server configuration JSON.\n\nExample:\n{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-github"\n      ],\n      "env": {\n        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"\n      }\n    }\n  }\n}',
       sseExample:
         'Please enter SSE MCP server configuration JSON.\n\nExample:\n{\n  "mcpServers": {\n    "remote-server": {\n      "url": "https://example.com/mcp",\n      "headers": {\n        "Authorization": "Bearer <YOUR_TOKEN>"\n      }\n    }\n  }\n}',
+      streamableHttpExampleTitle: 'Streamable HTTP (Cursor / Aliyun Bailian, etc.)',
+      streamableHttpExampleJson: `{
+  "mcpServers": {
+    "WebSearch": {
+      "type": "streamableHttp",
+      "description": "Optional vendor description field",
+      "isActive": true,
+      "name": "AliyunBailianMCP_WebSearch",
+      "baseUrl": "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp",
+      "headers": {
+        "Authorization": "Bearer \${DASHSCOPE_API_KEY}"
+      }
+    }
+  }
+}`,
       selectServerHint:
         'Please select an MCP server on the left or click to create a new MCP configuration',
       jsonEditor: 'JSON Editor',
@@ -801,6 +828,7 @@ const words: I18nType = {
       message: 'Please enter the required information:',
       submit: 'Submit',
     },
+    snapshotWaitHint: 'Execution paused for review. Use the left step execution panel to simulate or resume.',
     thinking: 'Thinking...',
     thinkingAnalyzing: 'Analyzing task requirements...',
     thinkingExecuting: 'Executing: {title}',
@@ -1305,6 +1333,18 @@ const words: I18nType = {
     stepInfo: 'Step Information',
     stepName: 'Step Name',
     noExecutionInfo: 'No detailed execution information available for this step',
+    // Snapshot hold (execution paused for review + simulated run)
+    snapshotHoldTitle: 'Execution paused for review',
+    executionPrompt: 'Execution prompt',
+    executionPromptPlaceholder: 'Optional: edit the prompt for the next simulated step',
+    runSimulated: 'Run simulated',
+    simulating: 'Simulating...',
+    resume: 'Resume',
+    resuming: 'Resuming...',
+    simulateSuccess: 'Simulated step completed',
+    resumeSuccess: 'Execution resumed',
+    simulatedStep: 'Simulated step (not executed)',
+    simulatedNotExecuted: '(simulated, not executed)',
     subPlan: 'Sub Execution Plan',
     subStep: 'Sub Step',
     subPlanId: 'Sub Plan ID',

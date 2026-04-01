@@ -205,7 +205,19 @@ const words: I18nType = {
       database: '数据库配置',
       databaseCleanup: '数据库清理',
       namespace: '命名空间配置',
+      planExecutionQuery: '执行详情查询',
       planTemplate: '计划模板管理',
+    },
+    planExecutionQuery: {
+      planIdLabel: 'Plan ID',
+      planIdPlaceholder: '请输入 plan-id',
+      load: '加载',
+      loading: '加载中...',
+      noPlanLoaded: '请输入 Plan ID 并点击「加载」查看执行详情',
+      planNotFound: '未找到该 Plan 的执行记录',
+      agentSummary: 'Agent 执行列表',
+      executionDetails: '执行详情',
+      selectAgentHint: '点击左侧列表中某一 Agent 查看其执行详情',
     },
     subGroupDisplayNames: {
       agent: 'Agent',
@@ -310,7 +322,7 @@ const words: I18nType = {
       instructionStep1LocalDesc: '本地mcp server，目前市面上主流的是这个',
       instructionStep1Remote: '远程服务(SSE/STREAMING)',
       instructionStep1RemoteDesc:
-        'mcp.higress.ai/ 上可以找到，有SSE和STREAMING两种，目前STREAM协议更完备一些',
+        'mcp.higress.ai/ 上可以找到，有SSE和STREAMING两种；Cursor、阿里云百炼等导出的 streamableHttp + baseUrl 格式也可直接粘贴导入',
       instructionStep2: '将json配置复制到上面的输入框，本地选STUDIO，远程选STREAMING或SSE，提交',
       instructionStep3: '这样mcp tools就注册成功了。',
       instructionStep4:
@@ -339,6 +351,21 @@ const words: I18nType = {
         '请输入MCP服务器配置JSON。\n\n例如：\n{\n  "mcpServers": {\n    "github": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-github"\n      ],\n      "env": {\n        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"\n      }\n    }\n  }\n}',
       sseExample:
         '请输入SSE MCP服务器配置JSON。\n\n例如：\n{\n  "mcpServers": {\n    "remote-server": {\n      "url": "https://example.com/mcp",\n      "headers": {\n        "Authorization": "Bearer <YOUR_TOKEN>"\n      }\n    }\n  }\n}',
+      streamableHttpExampleTitle: 'Streamable HTTP（Cursor / 阿里云百炼等）',
+      streamableHttpExampleJson: `{
+  "mcpServers": {
+    "WebSearch": {
+      "type": "streamableHttp",
+      "description": "实时联网检索（示例说明字段，可选）",
+      "isActive": true,
+      "name": "AliyunBailianMCP_WebSearch",
+      "baseUrl": "https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp",
+      "headers": {
+        "Authorization": "Bearer \${DASHSCOPE_API_KEY}"
+      }
+    }
+  }
+}`,
       selectServerHint: '请选择左侧的MCP服务器，或点击新建MCP配置',
       jsonEditor: 'JSON编辑器',
       jsonConfigEmpty: 'JSON配置不能为空',
@@ -751,6 +778,7 @@ const words: I18nType = {
       message: '请输入所需信息:',
       submit: '提交',
     },
+    snapshotWaitHint: '执行已暂停审阅。请使用左侧步骤执行面板进行模拟或继续执行。',
     thinking: '正在思考...',
     thinkingAnalyzing: '正在分析任务需求...',
     thinkingExecuting: '正在执行: {title}',
@@ -1238,6 +1266,17 @@ const words: I18nType = {
     stepInfo: '步骤信息',
     stepName: '步骤名称',
     noExecutionInfo: '该步骤暂无详细执行信息',
+    snapshotHoldTitle: '执行已暂停，可审阅',
+    executionPrompt: '执行提示',
+    executionPromptPlaceholder: '可选：编辑下一轮模拟步骤的提示',
+    runSimulated: '模拟执行',
+    simulating: '模拟中...',
+    resume: '继续执行',
+    resuming: '继续中...',
+    simulateSuccess: '模拟步骤完成',
+    resumeSuccess: '已继续执行',
+    simulatedStep: '模拟步骤（未实际执行）',
+    simulatedNotExecuted: '（模拟，未实际执行）',
     subPlan: '子执行计划',
     subStep: '子步骤',
     subPlanId: '子计划ID',

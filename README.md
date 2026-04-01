@@ -59,20 +59,26 @@ Get Lynxe up and running in under 5 minutes:
 
 ### Method 1: Using GitHub Release (Recommended)
 
-#### 📦 Download and Run JAR File
+The release provides a **fat JAR** (single runnable JAR with all dependencies). Download and run it with Java 17+.
+
+#### 📦 Download and Run the Fat JAR
 
 ```bash
-# Download the latest JAR file
+# Download the latest executable fat JAR (release asset is named lynxe.jar; same kind as target/lynxe-exec-fat-jar.jar from Maven)
 wget https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
 # Or using curl
 curl -L -o lynxe.jar https://github.com/spring-ai-alibaba/Lynxe/releases/latest/download/lynxe.jar
 
-# Run the JAR file
+# Run (Java 17+ required)
 java -jar lynxe.jar
 ```
 
-> 💡 **Manual Download**: You can also visit the [Lynxe Releases page](https://github.com/spring-ai-alibaba/Lynxe/releases) to manually download the latest JAR file.
+> **File names**: GitHub Releases publish the runnable JAR as **`lynxe.jar`** (and **`lynxe-<version>.jar`**). A local `mvn package` produces the same executable under **`target/lynxe-exec-fat-jar.jar`** (`classifier` in `pom.xml`). Same artifact type, different filenames.
+
+The fat JAR is the main artifact: run it directly with `java -jar`. No extra classpath or dependency setup is needed.
+
+> 💡 **Manual Download**: Visit the [Lynxe Releases page](https://github.com/spring-ai-alibaba/Lynxe/releases) to download the latest runnable JAR (often published as `lynxe.jar` or `lynxe-<version>.jar`). For embedding Lynxe as a library, use the **thin** JAR from the same release or from Maven (`lynxe-<version>.jar` without the executable repackage); see [Using Lynxe as a library](./docs/LYNXE-AS-LIBRARY.md).
 
 #### 🌐 Access Application
 
@@ -156,12 +162,23 @@ docker rm lynxe
 
 ### Method 3: Running from Source Code (Alternative)
 
-#### 1. Clone and Navigate
+#### 1. Clone and Build
 
 ```bash
 git clone https://github.com/spring-ai-alibaba/Lynxe.git
 cd Lynxe
+
+# Build the project (produces thin JAR and executable fat JAR in target/)
+mvn clean package -DskipTests
 ```
+
+The **Spring Boot executable fat JAR** is defined in `pom.xml` (`spring-boot-maven-plugin` with `finalName` `lynxe` and classifier `exec-fat-jar`). After a successful build, run:
+
+```bash
+java -jar target/lynxe-exec-fat-jar.jar
+```
+
+The **thin** JAR (`target/lynxe.jar`) is the normal Maven artifact for use as a dependency; it is not suitable for `java -jar` on its own.
 
 #### 2. Database Configuration (Optional)
 
@@ -200,16 +217,16 @@ Lynxe supports both H2 (default)、MySQL and PostgreSQL databases.
 
 #### 3. Launch the Application
 
-**For Unix-like systems (macOS, Linux):**
+From the project root (same directory as `pom.xml`), either run the packaged fat JAR:
 
 ```bash
-../mvnw spring-boot:run
+java -jar target/lynxe-exec-fat-jar.jar
 ```
 
-**For Windows systems:**
+Or start with Maven (no prior `package` required):
 
 ```bash
-../mvnw.cmd spring-boot:run
+mvn spring-boot:run
 ```
 
 #### 4. Access Your Multi-Agent Dashboard
