@@ -86,8 +86,9 @@ RUN apt-get update && \
     # Clean up
     rm -rf /var/lib/apt/lists/*
 
-# Copy JAR file
-COPY target/lynxe.jar app.jar
+# Copy Spring Boot executable fat JAR (Main-Class + BOOT-INF for playwright-init / jar -xf).
+# target/lynxe.jar is the thin Maven artifact only — it has no Main-Class and breaks java -jar.
+COPY target/lynxe-exec-fat-jar.jar app.jar
 
 # Install Playwright browsers, extract JAR and setup directories
 RUN java -jar app.jar playwright-init && \
