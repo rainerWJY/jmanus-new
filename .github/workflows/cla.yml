@@ -37,10 +37,13 @@ jobs:
         uses: contributor-assistant/github-action@v2.3.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_REPO_ACCESS_TOKEN }}
+          # Empty CLA_REPO_ACCESS_TOKEN breaks the action (GitHub API 404). Same-repo storage
+          # only needs GITHUB_TOKEN; set CLA_REPO_ACCESS_TOKEN when using remote-org/repo below.
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: "signatures/cla.json"
-          path-to-document: "https://github.com/spring-ai-alibaba/Lynxe/blob/main/CLA.md"
+          # Raw URL: blob/... URLs often cause "Could not retrieve repository contents" (404) in the action.
+          path-to-document: "https://raw.githubusercontent.com/spring-ai-alibaba/Lynxe/main/CLA.md"
           branch: "main"
           allowlist: "bot*,dependabot*,*[bot],EvoltoStart,HunterPorter"
           # Store signatures in this repo so GITHUB_TOKEN can write (no PAT needed).
