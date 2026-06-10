@@ -82,18 +82,18 @@ const createEditor = () => {
       { token: 'delimiter', foreground: '#fbbf24' },
     ],
     colors: {
-      'editor.background': 'rgba(255, 255, 255, 0.05)',
+      'editor.background': '#292929',
       'editor.foreground': '#f9fafb',
-      'editor.lineHighlightBackground': 'rgba(255, 255, 255, 0.08)',
+      'editor.lineHighlightBackground': '#303030',
       'editor.selectionBackground': '#3b82f6',
       'editor.inactiveSelectionBackground': '#4b5563',
       'editorCursor.foreground': '#f9fafb',
       'editorWhitespace.foreground': '#6b7280',
-      'editorIndentGuide.background': 'rgba(255, 255, 255, 0.1)',
+      'editorIndentGuide.background': '#353535',
       'editorIndentGuide.activeBackground': '#6b7280',
       'editorLineNumber.foreground': '#9ca3af',
       'editorLineNumber.activeForeground': '#f9fafb',
-      'editorGutter.background': 'rgba(255, 255, 255, 0.05)',
+      'editorGutter.background': '#292929',
     },
   })
 

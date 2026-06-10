@@ -61,7 +61,7 @@
   }
 }</code></pre>
           <h4 class="example-subtitle">{{ $t('config.mcpConfig.streamableHttpExampleTitle') }}</h4>
-          <pre class="example-json"><code>{{ $t('config.mcpConfig.streamableHttpExampleJson') }}</code></pre>
+          <pre class="example-json"><code>{{ streamableHttpExampleJson }}</code></pre>
         </template>
       </TabPanel>
     </div>
@@ -106,7 +106,33 @@ const emit = defineEmits<{
 }>()
 
 // Internationalization
-const { t } = useI18n()
+const { t, locale } = useI18n()
+
+// Streamable HTTP example JSON (defined as computed to avoid vue-i18n placeholder parsing issues)
+const streamableHttpExampleJson = computed(() => {
+  const desc =
+    locale.value === 'zh'
+      ? '实时联网检索（示例说明字段，可选）'
+      : 'Optional vendor description field'
+  return JSON.stringify(
+    {
+      mcpServers: {
+        WebSearch: {
+          type: 'streamableHttp',
+          description: desc,
+          isActive: true,
+          name: 'AliyunBailianMCP_WebSearch',
+          baseUrl: 'https://dashscope.aliyuncs.com/api/v1/mcps/WebSearch/mcp',
+          headers: {
+            Authorization: 'Bearer ${DASHSCOPE_API_KEY}',
+          },
+        },
+      },
+    },
+    null,
+    2,
+  )
+})
 
 // Reactive data
 const jsonContent = ref(props.modelValue)
